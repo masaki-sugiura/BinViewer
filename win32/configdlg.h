@@ -46,7 +46,8 @@ using std::make_pair;
 #define DEFAULT_FG_COLOR_HEADER  COLOR_BLACK
 #define DEFAULT_BK_COLOR_HEADER  COLOR_YELLOW
 
-#define CONFIG_DIALOG_PAGE_NUM  2
+//#define CONFIG_DIALOG_PAGE_NUM  2
+#define CONFIG_DIALOG_PAGE_NUM  1
 
 class CreateDialogError : public exception {};
 

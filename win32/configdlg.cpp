@@ -51,7 +51,7 @@ ConfigMainDlg::ConfigMainDlg(Auto_Ptr<AppConfig>& pAppConfig)
 	: ConfigDialog(IDD_CONFIG_MAIN, pAppConfig)
 {
 	m_pConfigPages[0] = new FontConfigPage(pAppConfig);
-	m_pConfigPages[1] = new CursorConfigPage(pAppConfig);
+//	m_pConfigPages[1] = new CursorConfigPage(pAppConfig);
 }
 
 ConfigMainDlg::~ConfigMainDlg()
