@@ -141,7 +141,6 @@ LoadFile(const string& filename)
 		g_strImageFile = filename;
 		g_pLFReader = new LargeFileReader(filename);
 		g_pViewFrame->loadFile(g_pLFReader.ptr());
-		g_pViewFrame->setPosition(0);
 
 		char buf[1024];
 		wsprintf(buf, "BinViewer - %s", g_strImageFile.c_str());

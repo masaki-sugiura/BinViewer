@@ -16,7 +16,8 @@ HINSTANCE ViewFrame::m_hInstance;
 ViewFrame::ViewFrame(HWND hwndParent, const RECT& rct,
 					 DrawInfo* pDrawInfo,
 					 LargeFileReader* pLFReader)
-	: m_pDC_Manager(NULL), m_pDrawInfo(pDrawInfo)
+	: m_pDC_Manager(NULL), m_pDrawInfo(pDrawInfo),
+	  m_smHorz(NULL, SB_HORZ), m_smVert(NULL, SB_VERT)
 {
 	if (!m_bRegisterClass) {
 		WNDCLASS wc;
@@ -48,6 +49,9 @@ ViewFrame::ViewFrame(HWND hwndParent, const RECT& rct,
 	if (!m_hwndView) {
 		throw CreateWindowError();
 	}
+
+	m_smHorz.setHWND(m_hwndView);
+	m_smVert.setHWND(m_hwndView);
 
 	m_hDC = ::GetDC(m_hwndView);
 
@@ -103,12 +107,66 @@ ViewFrame::adjustWindowRect(RECT& rctFrame)
 }
 
 void
-ViewFrame::setCurrentLine(filesize_t newline)
+ViewFrame::recalcPageInfo()
+{
+	int nPageLineNum = (m_rctClient.bottom - m_rctClient.top + m_nLineHeight - 1)
+						/ m_nLineHeight - 1 /* ヘッダの分は除く */;
+	// ウィンドウを広げた結果次のバッファとオーバーラップした場合に必要
+	m_bOverlapped = is_overlapped(m_nTopOffset / m_nLineHeight, nPageLineNum);
+	m_smHorz.setInfo(WIDTH_PER_XPITCH * m_nCharWidth,
+					 (m_rctClient.right - m_rctClient.left),
+					 m_smHorz.getCurrentPos());
+	filesize_t size = m_pDC_Manager->getFileSize();
+	if (size < 0)
+		m_smVert.disable();
+	else
+		m_smVert.setInfo(size / 16, nPageLineNum - 1, m_smVert.getCurrentPos());
+	::InvalidateRect(m_hwndView, NULL, FALSE);
+	::UpdateWindow(m_hwndView);
+}
+
+void
+ViewFrame::ensureVisible(filesize_t pos, bool bRedraw)
+{
+	filesize_t newline = pos / 16;
+	filesize_t line_diff = newline - m_smVert.getCurrentPos();
+	filesize_t page_line_num = m_smVert.getGripWidth();
+	if (line_diff < 0) {
+		m_smVert.setPosition(newline);
+		setCurrentLine(newline, bRedraw);
+	} else if (line_diff >= page_line_num) {
+		newline -= page_line_num;
+		m_smVert.setPosition(newline);
+		setCurrentLine(newline, bRedraw);
+	}
+#if 0
+	int top_offset_by_size = m_nTopOffset / m_nLineHeight * 16,
+		page_line_num_by_size
+		 = ((m_rctClient.bottom - m_rctClient.top) / m_nLineHeight - 1) * 16;
+	if (!m_pCurBuf ||
+		pos < m_pCurBuf->m_qAddress + top_offset_by_size ||
+		pos >= m_pCurBuf->m_qAddress + top_offset_by_size
+				+ page_line_num_by_size) {
+		// 最初の描画またはカーソルが表示領域をはみ出る
+		filesize_t newline = pos / 16;
+		int line_diff = pos / 16 - m_smVert.getCurrentPos();
+		if (line_diff >= page_line_num_by_size / 16) {
+			// 下にジャンプ/スクロール
+			newline -= page_line_num_by_size / 16 - 1;
+		}
+		setCurrentLine(newline, bRedraw);
+	}
+#endif
+}
+
+void
+ViewFrame::setCurrentLine(filesize_t newline, bool bRedraw)
 {
 	if (!m_pDC_Manager->isLoaded()) return;
 
-	if (newline > m_qMaxLine)
-		newline = m_qMaxLine;
+	filesize_t qMaxLine = m_smVert.getMaxPos();
+	if (newline > qMaxLine)
+		newline = qMaxLine;
 	else if (newline < 0) newline = 0;
 
 	// DCBuffer の内容を表示領域に変更する
@@ -118,30 +176,17 @@ ViewFrame::setCurrentLine(filesize_t newline)
 	assert(m_nTopOffset < HEIGHT_PER_YPITCH * m_nLineHeight);
 
 	// 次のバッファとオーバーラップしているかどうか
-	m_bOverlapped = is_overlapped(m_nTopOffset / m_nLineHeight, m_nPageLineNum);
+	m_bOverlapped = is_overlapped(m_nTopOffset / m_nLineHeight,
+								  m_smVert.getGripWidth() + 1);
 
 	m_pCurBuf  = m_pDC_Manager->getCurrentBuffer(0);
 	m_pNextBuf = m_pDC_Manager->getCurrentBuffer(1);
 
-	// スクロールバーの更新
-	SCROLLINFO sinfo;
-	sinfo.cbSize = sizeof(sinfo);
-	sinfo.fMask = SIF_POS;
-
-	if (!m_bMapScrollBarLinearly) {
-		// スクロールバーが native に扱えるファイルサイズを越えている
-		assert(m_qMaxLine > 0);
-		sinfo.nPos = (int)((newline << 32) / m_qMaxLine);
-	} else {
-		sinfo.nPos = (int)newline;
-	}
-	::SetScrollInfo(m_hwndView, SB_VERT, &sinfo, TRUE);
-
-	m_qCurrentLine = newline;
+	if (bRedraw) updateWithoutHeader();
 }
 
 void
-ViewFrame::setPosition(filesize_t pos)
+ViewFrame::setPosition(filesize_t pos, bool bRedraw)
 {
 	if (!m_pDC_Manager->isLoaded()) return;
 
@@ -152,36 +197,19 @@ ViewFrame::setPosition(filesize_t pos)
 		pos = fsize - 1;
 	if (pos < 0) pos = 0; // else では NG!! (filesize == 0 の場合)
 
-	unselect();
+	unselect(false);
 
 	m_qCurrentPos = pos;
 
-	int top_offset_by_size = m_nTopOffset / m_nLineHeight * 16,
-		page_line_num_by_size
-		 = ((m_rctClient.bottom - m_rctClient.top) / m_nLineHeight - 1) * 16;
-	if (!m_pCurBuf ||
-		pos < m_pCurBuf->m_qAddress + top_offset_by_size ||
-		pos >= m_pCurBuf->m_qAddress + top_offset_by_size
-				+ page_line_num_by_size) {
-		// 最初の描画またはカーソルが表示領域をはみ出る
-		filesize_t newline = pos / 16;
-		int line_diff = pos / 16 - m_qCurrentLine;
-		if (line_diff >= page_line_num_by_size / 16) {
-			// 下にジャンプ/スクロール
-			newline -= page_line_num_by_size / 16 - 1;
-		}
-		setCurrentLine(newline);
-	}
-//	modifyVScrollInfo();
+	select(pos, 1, bRedraw);
 
-	select(pos, 1);
-
+	// ステータスバーへのフィードバック
 	::SendMessage(::GetParent(m_hwndView), WM_USER_SETPOSITION,
-				  (WPARAM)(m_qCurrentPos >> 32), (LPARAM)m_qCurrentPos);
+				  (WPARAM)(pos >> 32), (LPARAM)pos);
 }
 
 void
-ViewFrame::setPositionByCoordinate(const POINTS& pos)
+ViewFrame::setPositionByCoordinate(const POINTS& pos, bool bRedraw)
 {
 	// header
 	if (pos.y < m_nLineHeight) return;
@@ -197,23 +225,25 @@ ViewFrame::setPositionByCoordinate(const POINTS& pos)
 		qPos = m_pNextBuf->m_qAddress + ((y_pos - height) / m_nLineHeight) * 16;
 	}
 
-	int x_pos = m_pDC_Manager->getXPositionByCoordinate(pos.x + m_nXOffset);
+	int x_pos = m_pDC_Manager->getXPositionByCoordinate(pos.x + m_smHorz.getCurrentPos());
 	if (x_pos < 0) return;
 
 	qPos += x_pos;
 
-	if (qPos >= this->getFileSize()) {
-		qPos = this->getFileSize() - 1;
+	filesize_t fsize = this->getFileSize();
+	if (qPos >= fsize) {
+		qPos = fsize - 1;
 		if (qPos < 0) qPos = 0;
 	}
 
-	this->setPosition(qPos);
+	this->setPosition(qPos, bRedraw);
 }
 
 void
 ViewFrame::bitBlt(const RECT& rcPaint)
 {
-	int width = WIDTH_PER_XPITCH * m_nCharWidth - m_nXOffset;
+	int nXOffset = m_smHorz.getCurrentPos();
+	int width = WIDTH_PER_XPITCH * m_nCharWidth - nXOffset;
 	if (m_bOverlapped) {
 		int height = HEIGHT_PER_YPITCH * m_nLineHeight - m_nTopOffset;
 
@@ -224,7 +254,7 @@ ViewFrame::bitBlt(const RECT& rcPaint)
 							  rcPaint.left, rcPaint.top,
 							  rcPaint.right - rcPaint.left,
 							  rcPaint.bottom - rcPaint.top,
-							  rcPaint.left + m_nXOffset,
+							  rcPaint.left + nXOffset,
 							  m_nTopOffset + rcPaint.top - m_nLineHeight);
 		} else if (rcPaint.top - m_nLineHeight >= height) {
 			if (m_pNextBuf) {
@@ -232,7 +262,7 @@ ViewFrame::bitBlt(const RECT& rcPaint)
 								   rcPaint.left, rcPaint.top,
 								   rcPaint.right - rcPaint.left,
 								   rcPaint.bottom - rcPaint.top,
-								   rcPaint.left + m_nXOffset,
+								   rcPaint.left + nXOffset,
 								   rcPaint.top - height - m_nLineHeight);
 			} else {
 				::FillRect(m_hDC, &rcPaint, m_pDrawInfo->m_tciData.getBkBrush());
@@ -242,14 +272,14 @@ ViewFrame::bitBlt(const RECT& rcPaint)
 							  rcPaint.left, rcPaint.top,
 							  rcPaint.right - rcPaint.left,
 							  height - rcPaint.top + m_nLineHeight,
-							  rcPaint.left + m_nXOffset,
+							  rcPaint.left + nXOffset,
 							  rcPaint.top + m_nTopOffset - m_nLineHeight);
 			if (m_pNextBuf) {
 				m_pNextBuf->bitBlt(m_hDC,
 								   rcPaint.left, height + m_nLineHeight,
 								   rcPaint.right - rcPaint.left,
 								   rcPaint.bottom - height,
-								   rcPaint.left + m_nXOffset, 0);
+								   rcPaint.left + nXOffset, 0);
 			} else {
 				RECT rctTemp = rcPaint;
 				rctTemp.top    = height + m_nLineHeight;
@@ -262,7 +292,7 @@ ViewFrame::bitBlt(const RECT& rcPaint)
 						  rcPaint.left, rcPaint.top,
 						  rcPaint.right - rcPaint.left,
 						  rcPaint.bottom - rcPaint.top,
-						  rcPaint.left + m_nXOffset,
+						  rcPaint.left + nXOffset,
 						  m_nTopOffset + rcPaint.top - m_nLineHeight);
 	} else {
 		::FillRect(m_hDC, &rcPaint, (HBRUSH)(COLOR_APPWORKSPACE + 1));
@@ -275,7 +305,7 @@ ViewFrame::bitBlt(const RECT& rcPaint)
 				   rcPaint.left, rcPaint.top,
 				   rcPaint.right - rcPaint.left,
 				   min(m_nLineHeight, rcPaint.bottom - rcPaint.top),
-				   rcPaint.left + m_nXOffset, rcPaint.top);
+				   rcPaint.left + nXOffset, rcPaint.top);
 	}
 }
 
@@ -293,30 +323,175 @@ ViewFrame::invertRegion(filesize_t pos, int size, bool bSelected)
 }
 
 void
-ViewFrame::select(filesize_t pos, int size)
+ViewFrame::select(filesize_t pos, int size, bool bRedraw)
 {
 	assert(pos >= 0 && size > 0);
 
 	// unselect previously selected region
-	unselect();
+	unselect(false);
 
 	invertRegion(pos, size, true);
 
 	m_qPrevSelectedPos  = pos;
 	m_nPrevSelectedSize = size;
 
-	updateWithoutHeader();
+	if (bRedraw) updateWithoutHeader();
 }
 
 void
-ViewFrame::unselect()
+ViewFrame::unselect(bool bRedraw)
 {
 	if (m_qPrevSelectedPos >= 0 && m_nPrevSelectedSize > 0) {
 		invertRegion(m_qPrevSelectedPos, m_nPrevSelectedSize, false);
 		m_qPrevSelectedPos  = -1;
 		m_nPrevSelectedSize = 0;
-		updateWithoutHeader();
+		if (bRedraw) updateWithoutHeader();
 	}
+}
+
+void
+ViewFrame::updateWithoutHeader()
+{
+	RECT rctClient = m_rctClient;
+	rctClient.top = m_nLineHeight;
+	::InvalidateRect(m_hwndView, &rctClient, FALSE);
+	::UpdateWindow(m_hwndView);
+}
+
+void
+ViewFrame::onPaint(WPARAM, LPARAM)
+{
+	PAINTSTRUCT ps;
+	::BeginPaint(m_hwndView, &ps);
+	bitBlt(ps.rcPaint);
+	::EndPaint(m_hwndView, &ps);
+}
+
+void
+ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
+{
+	if (!m_pDC_Manager->isLoaded()) return;
+
+	filesize_t qCurLine = m_smVert.getCurrentPos();
+	filesize_t qCurDiff = m_qCurrentPos - qCurLine * 16;
+
+	filesize_t qNewLine = m_smVert.onScroll(LOWORD(wParam));
+
+	// 表示領域の更新
+	setCurrentLine(qNewLine, false);
+
+	// m_qCurrentPos の変更
+	filesize_t qCaretLine = (m_qCurrentPos + 15) / 16;
+
+	switch (m_pDrawInfo->m_ScrollConfig.m_caretMove) {
+	case CARET_ENSURE_VISIBLE:
+		{
+			// もしキャレットがビューフレームからはみ出ていたら
+			// ビューフレームの中に入れる
+			filesize_t qBottomLine = qNewLine + m_smVert.getGripWidth();
+			if (qNewLine > qCaretLine) {
+				// 上にはみ出た場合
+				setPosition(qNewLine * 16 + m_qCurrentPos % 16, false); 
+			} else if (qBottomLine <= qCaretLine) {
+				// 下にはみ出た場合
+				setPosition((qBottomLine - 1) * 16 + m_qCurrentPos % 16, false);
+			}
+		}
+		break;
+	
+	case CARET_SCROLL:
+		{
+			// キャレットをビューフレームに対して固定する
+			assert(qCurDiff >= 0);
+			setPosition(qNewLine * 16 + qCurDiff, false);
+		}
+		break;
+
+	default:
+		// キャレットを移動しない
+		break;
+	}
+
+	updateWithoutHeader();
+}
+
+void
+ViewFrame::onHScroll(WPARAM wParam, LPARAM lParam)
+{
+	// prepare the correct BGBuffer
+	m_nXOffset = m_smHorz.onScroll(LOWORD(wParam));
+
+	// get the region of BGBuffer to be drawn
+	::InvalidateRect(m_hwndView, NULL, FALSE);
+	::UpdateWindow(m_hwndView);
+}
+
+void
+ViewFrame::onMouseWheel(WPARAM wParam, LPARAM lParam)
+{
+	if (!m_pDC_Manager->isLoaded()) return;
+
+	int nLineDiff = - (short)HIWORD(wParam) / WHEEL_DELTA;
+
+	switch (m_pDrawInfo->m_ScrollConfig.m_wheelScroll) {
+	case WHEEL_AS_ARROW_KEYS:
+		onVerticalMove(nLineDiff);
+		break;
+	case WHEEL_AS_SCROLL_BAR:
+		{
+			int absNLineDiff = abs(nLineDiff);
+			for (int n = 0; n < absNLineDiff; n++)
+				onVScroll(nLineDiff > 0 ? SB_LINEDOWN : SB_LINEUP, 0);
+		}
+		break;
+	default:
+		assert(0);
+		break;
+	}
+}
+
+void
+ViewFrame::onLButtonDown(WPARAM wParam, LPARAM lParam)
+{
+	if (!m_pDC_Manager->isLoaded()) return;
+
+	setPositionByCoordinate(MAKEPOINTS(lParam));
+}
+
+void
+ViewFrame::onJump(filesize_t pos, int size)
+{
+	assert(size > 0);
+
+	if (!m_pDC_Manager->isLoaded()) return;
+
+	if (pos < 0) pos = 0;
+
+	if (size > 1) {
+		// pos ～ pos + size のデータが可能な限り表示されることを保証する
+		ensureVisible(pos + size, false);
+	}
+
+	// prepare the correct BGBuffer
+	ensureVisible(pos, false);
+
+	setPosition(pos);
+}
+
+void
+ViewFrame::onHorizontalMove(int diff)
+{
+	filesize_t newpos = m_qCurrentPos + diff;
+	ensureVisible(newpos, false);
+	setPosition(newpos);
+}
+
+void
+ViewFrame::onVerticalMove(int diff)
+{
+	filesize_t newpos = m_qCurrentPos + diff * 16;
+	ensureVisible(newpos, false);
+	setPosition(newpos);
 }
 
 LRESULT CALLBACK
@@ -364,337 +539,5 @@ ViewFrame::ViewFrameWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	}
 
 	return 0;
-}
-
-void
-ViewFrame::modifyVScrollInfo()
-{
-	SCROLLINFO sinfo;
-	sinfo.cbSize = sizeof(sinfo);
-	sinfo.fMask = SIF_DISABLENOSCROLL | SIF_POS | SIF_RANGE | SIF_PAGE;
-	sinfo.nPos = 0;
-	sinfo.nMin = 0;
-
-	if (getFileSize() < 0) {
-		// ファイルが読み込まれていない状態
-		sinfo.nMax  = 1;
-		sinfo.nPage = 2;
-	} else {
-		filesize_t pos = m_qCurrentPos;
-
-		if (m_qMaxLine & ~0x7FFFFFFF) {
-			// スクロールバーが native に扱えるファイルサイズを越えている
-			m_bMapScrollBarLinearly = false;
-			sinfo.nMax = 0x7FFFFFFF;
-			sinfo.nPage = (DWORD)(((filesize_t)m_nPageLineNum << 32) / m_qMaxLine);
-			sinfo.nPos = (pos << 32) / m_qMaxLine;
-		} else {
-			m_bMapScrollBarLinearly = true;
-			// m_nPageLineNum は半端な最下行を含むので -1 しておく
-			sinfo.nPage = m_nPageLineNum - 1;
-			sinfo.nMax = (int)m_qMaxLine + sinfo.nPage - 1;
-			sinfo.nPos = (int)(pos / 16);
-		}
-		if (!sinfo.nPage) sinfo.nPage = 1;
-	}
-
-	::SetScrollInfo(m_hwndView, SB_VERT, &sinfo, TRUE);
-}
-
-void
-ViewFrame::modifyHScrollInfo(int width)
-{
-	SCROLLINFO sinfo;
-	sinfo.cbSize = sizeof(sinfo);
-	sinfo.fMask = SIF_DISABLENOSCROLL | SIF_POS | SIF_RANGE | SIF_PAGE;
-	sinfo.nPos = 0;
-	sinfo.nMin = 0;
-
-	width /= m_nCharWidth;
-
-	if (width >= WIDTH_PER_XPITCH) {
-		// HSCROLL を無効化
-		sinfo.nMax  = 1;
-		sinfo.nPage = 2;
-	} else {
-		sinfo.nMax  = WIDTH_PER_XPITCH - 1;
-		sinfo.nPage = width;
-		sinfo.nPos  = m_nXOffset / m_nCharWidth;
-	}
-
-	::SetScrollInfo(m_hwndView, SB_HORZ, &sinfo, TRUE);
-}
-
-void
-ViewFrame::updateWithoutHeader()
-{
-	RECT rctClient = m_rctClient;
-	rctClient.top = m_nLineHeight;
-	::InvalidateRect(m_hwndView, &rctClient, FALSE);
-	::UpdateWindow(m_hwndView);
-}
-
-void
-ViewFrame::onPaint(WPARAM, LPARAM)
-{
-	PAINTSTRUCT ps;
-	::BeginPaint(m_hwndView, &ps);
-	bitBlt(ps.rcPaint);
-	::EndPaint(m_hwndView, &ps);
-}
-
-void
-ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
-{
-	if (!isLoaded()) return;
-
-	filesize_t qCurLine = m_qCurrentLine,
-			   qCurDiff = m_qCurrentPos - m_qCurrentLine * 16;
-
-	bool bEnsureVisible
-		= (m_pDrawInfo->m_ScrollConfig.m_caretMove == CARET_ENSURE_VISIBLE);
-
-	switch (LOWORD(wParam)) {
-	case SB_LINEDOWN:
-		if (qCurLine < m_qMaxLine) {
-			qCurLine++;
-			if (bEnsureVisible && qCurDiff >= 16) {
-				qCurDiff -= 16;
-			}
-		}
-		break;
-
-	case SB_LINEUP:
-		if (qCurLine > 0) {
-			qCurLine--;
-			if (bEnsureVisible && qCurDiff < (m_nPageLineNum - 1) * 16) {
-				qCurDiff += 16;
-			}
-		}
-		break;
-
-	case SB_PAGEDOWN:
-		if ((qCurLine += m_nPageLineNum) > m_qMaxLine) {
-			qCurLine = m_qMaxLine;
-		} else {
-			if (bEnsureVisible) {
-				qCurDiff %= 16;
-			}
-		}
-		break;
-
-	case SB_PAGEUP:
-		if ((qCurLine -= m_nPageLineNum) < 0) {
-			qCurLine = 0;
-		} else {
-			if (bEnsureVisible) {
-				qCurDiff = (m_nPageLineNum - 1) * 16 + qCurDiff % 16;
-			}
-		}
-		break;
-
-	case SB_TOP:
-		qCurLine = 0;
-		qCurDiff = 0;
-		break;
-
-	case SB_BOTTOM:
-		qCurLine = m_qMaxLine;
-		qCurDiff = 15;
-		break;
-
-	case SB_THUMBTRACK:
-	case SB_THUMBPOSITION:
-		{
-			SCROLLINFO sinfo;
-			sinfo.cbSize = sizeof(SCROLLINFO);
-			sinfo.fMask = SIF_ALL;
-
-			::GetScrollInfo(m_hwndView, SB_VERT, &sinfo);
-			if (sinfo.nMax <= sinfo.nPage) return;
-
-			if (!m_bMapScrollBarLinearly) {
-				// ファイルサイズが大きい場合
-				qCurLine = (sinfo.nTrackPos * m_qMaxLine) >> 32;
-			} else {
-				qCurLine = sinfo.nTrackPos;
-			}
-			if (bEnsureVisible) {
-				if (qCurLine * 16 > m_qCurrentPos) {
-					qCurDiff %= 16;
-				} else if ((qCurLine + m_nPageLineNum) * 16 <= m_qCurrentPos) {
-					qCurDiff = (m_nPageLineNum - 1) * 16 + qCurDiff % 16;
-				} else {
-					qCurDiff = m_qCurrentPos - qCurLine * 16;
-				}
-			}
-		}
-		break;
-
-	default:
-		return;
-	}
-//	::SetScrollInfo(m_hwndView, SB_VERT, &sinfo, TRUE);
-
-	// prepare the correct BGBuffer
-	setCurrentLine(qCurLine);
-	switch (m_pDrawInfo->m_ScrollConfig.m_caretMove) {
-	case CARET_ENSURE_VISIBLE:
-	case CARET_SCROLL:
-		setPosition(qCurLine * 16 + qCurDiff);
-		break;
-	default:
-		break;
-	}
-
-	updateWithoutHeader();
-}
-
-void
-ViewFrame::onHScroll(WPARAM wParam, LPARAM lParam)
-{
-	SCROLLINFO sinfo;
-	sinfo.cbSize = sizeof(SCROLLINFO);
-	sinfo.fMask = SIF_ALL;
-
-	::GetScrollInfo(m_hwndView, SB_HORZ, &sinfo);
-	if (sinfo.nMax <= sinfo.nPage) return;
-
-	int nXOffset = m_nXOffset,
-		nMaxXOffset = m_nCharWidth * WIDTH_PER_XPITCH
-					  - (m_rctClient.right - m_rctClient.left);
-
-	switch (LOWORD(wParam)) {
-	case SB_LINEDOWN:
-		if ((nXOffset += m_nCharWidth) > nMaxXOffset) {
-			nXOffset = nMaxXOffset;
-			sinfo.nPos = sinfo.nMax;
-		} else {
-			sinfo.nPos++;
-		}
-		break;
-
-	case SB_LINEUP:
-		if ((nXOffset -= m_nCharWidth) <= 0) {
-			nXOffset = 0;
-			sinfo.nPos = 0;
-		} else {
-			sinfo.nPos--;
-		}
-		break;
-
-	case SB_PAGEDOWN:
-		if ((sinfo.nPos += sinfo.nPage) > sinfo.nMax) {
-			nXOffset = nMaxXOffset;
-			sinfo.nPos = sinfo.nMax;
-		} else {
-			nXOffset += sinfo.nPage * m_nCharWidth;
-		}
-		break;
-
-	case SB_PAGEUP:
-		if ((sinfo.nPos -= sinfo.nPage) < 0) {
-			nXOffset = 0;
-			sinfo.nPos = sinfo.nMin;
-		} else {
-			nXOffset -= sinfo.nPage * m_nCharWidth;
-		}
-		break;
-
-	case SB_TOP:
-		nXOffset = 0;
-		sinfo.nPos = sinfo.nMin;
-		break;
-
-	case SB_BOTTOM:
-		nXOffset = nMaxXOffset;
-		sinfo.nPos = sinfo.nMax;
-		break;
-
-	case SB_THUMBTRACK:
-	case SB_THUMBPOSITION:
-		sinfo.nPos = sinfo.nTrackPos;
-		nXOffset = m_nCharWidth * sinfo.nPos;
-		break;
-
-	default:
-		return;
-	}
-
-	::SetScrollInfo(m_hwndView, SB_HORZ, &sinfo, TRUE);
-
-	// prepare the correct BGBuffer
-	setXOffset(nXOffset);
-
-	// get the region of BGBuffer to be drawn
-	::InvalidateRect(m_hwndView, NULL, FALSE);
-	::UpdateWindow(m_hwndView);
-}
-
-void
-ViewFrame::onMouseWheel(WPARAM wParam, LPARAM lParam)
-{
-	if (!isLoaded()) return;
-
-	int nLineDiff = - (short)HIWORD(wParam) / WHEEL_DELTA;
-
-	switch (m_pDrawInfo->m_ScrollConfig.m_wheelScroll) {
-	case WHEEL_AS_ARROW_KEYS:
-		onVerticalMove(nLineDiff);
-		break;
-	case WHEEL_AS_SCROLL_BAR:
-		{
-			int absNLineDiff = abs(nLineDiff);
-			for (int n = 0; n < absNLineDiff; n++)
-				onVScroll(nLineDiff > 0 ? SB_LINEDOWN : SB_LINEUP, 0);
-		}
-		break;
-	default:
-		assert(0);
-		break;
-	}
-}
-
-void
-ViewFrame::onLButtonDown(WPARAM wParam, LPARAM lParam)
-{
-	if (!isLoaded()) return;
-
-	setPositionByCoordinate(MAKEPOINTS(lParam));
-	updateWithoutHeader();
-}
-
-void
-ViewFrame::onJump(filesize_t pos, int size)
-{
-	assert(size > 0);
-
-	if (!isLoaded()) return;
-
-	if (pos < 0) pos = 0;
-
-	if (size > 1) {
-		// pos ～ pos + size のデータが可能な限り表示されることを保証する
-		setPosition(pos + size);
-	}
-
-	// prepare the correct BGBuffer
-	setPosition(pos);
-
-	updateWithoutHeader();
-}
-
-void
-ViewFrame::onHorizontalMove(int diff)
-{
-	setPosition(m_qCurrentPos + diff);
-	updateWithoutHeader();
-}
-
-void
-ViewFrame::onVerticalMove(int diff)
-{
-	setPosition(m_qCurrentPos + diff * 16);
-	updateWithoutHeader();
 }
 

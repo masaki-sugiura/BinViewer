@@ -4,6 +4,7 @@
 #define VIEWFRAME_H_INC
 
 #include "dc_manager.h"
+#include "scroll.h"
 #include "messages.h"
 #include <assert.h>
 #include <exception>
@@ -26,10 +27,13 @@ public:
 	{
 		initParams();
 		if (!m_pDC_Manager->loadFile(pLFReader)) return false;
-		calcMaxLine();
-		modifyVScrollInfo();
-		::InvalidateRect(m_hwndView, NULL, FALSE);
-		::UpdateWindow(m_hwndView);
+//		calcMaxLine();
+//		modifyVScrollInfo();
+//		::InvalidateRect(m_hwndView, NULL, FALSE);
+//		::UpdateWindow(m_hwndView);
+		recalcPageInfo();
+		setCurrentLine(0, false);
+		setPosition(0);
 		return true;
 	}
 
@@ -37,9 +41,10 @@ public:
 	{
 		m_pDC_Manager->unloadFile();
 		initParams();
-		modifyVScrollInfo();
-		::InvalidateRect(m_hwndView, NULL, FALSE);
-		::UpdateWindow(m_hwndView);
+//		modifyVScrollInfo();
+//		::InvalidateRect(m_hwndView, NULL, FALSE);
+//		::UpdateWindow(m_hwndView);
+		recalcPageInfo();
 	}
 
 	bool isLoaded() const { return m_pDC_Manager->isLoaded(); }
@@ -51,32 +56,25 @@ public:
 
 	filesize_t getCurrentLine() const
 	{
-		return m_qCurrentLine;
+		return m_smVert.getCurrentPos();
 	}
-	void setCurrentLine(filesize_t newline);
 
 	filesize_t getMaxLine() const
 	{
-		return m_qMaxLine;
+		return m_smVert.getMaxPos();
 	}
 
-	void setPosition(filesize_t offset);
 	filesize_t getPosition() const
 	{
 		return m_qCurrentPos;
 	}
 
-	void setXOffset(int nXOffset)
-	{
-		assert(nXOffset >= 0);
-		m_nXOffset = nXOffset;
-	}
 	int getXOffset() const
 	{
 		return m_nXOffset;
 	}
 
-	void setPositionByCoordinate(const POINTS& pos);
+	void setPositionByCoordinate(const POINTS& pos, bool bRedraw = true);
 
 	bool findCallback(FindCallbackArg* pArg)
 	{
@@ -91,8 +89,8 @@ public:
 		return m_pDC_Manager->cleanupCallback();
 	}
 
-	void select(filesize_t pos, int size);
-	void unselect();
+	void select(filesize_t pos, int size, bool bRedraw = true);
+	void unselect(bool bRedraw = true);
 	int getSelectedSize() const
 	{
 		return m_nPrevSelectedSize;
@@ -103,12 +101,12 @@ public:
 		assert(pDrawInfo);
 		filesize_t pos = m_qPrevSelectedPos;
 		int size = m_nPrevSelectedSize;
-		unselect();
+		unselect(false);
 		m_pDrawInfo = pDrawInfo;
 		m_nLineHeight = m_pDrawInfo->m_FontInfo.getYPitch();
 		m_nCharWidth  = m_pDrawInfo->m_FontInfo.getXPitch();
 		m_pDC_Manager->setDrawInfo(m_hDC, pDrawInfo);
-		if (pos >= 0) select(pos, size);
+		if (pos >= 0) select(pos, size, false);
 		recalcPageInfo();
 	}
 
@@ -123,7 +121,7 @@ public:
 
 	int getPageLineNum() const
 	{
-		return m_nPageLineNum;
+		return m_smVert.getGripWidth();
 	}
 
 	void setFrameRect(const RECT& rctClient);
@@ -147,11 +145,13 @@ private:
 	DrawInfo* m_pDrawInfo;
 	int m_nLineHeight;
 	int m_nCharWidth;
-	int m_nPageLineNum;
+//	int m_nPageLineNum;
 	RECT m_rctFrame, m_rctClient;
 	bool m_bOverlapped;
-	filesize_t m_qCurrentLine;
-	filesize_t m_qMaxLine;
+//	filesize_t m_qCurrentLine;
+//	filesize_t m_qMaxLine;
+	ScrollManager<int> m_smHorz;
+	ScrollManager<filesize_t> m_smVert;
 	int m_nTopOffset, m_nXOffset;
 	DCBuffer *m_pCurBuf, *m_pNextBuf;
 	filesize_t m_qCurrentPos;
@@ -164,7 +164,9 @@ private:
 
 	void initParams()
 	{
-		m_qCurrentLine = m_qMaxLine = 0;
+//		m_qCurrentLine = m_qMaxLine = 0;
+		m_smHorz.disable();
+		m_smVert.disable();
 		m_qCurrentPos = m_qPrevSelectedPos = -1;
 		m_nPrevSelectedSize = 0;
 		m_nTopOffset = m_nXOffset = 0;
@@ -172,25 +174,12 @@ private:
 		m_pCurBuf = m_pNextBuf = NULL;
 	}
 
-	void recalcPageInfo()
-	{
-		m_nPageLineNum = (m_rctClient.bottom - m_rctClient.top + m_nLineHeight - 1)
-						  / m_nLineHeight - 1 /* ヘッダの分は除く */;
-		// ウィンドウを広げた結果次のバッファとオーバーラップした場合に必要
-		m_bOverlapped = is_overlapped(m_nTopOffset / m_nLineHeight, m_nPageLineNum);
-		modifyVScrollInfo();
-		modifyHScrollInfo(m_rctClient.right - m_rctClient.left);
-		::InvalidateRect(m_hwndView, NULL, FALSE);
-		::UpdateWindow(m_hwndView);
-	}
+	void ensureVisible(filesize_t pos, bool bRedraw = true);
+	void setCurrentLine(filesize_t newline, bool bRedraw = true);
+	void setPosition(filesize_t offset, bool bRedraw = true);
 
-	void calcMaxLine()
-	{
-		m_qMaxLine = m_pDC_Manager->getFileSize() / 16;
-	}
+	void recalcPageInfo();
 
-	void modifyVScrollInfo();
-	void modifyHScrollInfo(int width);
 	void bitBlt(const RECT& rcPaint);
 
 	void invertRegion(filesize_t pos, int size, bool bSelected);
