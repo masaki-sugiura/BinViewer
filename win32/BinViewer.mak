@@ -37,44 +37,79 @@ INTDIR=.\Release
 OutDir=.\Release
 # End Custom Macros
 
-ALL : "$(OUTDIR)\BinViewer.exe"
+ALL : "$(OUTDIR)\BinViewer.exe" "$(OUTDIR)\BinViewer.bsc"
 
 
 CLEAN :
 	-@erase "$(INTDIR)\bgb_manager.obj"
+	-@erase "$(INTDIR)\bgb_manager.sbr"
 	-@erase "$(INTDIR)\BitmapView.obj"
+	-@erase "$(INTDIR)\BitmapView.sbr"
 	-@erase "$(INTDIR)\configdlg.obj"
+	-@erase "$(INTDIR)\configdlg.sbr"
 	-@erase "$(INTDIR)\dc_manager.obj"
+	-@erase "$(INTDIR)\dc_manager.sbr"
 	-@erase "$(INTDIR)\dialog.obj"
+	-@erase "$(INTDIR)\dialog.sbr"
 	-@erase "$(INTDIR)\drawinfo.obj"
+	-@erase "$(INTDIR)\drawinfo.sbr"
 	-@erase "$(INTDIR)\jumpdlg.obj"
+	-@erase "$(INTDIR)\jumpdlg.sbr"
 	-@erase "$(INTDIR)\LargeFileReader.obj"
+	-@erase "$(INTDIR)\LargeFileReader.sbr"
 	-@erase "$(INTDIR)\lock.obj"
+	-@erase "$(INTDIR)\lock.sbr"
 	-@erase "$(INTDIR)\main.obj"
+	-@erase "$(INTDIR)\main.sbr"
 	-@erase "$(INTDIR)\mainwnd.res"
 	-@erase "$(INTDIR)\searchdlg.obj"
+	-@erase "$(INTDIR)\searchdlg.sbr"
 	-@erase "$(INTDIR)\strutils.obj"
+	-@erase "$(INTDIR)\strutils.sbr"
 	-@erase "$(INTDIR)\thread.obj"
+	-@erase "$(INTDIR)\thread.sbr"
 	-@erase "$(INTDIR)\vc60.idb"
 	-@erase "$(INTDIR)\vc60.pdb"
 	-@erase "$(INTDIR)\viewframe.obj"
+	-@erase "$(INTDIR)\viewframe.sbr"
+	-@erase "$(OUTDIR)\BinViewer.bsc"
 	-@erase "$(OUTDIR)\BinViewer.exe"
 
 "$(OUTDIR)" :
     if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
 
 F90=df.exe
-CPP_PROJ=/nologo /MT /W3 /GR /GX /Zi /O2 /I "." /I ".." /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D SIDEBYSIDE_COMMONCONTROLS=1 /Fp"$(INTDIR)\BinViewer.pch" /YX /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
+CPP_PROJ=/nologo /MT /W3 /GR /GX /Zi /O2 /I "." /I ".." /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D SIDEBYSIDE_COMMONCONTROLS=1 /D _WIN32_WINNT=0x500 /FR"$(INTDIR)\\" /Fp"$(INTDIR)\BinViewer.pch" /YX /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
 MTL_PROJ=/nologo /D "NDEBUG" /mktyplib203 /win32 
 RSC_PROJ=/l 0x411 /fo"$(INTDIR)\mainwnd.res" /d "NDEBUG" 
 BSC32=bscmake.exe
 BSC32_FLAGS=/nologo /o"$(OUTDIR)\BinViewer.bsc" 
 BSC32_SBRS= \
-	
+	"$(INTDIR)\bgb_manager.sbr" \
+	"$(INTDIR)\BitmapView.sbr" \
+	"$(INTDIR)\configdlg.sbr" \
+	"$(INTDIR)\dc_manager.sbr" \
+	"$(INTDIR)\dialog.sbr" \
+	"$(INTDIR)\drawinfo.sbr" \
+	"$(INTDIR)\jumpdlg.sbr" \
+	"$(INTDIR)\LargeFileReader.sbr" \
+	"$(INTDIR)\lock.sbr" \
+	"$(INTDIR)\main.sbr" \
+	"$(INTDIR)\searchdlg.sbr" \
+	"$(INTDIR)\strutils.sbr" \
+	"$(INTDIR)\thread.sbr" \
+	"$(INTDIR)\viewframe.sbr"
+
+"$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
+    $(BSC32) @<<
+  $(BSC32_FLAGS) $(BSC32_SBRS)
+<<
+
 LINK32=link.exe
 LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /profile /debug /machine:I386 /out:"$(OUTDIR)\BinViewer.exe" 
 LINK32_OBJS= \
 	"$(INTDIR)\bgb_manager.obj" \
+	"$(INTDIR)\BitmapView.obj" \
 	"$(INTDIR)\configdlg.obj" \
 	"$(INTDIR)\dc_manager.obj" \
 	"$(INTDIR)\dialog.obj" \
@@ -87,8 +122,7 @@ LINK32_OBJS= \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res" \
-	"$(INTDIR)\BitmapView.obj"
+	"$(INTDIR)\mainwnd.res"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -147,13 +181,14 @@ CLEAN :
     if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
 
 F90=df.exe
-CPP_PROJ=/nologo /MTd /W3 /Gm /GR /GX /ZI /Od /I "." /I ".." /D "_DEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D SIDEBYSIDE_COMMONCONTROLS=1 /FR"$(INTDIR)\\" /Fp"$(INTDIR)\BinViewer.pch" /YX /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /GZ /c 
+CPP_PROJ=/nologo /MTd /W3 /Gm /GR /GX /ZI /Od /I "." /I ".." /D "_DEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D SIDEBYSIDE_COMMONCONTROLS=1 /D _WIN32_WINNT=0x500 /FR"$(INTDIR)\\" /Fp"$(INTDIR)\BinViewer.pch" /YX /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /GZ /c 
 MTL_PROJ=/nologo /D "_DEBUG" /mktyplib203 /win32 
 RSC_PROJ=/l 0x411 /fo"$(INTDIR)\mainwnd.res" /d "_DEBUG" 
 BSC32=bscmake.exe
 BSC32_FLAGS=/nologo /o"$(OUTDIR)\BinViewer.bsc" 
 BSC32_SBRS= \
 	"$(INTDIR)\bgb_manager.sbr" \
+	"$(INTDIR)\BitmapView.sbr" \
 	"$(INTDIR)\configdlg.sbr" \
 	"$(INTDIR)\dc_manager.sbr" \
 	"$(INTDIR)\dialog.sbr" \
@@ -165,8 +200,7 @@ BSC32_SBRS= \
 	"$(INTDIR)\searchdlg.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
-	"$(INTDIR)\viewframe.sbr" \
-	"$(INTDIR)\BitmapView.sbr"
+	"$(INTDIR)\viewframe.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -177,6 +211,7 @@ LINK32=link.exe
 LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /incremental:yes /pdb:"$(OUTDIR)\BinViewer.pdb" /debug /machine:I386 /out:"$(OUTDIR)\BinViewer.exe" /pdbtype:sept 
 LINK32_OBJS= \
 	"$(INTDIR)\bgb_manager.obj" \
+	"$(INTDIR)\BitmapView.obj" \
 	"$(INTDIR)\configdlg.obj" \
 	"$(INTDIR)\dc_manager.obj" \
 	"$(INTDIR)\dialog.obj" \
@@ -189,8 +224,7 @@ LINK32_OBJS= \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res" \
-	"$(INTDIR)\BitmapView.obj"
+	"$(INTDIR)\mainwnd.res"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -242,229 +276,74 @@ LINK32_OBJS= \
 !IF "$(CFG)" == "BinViewer - Win32 Release" || "$(CFG)" == "BinViewer - Win32 Debug"
 SOURCE=..\bgb_manager.cpp
 
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\bgb_manager.obj" : $(SOURCE) "$(INTDIR)"
-	$(CPP) $(CPP_PROJ) $(SOURCE)
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
-
 "$(INTDIR)\bgb_manager.obj"	"$(INTDIR)\bgb_manager.sbr" : $(SOURCE) "$(INTDIR)"
 	$(CPP) $(CPP_PROJ) $(SOURCE)
 
 
-!ENDIF 
-
 SOURCE=.\BitmapView.cpp
-
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\BitmapView.obj" : $(SOURCE) "$(INTDIR)"
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
 
 "$(INTDIR)\BitmapView.obj"	"$(INTDIR)\BitmapView.sbr" : $(SOURCE) "$(INTDIR)"
 
 
-!ENDIF 
-
 SOURCE=.\configdlg.cpp
-
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\configdlg.obj" : $(SOURCE) "$(INTDIR)"
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
 
 "$(INTDIR)\configdlg.obj"	"$(INTDIR)\configdlg.sbr" : $(SOURCE) "$(INTDIR)"
 
 
-!ENDIF 
-
 SOURCE=.\dc_manager.cpp
-
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\dc_manager.obj" : $(SOURCE) "$(INTDIR)"
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
 
 "$(INTDIR)\dc_manager.obj"	"$(INTDIR)\dc_manager.sbr" : $(SOURCE) "$(INTDIR)"
 
 
-!ENDIF 
-
 SOURCE=.\dialog.cpp
-
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\dialog.obj" : $(SOURCE) "$(INTDIR)"
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
 
 "$(INTDIR)\dialog.obj"	"$(INTDIR)\dialog.sbr" : $(SOURCE) "$(INTDIR)"
 
 
-!ENDIF 
-
 SOURCE=.\drawinfo.cpp
-
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\drawinfo.obj" : $(SOURCE) "$(INTDIR)"
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
 
 "$(INTDIR)\drawinfo.obj"	"$(INTDIR)\drawinfo.sbr" : $(SOURCE) "$(INTDIR)"
 
 
-!ENDIF 
-
 SOURCE=.\jumpdlg.cpp
-
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\jumpdlg.obj" : $(SOURCE) "$(INTDIR)"
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
 
 "$(INTDIR)\jumpdlg.obj"	"$(INTDIR)\jumpdlg.sbr" : $(SOURCE) "$(INTDIR)"
 
 
-!ENDIF 
-
 SOURCE=.\LargeFileReader.cpp
-
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\LargeFileReader.obj" : $(SOURCE) "$(INTDIR)"
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
 
 "$(INTDIR)\LargeFileReader.obj"	"$(INTDIR)\LargeFileReader.sbr" : $(SOURCE) "$(INTDIR)"
 
 
-!ENDIF 
-
 SOURCE=.\lock.cpp
-
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\lock.obj" : $(SOURCE) "$(INTDIR)"
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
 
 "$(INTDIR)\lock.obj"	"$(INTDIR)\lock.sbr" : $(SOURCE) "$(INTDIR)"
 
 
-!ENDIF 
-
 SOURCE=.\main.cpp
-
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\main.obj" : $(SOURCE) "$(INTDIR)"
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
 
 "$(INTDIR)\main.obj"	"$(INTDIR)\main.sbr" : $(SOURCE) "$(INTDIR)"
 
 
-!ENDIF 
-
 SOURCE=.\searchdlg.cpp
-
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\searchdlg.obj" : $(SOURCE) "$(INTDIR)"
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
 
 "$(INTDIR)\searchdlg.obj"	"$(INTDIR)\searchdlg.sbr" : $(SOURCE) "$(INTDIR)"
 
 
-!ENDIF 
-
 SOURCE=.\strutils.cpp
-
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\strutils.obj" : $(SOURCE) "$(INTDIR)"
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
 
 "$(INTDIR)\strutils.obj"	"$(INTDIR)\strutils.sbr" : $(SOURCE) "$(INTDIR)"
 
 
-!ENDIF 
-
 SOURCE=.\thread.cpp
-
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\thread.obj" : $(SOURCE) "$(INTDIR)"
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
 
 "$(INTDIR)\thread.obj"	"$(INTDIR)\thread.sbr" : $(SOURCE) "$(INTDIR)"
 
 
-!ENDIF 
-
 SOURCE=.\viewframe.cpp
-
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\viewframe.obj" : $(SOURCE) "$(INTDIR)"
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
 
 "$(INTDIR)\viewframe.obj"	"$(INTDIR)\viewframe.sbr" : $(SOURCE) "$(INTDIR)"
 
-
-!ENDIF 
 
 SOURCE=.\mainwnd.rc
 

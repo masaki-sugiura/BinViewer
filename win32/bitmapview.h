@@ -35,6 +35,8 @@ private:
 	filesize_t m_qCurrentPos, m_qHeadPos;
 	ScrollManager<filesize_t>* m_pScrollManager;
 
+	int registerWndClass(HINSTANCE hInst);
+
 	void drawDC(const RECT& rctDraw);
 	void invertPos();
 

@@ -4,6 +4,8 @@
 #include "ViewFrame.h"
 #include "messages.h"
 
+#define BV_WNDCLASSNAME  "BinViewer_BitmapViewClass32"
+
 BitmapView::BitmapView(HWND hwndOwner, ViewFrame* pViewFrame)
 	: m_hwndOwner(hwndOwner),
 	  m_pViewFrame(pViewFrame),
@@ -18,32 +20,28 @@ BitmapView::BitmapView(HWND hwndOwner, ViewFrame* pViewFrame)
 
 	HINSTANCE hInstance = (HINSTANCE)::GetWindowLong(hwndOwner, GWL_HINSTANCE);
 
-	// Window class ‚Ì“o˜^
-	WNDCLASS wc;
-	::ZeroMemory(&wc, sizeof(WNDCLASS));
-	wc.hInstance = hInstance;
-	wc.style = CS_OWNDC;
-	wc.hIcon = NULL;
-	wc.hCursor = ::LoadCursor(NULL, IDC_ARROW);
-	wc.lpfnWndProc = (WNDPROC)BitmapViewWndProc;
-	wc.lpszClassName = "BinViewer_BitmapViewClass32";
-	wc.lpszMenuName = NULL;
-	if (!::RegisterClass(&wc)) throw CreateBitmapViewError();
+	// window class ‚Ì“o˜^
+	static int bRegWndClass = registerWndClass(hInstance);
+	if (!bRegWndClass) throw CreateBitmapViewError();
 
 	RECT rctOwner;
 	::GetWindowRect(hwndOwner, &rctOwner);
 
-	m_hwndView = ::CreateWindowEx(WS_EX_TOOLWINDOW | WS_EX_OVERLAPPEDWINDOW,
-								  wc.lpszClassName, "BitmapView",
+	m_hwndView = ::CreateWindowEx(WS_EX_PALETTEWINDOW,
+								  BV_WNDCLASSNAME, "BitmapView",
 								  WS_POPUP | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU |
 								   WS_VSCROLL,
 								  rctOwner.right, rctOwner.top,
-								  128, 512,
-								  NULL, NULL, hInstance,
+								  128, rctOwner.bottom - rctOwner.top,
+								  hwndOwner, NULL, hInstance,
 								  (LPVOID)this);
 	if (!m_hwndView) {
 		throw CreateBitmapViewError();
 	}
+
+	::SetWindowPos(m_hwndView, HWND_NOTOPMOST, 0, 0, 0, 0,
+				   SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
+//	::BringWindowToTop(m_hwndView);
 
 	m_pScrollManager = new ScrollManager<filesize_t>(m_hwndView, SB_VERT);
 	m_pScrollManager->disable();
@@ -55,6 +53,23 @@ BitmapView::~BitmapView()
 	::DeleteDC(m_hdcView);
 	delete m_pScrollManager;
 	::SendMessage(m_hwndView, WM_CLOSE, 0, 0);
+}
+
+int
+BitmapView::registerWndClass(HINSTANCE hInst)
+{
+	// Window class ‚Ì“o˜^
+	WNDCLASS wc;
+	::ZeroMemory(&wc, sizeof(WNDCLASS));
+	wc.hInstance = hInst;
+	wc.style = CS_OWNDC;
+	wc.hIcon = NULL;
+	wc.hCursor = ::LoadCursor(NULL, IDC_ARROW);
+	wc.lpfnWndProc = (WNDPROC)BitmapViewWndProc;
+	wc.lpszClassName = BV_WNDCLASSNAME;
+	wc.lpszMenuName = NULL;
+
+	return ::RegisterClass(&wc);
 }
 
 bool
