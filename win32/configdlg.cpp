@@ -897,10 +897,22 @@ CursorConfigPage::initDialog(HWND hDlg)
 {
 	if (!ConfigPage::initDialog(hDlg)) return FALSE;
 
-	if (m_ScrollConfig.m_caretMove == CARET_STATIC)
-		::SendDlgItemMessage(hDlg, IDC_CONFIG_CARET_STATIC, BM_SETCHECK, BST_CHECKED, 0);
-	else
-		::SendDlgItemMessage(hDlg, IDC_CONFIG_CARET_SCROLL, BM_SETCHECK, BST_CHECKED, 0);
+	switch (m_ScrollConfig.m_caretMove) {
+	case CARET_STATIC:
+		::SendDlgItemMessage(hDlg, IDC_CONFIG_CARET_STATIC,
+							 BM_SETCHECK, BST_CHECKED, 0);
+		break;
+
+	case CARET_ENSURE_VISIBLE:
+		::SendDlgItemMessage(hDlg, IDC_CONFIG_CARET_ENSURE_VISIBLE,
+							 BM_SETCHECK, BST_CHECKED, 0);
+		break;
+
+	case CARET_SCROLL:
+		::SendDlgItemMessage(hDlg, IDC_CONFIG_CARET_SCROLL,
+							 BM_SETCHECK, BST_CHECKED, 0);
+		break;
+	}
 
 	if (m_ScrollConfig.m_wheelScroll == WHEEL_AS_ARROW_KEYS)
 		::SendDlgItemMessage(hDlg, IDC_CONFIG_WHEEL_AS_ARROW_KEYS,
@@ -921,6 +933,9 @@ CursorConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		switch (LOWORD(wParam)) {
 		case IDC_CONFIG_CARET_STATIC:
 			m_ScrollConfig.m_caretMove = CARET_STATIC;
+			break;
+		case IDC_CONFIG_CARET_ENSURE_VISIBLE:
+			m_ScrollConfig.m_caretMove = CARET_ENSURE_VISIBLE;
 			break;
 		case IDC_CONFIG_CARET_SCROLL:
 			m_ScrollConfig.m_caretMove = CARET_SCROLL;

@@ -443,6 +443,9 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 	filesize_t qCurLine = m_qCurrentLine,
 			   qCurDiff = m_qCurrentPos - m_qCurrentLine * 16;
 
+	bool bEnsureVisible
+		= (m_pDrawInfo->m_ScrollConfig.m_caretMove == CARET_ENSURE_VISIBLE);
+
 	switch (LOWORD(wParam)) {
 	case SB_LINEDOWN:
 		if (qCurLine < m_qMaxLine) {
@@ -453,8 +456,11 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 			} else {
 				sinfo.nPos++;
 			}
+			if (bEnsureVisible && qCurDiff >= 16) {
+				qCurDiff -= 16;
+			}
 		} else {
-			if (m_qCurrentLine + qCurDiff / 16 + 1 < m_qMaxLine) {
+			if (qCurLine + qCurDiff / 16 + 1 < m_qMaxLine) {
 				qCurDiff += 16;
 			}
 		}
@@ -468,6 +474,9 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 				sinfo.nPos = (qCurLine << 32) / m_qMaxLine;
 			} else {
 				sinfo.nPos--;
+			}
+			if (bEnsureVisible && qCurDiff < (m_nPageLineNum - 1) * 16) {
+				qCurDiff += 16;
 			}
 		} else {
 			if (qCurDiff - 16 >= 0) qCurDiff -= 16;
@@ -485,6 +494,9 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 			} else {
 				sinfo.nPos += sinfo.nPage;
 			}
+			if (bEnsureVisible) {
+				qCurDiff %= 16;
+			}
 		}
 		break;
 
@@ -499,6 +511,9 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 			} else {
 				sinfo.nPos -= sinfo.nPage;
 			}
+			if (bEnsureVisible) {
+				qCurDiff = (m_nPageLineNum - 1) * 16 + qCurDiff % 16;
+			}
 		}
 		break;
 
@@ -510,7 +525,7 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 
 	case SB_BOTTOM:
 		qCurLine = m_qMaxLine;
-		qCurDiff = 0;
+		qCurDiff = 15;
 		sinfo.nPos = sinfo.nMax;
 		break;
 
@@ -523,6 +538,13 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 		} else {
 			qCurLine = sinfo.nPos;
 		}
+		if (bEnsureVisible) {
+			if (qCurLine > m_qCurrentLine) {
+				qCurDiff %= 16;
+			} else if (qCurLine < m_qCurrentLine) {
+				qCurDiff = (m_nPageLineNum - 1) * 16 + qCurDiff % 16;
+			}
+		}
 		break;
 
 	default:
@@ -534,8 +556,6 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 	setCurrentLine(qCurLine);
 	switch (m_pDrawInfo->m_ScrollConfig.m_caretMove) {
 	case CARET_ENSURE_VISIBLE:
-//		ensureVisibleCaret();
-		break;
 	case CARET_SCROLL:
 		setPosition(qCurLine * 16 + qCurDiff);
 		break;

@@ -188,19 +188,21 @@ IDD_CONFIG_CURSOR DIALOG DISCARDABLE  0, 0, 240, 165
 STYLE DS_CONTROL | WS_CHILD
 FONT 9, "ＭＳ Ｐゴシック"
 BEGIN
-    GROUPBOX        "スクロール時のキャレットの挙動",IDC_STATIC,7,7,114,46,
+    GROUPBOX        "スクロール時のキャレットの挙動",IDC_STATIC,7,7,114,66,
                     WS_GROUP
     CONTROL         "一緒にスクロール(&S)",IDC_CONFIG_CARET_STATIC,"Button",
                     BS_AUTORADIOBUTTON,14,20,94,10
+    CONTROL         "常に表示させる(&V)",IDC_CONFIG_CARET_ENSURE_VISIBLE,
+                    "Button",BS_AUTORADIOBUTTON,14,36,86,10
     CONTROL         "スクロールしない(&F)",IDC_CONFIG_CARET_SCROLL,"Button",
-                    BS_AUTORADIOBUTTON,14,35,86,10
-    GROUPBOX        "ホイールスクロールの挙動",IDC_STATIC,7,59,114,49,
+                    BS_AUTORADIOBUTTON,14,52,86,10
+    GROUPBOX        "ホイールスクロールの挙動",IDC_STATIC,7,79,114,49,
                     WS_GROUP
     CONTROL         "上下矢印キーと同じ(&A)",IDC_CONFIG_WHEEL_AS_ARROW_KEYS,
-                    "Button",BS_AUTORADIOBUTTON,14,73,86,10
+                    "Button",BS_AUTORADIOBUTTON,14,93,86,10
     CONTROL         "スクロールバーと同じ(&B)",
                     IDC_CONFIG_WHEEL_AS_SCROLL_BAR,"Button",
-                    BS_AUTORADIOBUTTON,14,89,86,10
+                    BS_AUTORADIOBUTTON,14,109,86,10
 END
 
 
