@@ -49,6 +49,7 @@ BitmapView::BitmapView(HWND hwndOwner, ViewFrame* pViewFrame)
 
 BitmapView::~BitmapView()
 {
+	delete [] (BYTE*)m_pbmInfo;
 	::DeleteObject(m_hbmView);
 	::DeleteDC(m_hdcView);
 	delete m_pScrollManager;
@@ -140,6 +141,8 @@ BitmapView::drawDC(const RECT& rctPaint)
 		if (!size) return;
 		size = m_pLFReader->readFrom(qOffset, FILE_BEGIN,
 									 databuf, size);
+		// render with SetDIBits()
+#if 1
 		int x = 0, y = rctPaint.top;
 		for (int i = 0; i < size; i++) {
 			BYTE val = 255 - databuf[i]; // 0 ‚ª”’‚É‚È‚é‚æ‚¤‚É
@@ -154,6 +157,7 @@ BitmapView::drawDC(const RECT& rctPaint)
 				x = 0; y++;
 			}
 		}
+#endif
 	} else {
 		::FillRect(m_hdcView, &rctPaint, (HBRUSH)(COLOR_APPWORKSPACE + 1));
 	}
@@ -204,6 +208,25 @@ BitmapView::onCreate(HWND hWnd)
 	m_hdcView = ::CreateCompatibleDC(hDC);
 	m_hbmView = ::CreateCompatibleBitmap(hDC, 128, 2048);
 	::SelectObject(m_hdcView, m_hbmView);
+
+	m_pbmInfo = (BITMAPINFO*)(new BYTE[sizeof(BITMAPINFOHEADER) + 256 * sizeof(RGBQUAD)]);
+	m_pbmInfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	m_pbmInfo->bmiHeader.biWidth = 128;
+	m_pbmInfo->bmiHeader.biHeight = -1024;
+	m_pbmInfo->bmiHeader.biPlanes = 1;
+	m_pbmInfo->bmiHeader.biBitCount = 8;
+	m_pbmInfo->bmiHeader.biCompression = BI_RGB;
+	m_pbmInfo->bmiHeader.biSizeImage = 0;
+	m_pbmInfo->bmiHeader.biXPelsPerMeter = 0;
+	m_pbmInfo->bmiHeader.biYPelsPerMeter = 0;
+	m_pbmInfo->bmiHeader.biClrUsed = 0;
+	m_pbmInfo->bmiHeader.biClrImportant = 0;
+
+	for (int i = 0; i < 256; i++) {
+		BYTE clr = 255 - i;
+		*(COLORREF*)&m_pbmInfo->bmiColors[i] = RGB(clr, clr, clr);
+	}
+
 	::ReleaseDC(hWnd, hDC);
 
 	drawDC(m_rctClient);

@@ -32,6 +32,7 @@ private:
 	RECT m_rctClient;
 	HDC  m_hdcView;
 	HBITMAP m_hbmView;
+	BITMAPINFO* m_pbmInfo;
 	filesize_t m_qCurrentPos, m_qHeadPos;
 	ScrollManager<filesize_t>* m_pScrollManager;
 
