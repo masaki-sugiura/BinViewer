@@ -19,6 +19,8 @@ struct FindCallbackArg {
 	BYTE* m_pData;    // [in] 検索データへのポインタ
 	int m_nBufSize;   // [in] 検索データのサイズ
 	int m_nDirection; // [in] 検索方向
+	filesize_t m_qOrgAddress; // [in] 元の選択開始位置
+	int m_nOrgSelectedSize;   // [in] 元の選択サイズ
 	filesize_t m_qStartAddress;   // [in] 検索開始位置
 	void (*m_pfnCallback)(void*); // [in] 検索終了時に呼び出されるコールバック関数
 	filesize_t m_qFindAddress; // [out] 見つかったアドレス

@@ -107,6 +107,7 @@ UpdateClientRect()
 }
 
 static void OnJump(HWND hWnd, filesize_t pos);
+static void OnMouseWheel(HWND hWnd, WPARAM wParam, LPARAM lParam);
 
 static void
 FindCallbackProc(void* arg)
@@ -115,13 +116,18 @@ FindCallbackProc(void* arg)
 
 	FindCallbackArg* pArg = (FindCallbackArg*)arg;
 
-	if (pArg->m_qFindAddress >= 0 && ::IsWindow(g_hSearchDlg)) {
-		g_pViewFrame->select(pArg->m_qFindAddress, pArg->m_nBufSize);
-		OnJump(g_hwndMain, pArg->m_qFindAddress);
-	}
-
-	if (::IsWindow(g_hSearchDlg))
+	if (::IsWindow(g_hSearchDlg)) {
+		if (pArg->m_qFindAddress >= 0) {
+			OnJump(g_hwndMain, pArg->m_qFindAddress + pArg->m_nBufSize);
+			OnJump(g_hwndMain, pArg->m_qFindAddress);
+			g_pViewFrame->select(pArg->m_qFindAddress, pArg->m_nBufSize);
+		} else {
+			::MessageBeep(MB_ICONEXCLAMATION);
+			g_pViewFrame->select(pArg->m_qOrgAddress, pArg->m_nOrgSelectedSize);
+		}
+		UpdateClientRect();
 		::PostMessage(g_hSearchDlg, WM_USER_FIND_FINISH, 0, 0);
+	}
 
 	delete [] pArg->m_pData;
 	delete pArg;
@@ -169,9 +175,15 @@ SearchData(HWND hDlg, int dir)
 	pFindCallbackArg->m_pData = buf;
 	pFindCallbackArg->m_nBufSize = len;
 	pFindCallbackArg->m_nDirection = dir;
-	pFindCallbackArg->m_qStartAddress = g_pViewFrame->getPosition();
 	pFindCallbackArg->m_pfnCallback = FindCallbackProc;
 	pFindCallbackArg->m_qFindAddress = -1;
+	pFindCallbackArg->m_qOrgAddress = g_pViewFrame->getPosition();
+	pFindCallbackArg->m_nOrgSelectedSize = g_pViewFrame->getSelectedSize();
+
+	pFindCallbackArg->m_qStartAddress = pFindCallbackArg->m_qOrgAddress;
+	if (dir == FIND_FORWARD) {
+		pFindCallbackArg->m_qStartAddress += pFindCallbackArg->m_nOrgSelectedSize;
+	}
 
 	g_pViewFrame->unselect();
 	UpdateClientRect();
@@ -261,6 +273,12 @@ SearchDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 
+	case WM_MOUSEWHEEL:
+		if (!bSearching) {
+			OnMouseWheel(::GetParent(hDlg), wParam, lParam);
+		}
+		break;
+
 	case WM_CLOSE:
 		::DestroyWindow(hDlg);
 		break;
@@ -273,8 +291,8 @@ SearchDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				g_pViewFrame->cleanupCallback();
 				::EnableWindow(g_hwndMain, TRUE);
 			}
-			g_pViewFrame->unselect();
-			UpdateClientRect();
+//			g_pViewFrame->unselect();
+//			UpdateClientRect();
 			g_hSearchDlg = NULL;
 		}
 		break;
@@ -544,8 +562,6 @@ OnJump(HWND hWnd, filesize_t pos)
 
 	filesize_t qMaxLine = g_pViewFrame->getMaxLine();
 
-	pos >>= 4;
-
 	SCROLLINFO sinfo;
 	sinfo.cbSize = sizeof(SCROLLINFO);
 	sinfo.fMask = SIF_ALL;
@@ -554,21 +570,21 @@ OnJump(HWND hWnd, filesize_t pos)
 	if (pos < 0) {
 		pos = 0;
 		sinfo.nPos = sinfo.nMin;
-	} else if (pos > qMaxLine) {
-		pos = qMaxLine;
+	} else if (pos / 16 > qMaxLine) {
+		pos = qMaxLine * 16;
 		sinfo.nPos = sinfo.nMax;
 	} else {
 		if (!g_bMapScrollBarLinearly) {
 			// ファイルサイズが大きい場合
-			sinfo.nPos = (pos << 32) / qMaxLine;
+			sinfo.nPos = ((pos / 16) << 32) / qMaxLine;
 		} else {
-			sinfo.nPos = (int)pos;
+			sinfo.nPos = (int)(pos / 16);
 		}
 	}
 	::SetScrollInfo(hWnd, SB_VERT, &sinfo, TRUE);
 
 	// prepare the correct BGBuffer
-	g_pViewFrame->setPosition(pos << 4);
+	g_pViewFrame->setPosition(pos);
 
 	// get the region of BGBuffer to be drawn
 	UpdateClientRect();

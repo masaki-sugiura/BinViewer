@@ -229,17 +229,25 @@ ViewFrame::bitBlt(HDC hDC, const RECT& rcPaint)
 void
 ViewFrame::invertOneLineRegion(HDC hDC, int column, int lineno, int n_char)
 {
-	assert(column < 16);
-	int begin = (1 + 16 + 1 + column * 3 + (column >= 8 ? 2 : 0)) * m_nCharWidth;
-	column += n_char;
-	assert(column <= 16);
-	int end   = (1 + 16 + 1 + column * 3 + (column > 8 ? 2 : 0) - 1) * m_nCharWidth;
+	assert(column < 16 && column + n_char <= 16);
 
 	RECT rect;
+
 	rect.top = lineno * m_nLineHeight;
 	rect.bottom = rect.top + m_nLineHeight - 1;
-	rect.left = begin;
-	rect.right = end;
+
+	// 文字列表現部
+	rect.left  = (1 + 16 + 1 + 16 * 3 + 2 + 1 + column) * m_nCharWidth;
+	rect.right = rect.left + n_char * m_nCharWidth;
+
+	::InvertRect(hDC, &rect);
+
+	// データ本体
+	int column_end = column + n_char;
+	rect.left  = (1 + 16 + 1 + column * 3 + (column >= 8 ? 2 : 0)) * m_nCharWidth;
+	rect.right = (1 + 16 + 1 + column_end * 3 + (column_end > 8 ? 2 : 0) - 1)
+				  * m_nCharWidth;
+
 	::InvertRect(hDC, &rect);
 }
 

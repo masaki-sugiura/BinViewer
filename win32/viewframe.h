@@ -77,6 +77,10 @@ public:
 
 	void select(filesize_t pos, int size);
 	void unselect();
+	int getSelectedSize() const
+	{
+		return m_nPrevSelectedSize;
+	}
 
 	void bitBlt(HDC hDC, const RECT& rcPaint);
 

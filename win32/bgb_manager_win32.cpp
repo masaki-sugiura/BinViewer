@@ -82,6 +82,10 @@ FindThread::thread(thread_arg_t arg)
 		}
 		while (!isTerminated()) {
 			pos -= readsize;
+			if (pos < 0) {
+				readsize -= (int)-pos;
+				pos = 0;
+			}
 
 			// マッチするのに十分なサイズがあるか？
 			if ((readsize = pLFReader->readFrom(pos, FILE_BEGIN,
