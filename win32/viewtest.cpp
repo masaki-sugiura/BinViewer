@@ -8,7 +8,7 @@
 #include <commctrl.h>
 #include <assert.h>
 
-#include "view.h"
+#include "HexView.h"
 #include "strutils.h"
 
 #define ADDR_WIDTH   100
@@ -31,6 +31,7 @@ static HINSTANCE g_hInstance;
 static HWND g_hwndMain, g_hwndStatusBar;
 static string g_strAppName;
 
+#if 0
 class TestDCBuffer : public DCBuffer {
 public:
 	TestDCBuffer(int nBufSize)
@@ -132,10 +133,10 @@ protected:
 		return View::viewWndProcMain(uMsg, wParam, lParam);
 	}
 };
-
+#endif
 
 // window properties
-static Auto_Ptr<ViewFrame> g_pViewFrame(NULL);
+static Auto_Ptr<View> g_pViewFrame(NULL);
 
 static Auto_Ptr<LargeFileReader> g_pLFReader(NULL);
 static LF_Notifier g_lfNotifier;
@@ -253,13 +254,33 @@ OnCreate(HWND hWnd)
 	::GetClientRect(hWnd, &rctClient);
 	rctClient.bottom -= STATUSBAR_HEIGHT;
 
-	DrawInfo* pDrawInfo = new DrawInfo();
-	pDrawInfo->setWidth(800);
-	pDrawInfo->setHeight(1024);
-	pDrawInfo->setBkColor(RGB(255, 255, 255));
-	pDrawInfo->setPixelsPerLine(1);
+#define COLOR_BLACK      RGB(0, 0, 0)
+#define COLOR_GRAY       RGB(128, 128, 128)
+#define COLOR_LIGHTGRAY  RGB(192, 192, 192)
+#define COLOR_WHITE      RGB(255, 255, 255)
+#define COLOR_YELLOW     RGB(255, 255, 0)
 
-	g_pViewFrame = new ViewFrame(hWnd, rctClient, pDrawInfo);
+#define DEFAULT_FONT_SIZE  12
+#define DEFAULT_FG_COLOR_ADDRESS COLOR_WHITE
+#define DEFAULT_BK_COLOR_ADDRESS COLOR_GRAY
+#define DEFAULT_FG_COLOR_DATA    COLOR_BLACK
+#define DEFAULT_BK_COLOR_DATA    COLOR_WHITE
+#define DEFAULT_FG_COLOR_STRING  COLOR_BLACK
+#define DEFAULT_BK_COLOR_STRING  COLOR_LIGHTGRAY
+#define DEFAULT_FG_COLOR_HEADER  COLOR_BLACK
+#define DEFAULT_BK_COLOR_HEADER  COLOR_YELLOW
+
+	HDC hDC = ::GetDC(hWnd);
+	HV_DrawInfo* pDrawInfo = new HV_DrawInfo(hDC, DEFAULT_FONT_SIZE,
+											 "FixedSys", false,
+											 DEFAULT_FG_COLOR_ADDRESS, DEFAULT_BK_COLOR_ADDRESS,
+											 DEFAULT_FG_COLOR_DATA, DEFAULT_BK_COLOR_DATA,
+											 DEFAULT_FG_COLOR_STRING, DEFAULT_BK_COLOR_STRING,
+											 DEFAULT_FG_COLOR_HEADER, DEFAULT_BK_COLOR_HEADER,
+											 CARET_STATIC, WHEEL_AS_ARROW_KEYS);
+	::ReleaseDC(hWnd, hDC);
+
+	g_pViewFrame = new HexView(hWnd, rctClient, pDrawInfo);
 	assert(g_pViewFrame.ptr());
 
 	g_lfNotifier.registerAcceptor(g_pViewFrame.ptr());
@@ -283,7 +304,7 @@ OnCreate(HWND hWnd)
 		return;
 	}
 
-	HDC hDC = ::GetDC(g_hwndStatusBar);
+	hDC = ::GetDC(g_hwndStatusBar);
 	char status[80];
 	lstrcpy(status, STATUS_POS_HEADER);
 	lstrcat(status, "0000000000000000");

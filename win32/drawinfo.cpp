@@ -119,20 +119,23 @@ FontInfo::setFont(HDC hDC, const FontConfig& fc)
 	setFont(hDC, fc.m_fFontSize, fc.m_pszFontFace, fc.m_bBoldFace);
 }
 
-DrawInfo::DrawInfo(HDC hDC, float fontsize,
-				   const char* faceName, bool bBoldFace,
-				   COLORREF crFgColorAddr, COLORREF crBkColorAddr,
-				   COLORREF crFgColorData, COLORREF crBkColorData,
-				   COLORREF crFgColorStr, COLORREF crBkColorStr,
-				   COLORREF crFgColorHeader, COLORREF crBkColorHeader,
-				   CARET_MOVE caretMove, WHEEL_SCROLL wheelScroll)
-	: m_hDC(hDC),
-	  m_FontInfo(hDC, fontsize, faceName, bBoldFace),
+HV_DrawInfo::HV_DrawInfo(HDC hDC, float fontsize,
+						 const char* faceName, bool bBoldFace,
+						 COLORREF crFgColorAddr, COLORREF crBkColorAddr,
+						 COLORREF crFgColorData, COLORREF crBkColorData,
+						 COLORREF crFgColorStr, COLORREF crBkColorStr,
+						 COLORREF crFgColorHeader, COLORREF crBkColorHeader,
+						 CARET_MOVE caretMove, WHEEL_SCROLL wheelScroll)
+	: m_FontInfo(hDC, fontsize, faceName, bBoldFace),
 	  m_tciHeader("ヘッダ", crFgColorHeader, crBkColorHeader),
 	  m_tciAddress("アドレス", crFgColorAddr, crBkColorAddr),
 	  m_tciData("データ", crFgColorData, crBkColorData),
 	  m_tciString("文字列", crFgColorStr, crBkColorStr),
 	  m_ScrollConfig(caretMove, wheelScroll)
 {
+	setWidth(m_FontInfo.getXPitch() * (STRING_END_OFFSET + 1));
+	setHeight(m_FontInfo.getYPitch() * (1024 / 16));
+	setBkColor(RGB(128, 128, 128));
+	setPixelsPerLine(m_FontInfo.getYPitch());
 }
 

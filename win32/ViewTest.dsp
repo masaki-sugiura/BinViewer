@@ -71,7 +71,7 @@ LINK32=link.exe
 # PROP Target_Dir ""
 F90=df.exe
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "." /I ".." /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GR /GX /ZI /Od /I "." /I ".." /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /GZ /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x411 /d "_DEBUG"
@@ -99,6 +99,14 @@ SOURCE=..\bgb_manager.cpp
 # Begin Source File
 
 SOURCE=.\dc_manager.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\drawinfo.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\HexView.cpp
 # End Source File
 # Begin Source File
 
@@ -143,6 +151,14 @@ SOURCE=..\bgb_manager.h
 # Begin Source File
 
 SOURCE=.\dc_manager.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\drawinfo.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\HexView.h
 # End Source File
 # Begin Source File
 

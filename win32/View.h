@@ -47,6 +47,8 @@ public:
 	// ウィンドウを指定された短形に変形
 	virtual void setFrameRect(const RECT& rctFrame, bool bRedraw);
 
+	virtual bool setDrawInfo(DrawInfo* pDrawInfo) = 0;
+
 	// ウィンドウサイズを行高・文字幅の整数倍に調整
 	void adjustWindowRect(RECT& rctFrame);
 

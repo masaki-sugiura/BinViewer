@@ -53,6 +53,8 @@ CLEAN :
 	-@erase "$(INTDIR)\dialog.sbr"
 	-@erase "$(INTDIR)\drawinfo.obj"
 	-@erase "$(INTDIR)\drawinfo.sbr"
+	-@erase "$(INTDIR)\HexView.obj"
+	-@erase "$(INTDIR)\HexView.sbr"
 	-@erase "$(INTDIR)\jumpdlg.obj"
 	-@erase "$(INTDIR)\jumpdlg.sbr"
 	-@erase "$(INTDIR)\LargeFileReader.obj"
@@ -103,8 +105,9 @@ BSC32_SBRS= \
 	"$(INTDIR)\searchdlg.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
+	"$(INTDIR)\view.sbr" \
 	"$(INTDIR)\viewframe.sbr" \
-	"$(INTDIR)\view.sbr"
+	"$(INTDIR)\HexView.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -128,9 +131,10 @@ LINK32_OBJS= \
 	"$(INTDIR)\searchdlg.obj" \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
+	"$(INTDIR)\view.obj" \
 	"$(INTDIR)\viewframe.obj" \
 	"$(INTDIR)\mainwnd.res" \
-	"$(INTDIR)\view.obj"
+	"$(INTDIR)\HexView.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -161,6 +165,8 @@ CLEAN :
 	-@erase "$(INTDIR)\dialog.sbr"
 	-@erase "$(INTDIR)\drawinfo.obj"
 	-@erase "$(INTDIR)\drawinfo.sbr"
+	-@erase "$(INTDIR)\HexView.obj"
+	-@erase "$(INTDIR)\HexView.sbr"
 	-@erase "$(INTDIR)\jumpdlg.obj"
 	-@erase "$(INTDIR)\jumpdlg.sbr"
 	-@erase "$(INTDIR)\LargeFileReader.obj"
@@ -213,8 +219,9 @@ BSC32_SBRS= \
 	"$(INTDIR)\searchdlg.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
+	"$(INTDIR)\view.sbr" \
 	"$(INTDIR)\viewframe.sbr" \
-	"$(INTDIR)\view.sbr"
+	"$(INTDIR)\HexView.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -238,9 +245,10 @@ LINK32_OBJS= \
 	"$(INTDIR)\searchdlg.obj" \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
+	"$(INTDIR)\view.obj" \
 	"$(INTDIR)\viewframe.obj" \
 	"$(INTDIR)\mainwnd.res" \
-	"$(INTDIR)\view.obj"
+	"$(INTDIR)\HexView.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -319,6 +327,11 @@ SOURCE=.\dialog.cpp
 SOURCE=.\drawinfo.cpp
 
 "$(INTDIR)\drawinfo.obj"	"$(INTDIR)\drawinfo.sbr" : $(SOURCE) "$(INTDIR)"
+
+
+SOURCE=.\HexView.cpp
+
+"$(INTDIR)\HexView.obj"	"$(INTDIR)\HexView.sbr" : $(SOURCE) "$(INTDIR)"
 
 
 SOURCE=.\jumpdlg.cpp

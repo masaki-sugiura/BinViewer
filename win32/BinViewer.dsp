@@ -122,6 +122,10 @@ SOURCE=.\drawinfo.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\HexView.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\jumpdlg.cpp
 # End Source File
 # Begin Source File
@@ -191,6 +195,10 @@ SOURCE=.\dialog.h
 # Begin Source File
 
 SOURCE=.\drawinfo.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\HexView.h
 # End Source File
 # Begin Source File
 

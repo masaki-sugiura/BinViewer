@@ -12,6 +12,23 @@ using std::string;
 
 #include "dc_manager.h"
 
+#define DATA_HEX_WIDTH				2
+#define DATA_CENTER_WIDTH			3
+
+#define ADDRESS_REGION_START_OFFSET	0
+#define ADDRESS_START_OFFSET		1
+#define ADDRESS_END_OFFSET			(ADDRESS_START_OFFSET + 16)
+#define ADDRESS_REGION_END_OFFSET	(ADDRESS_END_OFFSET + 1)
+#define DATA_REGION_START_OFFSET	ADDRESS_REGION_END_OFFSET
+#define DATA_FORMAR_START_OFFSET	(DATA_REGION_START_OFFSET + 1)
+#define DATA_FORMAR_END_OFFSET		(DATA_FORMAR_START_OFFSET + (DATA_HEX_WIDTH + 1) * 8 - 1)
+#define DATA_LATTER_START_OFFSET	(DATA_FORMAR_END_OFFSET + DATA_CENTER_WIDTH)
+#define DATA_LATTER_END_OFFSET		(DATA_LATTER_START_OFFSET + (DATA_HEX_WIDTH + 1) * 8 - 1)
+#define DATA_REGION_END_OFFSET		(DATA_LATTER_END_OFFSET + 1)
+#define STRING_REGION_START_OFFSET	DATA_REGION_END_OFFSET
+#define STRING_START_OFFSET			(STRING_REGION_START_OFFSET + 1)
+#define STRING_END_OFFSET			(STRING_START_OFFSET + 16)
+
 class InvalidFontError : public exception {
 };
 
@@ -176,7 +193,7 @@ public:
 	}
 	const TextColorInfo& getTextColorInfo(int index) const
 	{
-		return const_cast<DrawInfo*>(this)->getTextColorInfo(index);
+		return const_cast<HV_DrawInfo*>(this)->getTextColorInfo(index);
 	}
 
 private:
