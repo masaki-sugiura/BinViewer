@@ -6,9 +6,11 @@
 #include "viewframe.h"
 #include "dialog.h"
 
+class SearchMainDlg;
+
 class SearchDlg : public Dialog {
 public:
-	SearchDlg(Dialog* pParentDlg, ViewFrame& viewFrame);
+	SearchDlg(SearchMainDlg* pParentDlg, ViewFrame& viewFrame);
 	~SearchDlg();
 
 	bool prepareFindCallbackArg(FindCallbackArg*& pFindCallbackArg);
@@ -21,22 +23,22 @@ protected:
 	BOOL dialogProcMain(UINT, WPARAM, LPARAM);
 
 private:
-	Dialog* m_pParentDlg;
+	SearchMainDlg* m_pParentDlg;
 	ViewFrame& m_ViewFrame;
 	bool m_bSearching;
 	string m_strSearchStr;
 	int m_nStringType;
 
-	void enableControls(int dir, bool);
+	void enableControls(FIND_DIRECTION dir, bool);
 
-	bool search(int dir);
+	bool search(FIND_DIRECTION dir);
 
-	static void FindCallbackProc(void* arg);
+	static void FindCallbackProc(FindCallbackArg* pArg);
 };
 
 class GrepDlg : public Dialog {
 public:
-	GrepDlg(Dialog* pParentDlg, SearchDlg* pSearchDlg,
+	GrepDlg(SearchMainDlg* pParentDlg, SearchDlg* pSearchDlg,
 			ViewFrame& viewFrame);
 	~GrepDlg();
 
@@ -48,17 +50,22 @@ protected:
 	BOOL dialogProcMain(UINT, WPARAM, LPARAM);
 
 private:
-	Dialog* m_pParentDlg;
+	SearchMainDlg* m_pParentDlg;
 	SearchDlg* m_pSearchDlg;
 	ViewFrame& m_ViewFrame;
 
-	static void GrepCallbackProc(void* arg);
+	static void GrepCallbackProc(FindCallbackArg* pArg);
 };
 
 class SearchMainDlg : public Dialog {
 public:
 	SearchMainDlg(ViewFrame& viewFrame);
 	~SearchMainDlg();
+
+	bool findCallback(FindCallbackArg* pArg);
+	bool stopFind();
+	bool waitStopFind();
+	bool cleanupCallback();
 
 protected:
 	BOOL initDialog(HWND hDlg);
@@ -70,6 +77,8 @@ private:
 	SearchDlg* m_pSearchDlg;
 	GrepDlg*   m_pGrepDlg;
 	bool m_bShowGrepDialog;
+	Auto_Ptr<Thread> m_pThread;
+	Lock m_lockFindCallbackData;
 
 	void adjustClientRect(HWND hDlg, const RECT& rctClient);
 };

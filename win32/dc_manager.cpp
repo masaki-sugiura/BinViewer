@@ -69,6 +69,7 @@ DCBuffer::DCBuffer(HDC hDC, const DrawInfo* pDrawInfo)
 	int nXPitch = m_pDrawInfo->m_FontInfo.getXPitch(),
 		nYPitch = m_pDrawInfo->m_FontInfo.getYPitch();
 
+#if 0
 	RECT rct = m_rctDC;
 	rct.right = nXPitch * 18;
 	::FillRect(m_hDC, &rct, m_pDrawInfo->m_tciAddress.getBkBrush());
@@ -78,6 +79,7 @@ DCBuffer::DCBuffer(HDC hDC, const DrawInfo* pDrawInfo)
 	rct.left  = rct.right;
 	rct.right = m_rctDC.right;
 	::FillRect(m_hDC, &rct, m_pDrawInfo->m_tciString.getBkBrush());
+#endif
 }
 
 static void
@@ -144,7 +146,7 @@ DCBuffer::render()
 	int nXPitch = m_pDrawInfo->m_FontInfo.getXPitch(),
 		nYPitch = m_pDrawInfo->m_FontInfo.getYPitch();
 
-#if 0
+#if 1
 	RECT rct = m_rctDC;
 	rct.right = nXPitch * 18;
 	::FillRect(m_hDC, &rct, m_pDrawInfo->m_tciAddress.getBkBrush());
@@ -164,16 +166,16 @@ DCBuffer::render()
 
 	// ƒAƒhƒŒƒX
 	m_pDrawInfo->m_tciAddress.setColorToDC(m_hDC);
-	DoubleToStr((UINT)(m_qAddress >> 32), linebuf);
+	DwordToStr((UINT)(m_qAddress >> 32), linebuf);
 	UINT addr = (UINT)m_qAddress;
 	for (i = 0; i < linenum; i++) {
-		DoubleToStr(addr, linebuf + 8);
+		DwordToStr(addr, linebuf + 8);
 		::ExtTextOut(m_hDC, nXPitch, i * nYPitch, ETO_OPAQUE, NULL,
 					 linebuf, 16, m_anXPitch);
 		addr += 16;
 	}
 	if (m_nDataSize & 15) {
-		DoubleToStr(addr, linebuf + 8);
+		DwordToStr(addr, linebuf + 8);
 		::ExtTextOut(m_hDC, nXPitch, linenum * nYPitch, ETO_OPAQUE, NULL,
 					 linebuf, 16, m_anXPitch);
 	}

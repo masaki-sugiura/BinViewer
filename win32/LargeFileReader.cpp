@@ -105,3 +105,111 @@ LargeFileReader::readFrom(filesize_t pos, DWORD origin, BYTE* buf, int size)
 	return (int)readsize;
 }
 
+// 検索用のスレッドの実装
+thread_result_t
+FindThread::thread(thread_arg_t arg)
+{
+	FindThreadProcArg* pThreadArg = (FindThreadProcArg*)arg;
+	LargeFileReader* pLFReader = pThreadArg->m_pLFReader;
+	FindCallbackArg* pCallbackArg = pThreadArg->m_pCallbackArg;
+	filesize_t pos = pCallbackArg->m_qStartAddress;
+	const BYTE* data = pCallbackArg->m_pData;
+	int size = pCallbackArg->m_nBufSize;
+	const int blocksize = 1024;
+
+	int bufsize = blocksize * ((blocksize + size - 1) / blocksize);
+
+	BYTE* buf = new BYTE[bufsize];
+
+	int readsize = bufsize, offset = 0;
+	bool match = true;
+
+	DWORD ret = 0;
+
+	if (pCallbackArg->m_nDirection == FIND_FORWARD) {
+		while (!isTerminated()) {
+			// マッチするのに十分なサイズがあるか？
+			if ((readsize = pLFReader->readFrom(pos, FILE_BEGIN,
+												buf + offset, readsize)) <= 0 ||
+				readsize + offset < size) {
+				ret = -1;
+				goto _exit_thread;
+			}
+
+			// 検索
+			int searchsize = readsize + offset - size;
+			for (int i = 0; i < searchsize; i++) {
+				match = true;
+				for (int j = 0; j < size; j++) {
+					if (buf[i + j] != data[j]) {
+						match = false;
+						break;
+					}
+				}
+				if (match) {
+					pCallbackArg->m_qFindAddress = pos + i - offset;
+					goto _exit_thread;
+				}
+			}
+			pos += readsize;
+			// size byte を残す＆バッファの先頭に移動
+			memmove(buf, buf + bufsize - size, size);
+			// バッファの格納位置の調整
+			offset = size;
+			readsize = bufsize - offset;
+		}
+	} else {
+		if (pos - bufsize < 0) {
+			if (!pos) {
+				ret = -1;
+				goto _exit_thread;
+			}
+			readsize = (int)pos;
+		}
+		while (!isTerminated()) {
+			pos -= readsize;
+			if (pos < 0) {
+				readsize -= (int)-pos;
+				pos = 0;
+			}
+
+			// マッチするのに十分なサイズがあるか？
+			if ((readsize = pLFReader->readFrom(pos, FILE_BEGIN,
+												buf + offset, readsize)) <= 0 ||
+				readsize < size) {
+				ret = -1;
+				goto _exit_thread;
+			}
+
+			// 検索
+			int searchsize = readsize + offset - size;
+			for (int i = searchsize; i > 0; i--) {
+				match = true;
+				for (int j = 0; j < size; j++) {
+					if (buf[i + j] != data[j]) {
+						match = false;
+						break;
+					}
+				}
+				if (match) {
+					pCallbackArg->m_qFindAddress = pos + i - offset;
+					goto _exit_thread;
+				}
+			}
+			// size byte を残す＆バッファの終端に移動
+			memmove(buf + bufsize - size, buf, size);
+			offset = size;
+			readsize = bufsize - offset;
+		}
+	}
+
+//	assert(ret == -1);
+
+_exit_thread:
+	delete [] buf;
+
+	(*pCallbackArg->m_pfnCallback)(pCallbackArg);
+
+	return ret;
+}
+

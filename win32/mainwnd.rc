@@ -77,6 +77,10 @@ BEGIN
         MENUITEM "指定アドレスにジャンプ(&J)...", IDM_JUMP
     END
     MENUITEM "設定(&C)",                    IDM_CONFIG
+    POPUP "ウィンドウ(&W)"
+    BEGIN
+        MENUITEM "ビットマップ表示(&B)",        IDM_BITMAPVIEW
+    END
     MENUITEM "ヘルプ(&H)",                  IDM_HELP, HELP
 END
 

@@ -15,7 +15,7 @@ struct GrepResult {
 	int m_nSize;
 };
 
-SearchDlg::SearchDlg(Dialog* pParentDlg, ViewFrame& viewFrame)
+SearchDlg::SearchDlg(SearchMainDlg* pParentDlg, ViewFrame& viewFrame)
 	: Dialog(IDD_SEARCH),
 	  m_pParentDlg(pParentDlg),
 	  m_ViewFrame(viewFrame),
@@ -44,9 +44,9 @@ void
 SearchDlg::destroyDialog()
 {
 	if (m_bSearching) {
-		m_ViewFrame.stopFind();
-		m_ViewFrame.waitStopFind();
-		m_ViewFrame.cleanupCallback();
+		m_pParentDlg->stopFind();
+		m_pParentDlg->waitStopFind();
+		m_pParentDlg->cleanupCallback();
 		::EnableWindow(m_pParentDlg->getParentHWND(), TRUE);
 		m_bSearching = false;
 	}
@@ -71,7 +71,7 @@ SearchDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 					::EnableWindow(m_pParentDlg->getParentHWND(), FALSE);
 				}
 			} else {
-				m_ViewFrame.stopFind();
+				m_pParentDlg->stopFind();
 				// コールバック関数により WM_USER_FIND_FINISH が投げられる
 			}
 			break;
@@ -84,7 +84,7 @@ SearchDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 					::EnableWindow(m_pParentDlg->getParentHWND(), FALSE);
 				}
 			} else {
-				m_ViewFrame.stopFind();
+				m_pParentDlg->stopFind();
 				// コールバック関数により WM_USER_FIND_FINISH が投げられる
 			}
 			break;
@@ -108,9 +108,9 @@ SearchDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_USER_FIND_FINISH:
 		if (m_bSearching) {
-			m_ViewFrame.waitStopFind();
-			m_ViewFrame.cleanupCallback();
-			enableControls(0, TRUE);
+			m_pParentDlg->waitStopFind();
+			m_pParentDlg->cleanupCallback();
+			enableControls(FIND_NONE, TRUE);
 			::EnableWindow(m_pParentDlg->getParentHWND(), TRUE);
 			m_bSearching = false;
 		}
@@ -133,7 +133,7 @@ SearchDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 }
 
 void
-SearchDlg::enableControls(int dir, bool enable)
+SearchDlg::enableControls(FIND_DIRECTION dir, bool enable)
 {
 	if (enable) {
 		::SetWindowText(::GetDlgItem(m_hwndDlg, IDC_SEARCH_FORWARD),
@@ -212,7 +212,7 @@ SearchDlg::prepareFindCallbackArg(FindCallbackArg*& pFindCallbackArg)
 }
 
 bool
-SearchDlg::search(int dir)
+SearchDlg::search(FIND_DIRECTION dir)
 {
 	FindCallbackArg* pFindCallbackArg = NULL;
 	if (!prepareFindCallbackArg(pFindCallbackArg)) return false;
@@ -228,7 +228,7 @@ SearchDlg::search(int dir)
 
 	m_ViewFrame.unselect();
 
-	if (m_ViewFrame.findCallback(pFindCallbackArg)) return true;
+	if (m_pParentDlg->findCallback(pFindCallbackArg)) return true;
 
 	delete [] pFindCallbackArg->m_pData;
 	delete pFindCallbackArg;
@@ -239,11 +239,10 @@ SearchDlg::search(int dir)
 }
 
 void
-SearchDlg::FindCallbackProc(void* arg)
+SearchDlg::FindCallbackProc(FindCallbackArg* pArg)
 {
-	assert(arg);
+	assert(pArg);
 
-	FindCallbackArg* pArg = (FindCallbackArg*)arg;
 	SearchDlg* pDlg = (SearchDlg*)pArg->m_pUserData;
 
 	if (pDlg->m_hwndDlg) {
@@ -262,7 +261,7 @@ SearchDlg::FindCallbackProc(void* arg)
 	delete pArg;
 }
 
-GrepDlg::GrepDlg(Dialog* pParentDlg,
+GrepDlg::GrepDlg(SearchMainDlg* pParentDlg,
 				 SearchDlg* pSearchDlg,
 				 ViewFrame& viewFrame)
 	: Dialog(IDD_SEARCH_GREP),
@@ -321,7 +320,7 @@ GrepDlg::grep()
 
 	pFindCallbackArg->m_qStartAddress = 0;
 
-	if (m_ViewFrame.findCallback(pFindCallbackArg)) return true;
+	if (m_pParentDlg->findCallback(pFindCallbackArg)) return true;
 
 	delete [] pFindCallbackArg->m_pData;
 	delete pFindCallbackArg;
@@ -332,11 +331,10 @@ GrepDlg::grep()
 }
 
 void
-GrepDlg::GrepCallbackProc(void* arg)
+GrepDlg::GrepCallbackProc(FindCallbackArg* pArg)
 {
-	assert(arg);
+	assert(pArg);
 
-	FindCallbackArg* pArg = (FindCallbackArg*)arg;
 	GrepDlg* pDlg = (GrepDlg*)pArg->m_pUserData;
 
 	if (pDlg->m_hwndDlg) {
@@ -369,9 +367,9 @@ GrepDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_USER_GREP_NEXT:
 		{
 			FindCallbackArg* pArg = (FindCallbackArg*)lParam;
-			m_ViewFrame.waitStopFind();
-			m_ViewFrame.cleanupCallback();
-			if (!m_ViewFrame.findCallback(pArg)) {
+			m_pParentDlg->waitStopFind();
+			m_pParentDlg->cleanupCallback();
+			if (!m_pParentDlg->findCallback(pArg)) {
 				delete [] pArg->m_pData;
 				delete pArg;
 				::SendMessage(m_hwndDlg, WM_USER_GREP_FINISH, 0, 0);
@@ -380,8 +378,8 @@ GrepDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_USER_GREP_FINISH:
-		m_ViewFrame.waitStopFind();
-		m_ViewFrame.cleanupCallback();
+		m_pParentDlg->waitStopFind();
+		m_pParentDlg->cleanupCallback();
 		::EnableWindow(::GetDlgItem(m_hwndDlg, IDC_JUMP), TRUE);
 		break;
 
@@ -397,7 +395,7 @@ GrepDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			*((GrepResult*)lvitem.lParam) = *gr;
 			char buf[24];
 			buf[0] = '0'; buf[1] = 'x';
-			QuadToStr((int)gr->m_qAddress, (int)(gr->m_qAddress >> 32), buf + 2);
+			QwordToStr((int)gr->m_qAddress, (int)(gr->m_qAddress >> 32), buf + 2);
 			buf[2 + 16] = '\0';
 			lvitem.pszText = buf;
 			lvitem.iItem = ListView_InsertItem(hwndLView, &lvitem);
@@ -486,7 +484,8 @@ SearchMainDlg::SearchMainDlg(ViewFrame& viewFrame)
 	  m_ViewFrame(viewFrame),
 	  m_pSearchDlg(NULL),
 	  m_pGrepDlg(NULL),
-	  m_bShowGrepDialog(false)
+	  m_bShowGrepDialog(false),
+	  m_pThread(NULL)
 {
 	m_pSearchDlg = new SearchDlg(this, m_ViewFrame);
 	m_pGrepDlg = new GrepDlg(this, m_pSearchDlg, m_ViewFrame);
@@ -596,5 +595,61 @@ SearchMainDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return FALSE;
 	}
 	return TRUE;
+}
+
+bool
+SearchMainDlg::findCallback(FindCallbackArg* pArg)
+{
+	if (m_pThread.ptr()) return false;
+
+	GetLock lock(m_lockFindCallbackData);
+
+	FindThreadProcArg* pThreadArg = new FindThreadProcArg;
+	pThreadArg->m_pLFReader = m_ViewFrame.getReader();
+	pThreadArg->m_pCallbackArg = pArg;
+
+	m_pThread = new FindThread(pThreadArg, new ThreadAttribute);
+	if (m_pThread->run()) return true;
+
+	thread_attr_t attr = m_pThread->getAttribute();
+	m_pThread = NULL;
+	delete attr;
+	delete pThreadArg;
+
+	return false;
+}
+
+bool
+SearchMainDlg::stopFind()
+{
+	if (!m_pThread.ptr()) return false;
+
+	GetLock lock(m_lockFindCallbackData);
+
+	return m_pThread->stop();
+}
+
+bool
+SearchMainDlg::waitStopFind()
+{
+	if (!m_pThread.ptr()) return false;
+
+	return m_pThread->join();
+}
+
+bool
+SearchMainDlg::cleanupCallback()
+{
+	if (!m_pThread.ptr()) return false;
+
+	GetLock lock(m_lockFindCallbackData);
+
+	FindThreadProcArg* parg = (FindThreadProcArg*)m_pThread->getArg();
+	thread_attr_t attr = m_pThread->getAttribute();
+	m_pThread = NULL;
+	delete parg;
+	delete attr;
+
+	return true;
 }
 

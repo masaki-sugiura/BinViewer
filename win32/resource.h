@@ -70,13 +70,14 @@
 #define IDK_C_SPACE                     40017
 #define IDK_C_S_SPACE                   40018
 #define IDM_CONFIG                      40019
+#define IDM_BITMAPVIEW                  40020
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        113
-#define _APS_NEXT_COMMAND_VALUE         40020
+#define _APS_NEXT_COMMAND_VALUE         40021
 #define _APS_NEXT_CONTROL_VALUE         1036
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

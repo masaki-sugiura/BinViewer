@@ -3,17 +3,19 @@
 #ifndef	AUTO_PTR_H_INC
 #define	AUTO_PTR_H_INC
 
-// 配列でないオブジェクトへのポインタを扱うスマートポインタ
+//! 配列でないオブジェクトへのポインタを扱うスマートポインタ
 template<class T>
 class Auto_Ptr {
 public:
-	Auto_Ptr(T* ptr)	//	生のポインタを受け取った場合
+	//! 生のポインタを受け取った場合のコンストラクタ
+	Auto_Ptr(T* ptr)
 		:	m_ptr(ptr),
-			m_bOwner(true)	//	ポインタが指すオブジェクトを削除する責任がある
+			m_bOwner(true) // ポインタが指すオブジェクトを削除する責任がある
 	{}
+	//! コピーコンストラクタ
 	Auto_Ptr(Auto_Ptr<T>& aptr)
 		:	m_ptr(aptr.m_ptr),
-			m_bOwner(aptr.m_bOwner)	//	オーナーフラグの継承
+			m_bOwner(aptr.m_bOwner)	// オーナーフラグの継承
 	{
 		aptr.m_bOwner = false;	//	代入元の Auto_Ptr オブジェクトは
 								//	オーナーではなくなる
@@ -48,8 +50,8 @@ public:
 	T* ptr() const { return m_ptr; }
 
 private:
-	T* m_ptr;		//	生のポインタ
-	bool m_bOwner;	//	オーナーフラグ
+	T* m_ptr;		//!	生のポインタ
+	bool m_bOwner;	//!	オーナーフラグ
 };
 
 #endif

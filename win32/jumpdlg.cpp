@@ -21,12 +21,12 @@ JumpDlg::initDialog(HWND hDlg)
 	filesize_t size = m_ViewFrame.getFileSize();
 	char str[32];
 	::CopyMemory(str, "0 - 0x", 6);
-	QuadToStr((UINT)size, (UINT)(size >> 32), str + 6);
+	QwordToStr((UINT)size, (UINT)(size >> 32), str + 6);
 	str[22] = '\0';
 	::SetWindowText(::GetDlgItem(hDlg, IDC_JUMPINFO), str);
 	filesize_t pos = m_ViewFrame.getPosition();
 	str[0] = '0';  str[1] = 'x';
-	QuadToStr((UINT)pos, (UINT)(pos >> 32), str + 2);
+	QwordToStr((UINT)pos, (UINT)(pos >> 32), str + 2);
 	str[18] = '\0';
 	::SetWindowText(::GetDlgItem(hDlg, IDC_JUMPADDRESS), str);
 	return TRUE;
@@ -51,7 +51,7 @@ JumpDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				if (!lstrlen(szbuf) || !lstrlen(nbuf)) break;
 				filesize_t size = ParseNumber(szbuf) * ParseNumber(nbuf);
 				szbuf[0] = '0'; szbuf[1] = 'x';
-				QuadToStr((int)size, (int)(size >> 32), szbuf + 2);
+				QwordToStr((int)size, (int)(size >> 32), szbuf + 2);
 				szbuf[2 + 16] = '\0';
 				::SetWindowText(::GetDlgItem(m_hwndDlg, IDC_JUMPADDRESS), szbuf);
 			}

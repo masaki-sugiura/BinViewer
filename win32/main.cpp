@@ -15,6 +15,7 @@
 #include "searchdlg.h"
 #include "configdlg.h"
 #include "messages.h"
+#include "bitmapview.h"
 
 #define ADDR_WIDTH   100
 #define BYTE_WIDTH    32
@@ -40,6 +41,8 @@ static string g_strAppName;
 static Auto_Ptr<DrawInfo> g_pDrawInfo(NULL);
 
 static Auto_Ptr<ViewFrame> g_pViewFrame(NULL);
+
+static Auto_Ptr<BitmapView> g_pBitmapView(NULL);
 
 static string g_strImageFile;
 static Auto_Ptr<LargeFileReader> g_pLFReader(NULL);
@@ -169,6 +172,7 @@ LoadFile(const string& filename)
 		g_strImageFile = filename;
 		g_pLFReader = new LargeFileReader(filename);
 		g_pViewFrame->loadFile(g_pLFReader.ptr());
+		g_pBitmapView->loadFile(g_pLFReader.ptr());
 
 		char buf[1024];
 		wsprintf(buf, "BinViewer - %s", g_strImageFile.c_str());
@@ -193,6 +197,7 @@ static void OnSetPosition(HWND, WPARAM, LPARAM);
 static void
 UnloadFile()
 {
+	g_pBitmapView->unloadFile();
 	g_pViewFrame->unloadFile();
 	g_pLFReader = NULL;
 
@@ -209,7 +214,9 @@ OnSetPosition(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	static int hlen = lstrlen(STATUS_POS_HEADER);
 	static char msgbuf[40] = STATUS_POS_HEADER;
 
-	QuadToStr((UINT)lParam, (UINT)wParam, msgbuf + hlen);
+	g_pBitmapView->setPosition(QWORD(lParam, wParam));
+
+	QwordToStr((UINT)lParam, (UINT)wParam, msgbuf + hlen);
 //	msgbuf[hlen + 16] = '\0';
 //	::SetWindowText(g_hwndStatusBar, msgbuf);
 	::SendMessage(g_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)msgbuf);
@@ -272,6 +279,8 @@ OnCreate(HWND hWnd)
 
 	g_pSearchDlg = new SearchMainDlg(*g_pViewFrame);
 
+	g_pBitmapView = new BitmapView(hWnd, NULL);
+
 	AdjustWindowSize(hWnd, rctClient);
 
 	g_hwndStatusBar = ::CreateWindow(STATUSCLASSNAME,
@@ -314,6 +323,7 @@ OnCreate(HWND hWnd)
 static void
 OnQuit(HWND)
 {
+	g_pBitmapView = NULL;
 	g_pSearchDlg = NULL;
 	g_pLFReader = NULL;
 	g_pViewFrame = NULL;
@@ -431,6 +441,10 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		case IDM_JUMP:
 			JumpDlg(*g_pViewFrame).doModal(hWnd);
+			break;
+
+		case IDM_BITMAPVIEW:
+			g_pBitmapView->show();
 			break;
 
 		case IDK_LINEDOWN:

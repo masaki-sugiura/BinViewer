@@ -26,7 +26,6 @@ NULL=nul
 !ENDIF 
 
 CPP=cl.exe
-F90=df.exe
 MTL=midl.exe
 RSC=rc.exe
 
@@ -43,6 +42,7 @@ ALL : "$(OUTDIR)\BinViewer.exe"
 
 CLEAN :
 	-@erase "$(INTDIR)\bgb_manager.obj"
+	-@erase "$(INTDIR)\BitmapView.obj"
 	-@erase "$(INTDIR)\configdlg.obj"
 	-@erase "$(INTDIR)\dc_manager.obj"
 	-@erase "$(INTDIR)\dialog.obj"
@@ -63,8 +63,7 @@ CLEAN :
 "$(OUTDIR)" :
     if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
 
-F90_PROJ=/compile_only /include:"$(INTDIR)\\" /nologo /warn:nofileopt /winapp /module:"Release/" /object:"Release/" 
-F90_OBJS=.\Release/
+F90=df.exe
 CPP_PROJ=/nologo /MT /W3 /GR /GX /Zi /O2 /I "." /I ".." /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D SIDEBYSIDE_COMMONCONTROLS=1 /Fp"$(INTDIR)\BinViewer.pch" /YX /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
 MTL_PROJ=/nologo /D "NDEBUG" /mktyplib203 /win32 
 RSC_PROJ=/l 0x411 /fo"$(INTDIR)\mainwnd.res" /d "NDEBUG" 
@@ -88,7 +87,8 @@ LINK32_OBJS= \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res"
+	"$(INTDIR)\mainwnd.res" \
+	"$(INTDIR)\BitmapView.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -109,6 +109,8 @@ ALL : "$(OUTDIR)\BinViewer.exe" "$(OUTDIR)\BinViewer.bsc"
 CLEAN :
 	-@erase "$(INTDIR)\bgb_manager.obj"
 	-@erase "$(INTDIR)\bgb_manager.sbr"
+	-@erase "$(INTDIR)\BitmapView.obj"
+	-@erase "$(INTDIR)\BitmapView.sbr"
 	-@erase "$(INTDIR)\configdlg.obj"
 	-@erase "$(INTDIR)\configdlg.sbr"
 	-@erase "$(INTDIR)\dc_manager.obj"
@@ -144,8 +146,7 @@ CLEAN :
 "$(OUTDIR)" :
     if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
 
-F90_PROJ=/browser:"Debug/" /check:bounds /compile_only /debug:full /include:"$(INTDIR)\\" /nologo /traceback /warn:argument_checking /warn:nofileopt /winapp /module:"Debug/" /object:"Debug/" /pdbfile:"Debug/DF60.PDB" 
-F90_OBJS=.\Debug/
+F90=df.exe
 CPP_PROJ=/nologo /MTd /W3 /Gm /GR /GX /ZI /Od /I "." /I ".." /D "_DEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D SIDEBYSIDE_COMMONCONTROLS=1 /FR"$(INTDIR)\\" /Fp"$(INTDIR)\BinViewer.pch" /YX /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /GZ /c 
 MTL_PROJ=/nologo /D "_DEBUG" /mktyplib203 /win32 
 RSC_PROJ=/l 0x411 /fo"$(INTDIR)\mainwnd.res" /d "_DEBUG" 
@@ -164,7 +165,8 @@ BSC32_SBRS= \
 	"$(INTDIR)\searchdlg.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
-	"$(INTDIR)\viewframe.sbr"
+	"$(INTDIR)\viewframe.sbr" \
+	"$(INTDIR)\BitmapView.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -187,7 +189,8 @@ LINK32_OBJS= \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res"
+	"$(INTDIR)\mainwnd.res" \
+	"$(INTDIR)\BitmapView.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -226,20 +229,6 @@ LINK32_OBJS= \
    $(CPP_PROJ) $< 
 <<
 
-.SUFFIXES: .fpp
-
-.for{$(F90_OBJS)}.obj:
-   $(F90) $(F90_PROJ) $<  
-
-.f{$(F90_OBJS)}.obj:
-   $(F90) $(F90_PROJ) $<  
-
-.f90{$(F90_OBJS)}.obj:
-   $(F90) $(F90_PROJ) $<  
-
-.fpp{$(F90_OBJS)}.obj:
-   $(F90) $(F90_PROJ) $<  
-
 
 !IF "$(NO_EXTERNAL_DEPS)" != "1"
 !IF EXISTS("BinViewer.dep")
@@ -265,6 +254,22 @@ SOURCE=..\bgb_manager.cpp
 
 "$(INTDIR)\bgb_manager.obj"	"$(INTDIR)\bgb_manager.sbr" : $(SOURCE) "$(INTDIR)"
 	$(CPP) $(CPP_PROJ) $(SOURCE)
+
+
+!ENDIF 
+
+SOURCE=.\BitmapView.cpp
+
+!IF  "$(CFG)" == "BinViewer - Win32 Release"
+
+
+"$(INTDIR)\BitmapView.obj" : $(SOURCE) "$(INTDIR)"
+
+
+!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
+
+
+"$(INTDIR)\BitmapView.obj"	"$(INTDIR)\BitmapView.sbr" : $(SOURCE) "$(INTDIR)"
 
 
 !ENDIF 

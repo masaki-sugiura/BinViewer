@@ -27,10 +27,6 @@ public:
 	{
 		initParams();
 		if (!m_pDC_Manager->loadFile(pLFReader)) return false;
-//		calcMaxLine();
-//		modifyVScrollInfo();
-//		::InvalidateRect(m_hwndView, NULL, FALSE);
-//		::UpdateWindow(m_hwndView);
 		recalcPageInfo();
 		setCurrentLine(0, false);
 		setPosition(0);
@@ -41,11 +37,10 @@ public:
 	{
 		m_pDC_Manager->unloadFile();
 		initParams();
-//		modifyVScrollInfo();
-//		::InvalidateRect(m_hwndView, NULL, FALSE);
-//		::UpdateWindow(m_hwndView);
 		recalcPageInfo();
 	}
+
+	LargeFileReader* getReader() { return m_pDC_Manager->getReader(); }
 
 	bool isLoaded() const { return m_pDC_Manager->isLoaded(); }
 
@@ -75,23 +70,6 @@ public:
 	}
 
 	void setPositionByCoordinate(const POINTS& pos, bool bRedraw = true);
-
-	bool findCallback(FindCallbackArg* pArg)
-	{
-		return m_pDC_Manager->findCallback(pArg);
-	}
-	bool stopFind()
-	{
-		return m_pDC_Manager->stopFind();
-	}
-	bool waitStopFind()
-	{
-		return m_pDC_Manager->waitStopFind();
-	}
-	bool cleanupCallback()
-	{
-		return m_pDC_Manager->cleanupCallback();
-	}
 
 	void select(filesize_t pos, int size, bool bRedraw = true);
 	void unselect(bool bRedraw = true);
@@ -149,11 +127,8 @@ private:
 	DrawInfo* m_pDrawInfo;
 	int m_nLineHeight;
 	int m_nCharWidth;
-//	int m_nPageLineNum;
 	RECT m_rctFrame, m_rctClient;
 	bool m_bOverlapped;
-//	filesize_t m_qCurrentLine;
-//	filesize_t m_qMaxLine;
 	ScrollManager<int> m_smHorz;
 	ScrollManager<filesize_t> m_smVert;
 	int m_nTopOffset, m_nXOffset;

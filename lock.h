@@ -5,6 +5,7 @@
 
 #include "types.h"
 
+//! 非同期アクセスのためのロックオブジェクト
 class Lock {
 public:
 	Lock();
@@ -18,6 +19,7 @@ private:
 	MUTEX_HANDLE m_hLock;
 };
 
+//! スコープ内でロックを獲得し続けるためのクラス
 class GetLock {
 public:
 	GetLock(Lock& lock)

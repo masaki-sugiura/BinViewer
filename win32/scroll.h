@@ -4,6 +4,7 @@
 #define SCROLL_H_INC
 
 #include <windows.h>
+#include <assert.h>
 
 template<class SIZE_TYPE>
 class ScrollManager {
