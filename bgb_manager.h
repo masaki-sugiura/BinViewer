@@ -143,7 +143,7 @@ protected:
 	RingBuffer<BGBuffer> m_rbBuffers;
 	bool m_bRBInit;
 
-	int fillBGBuffer(filesize_t offset);
+	bool fillBGBuffer(filesize_t offset);
 
 	virtual BGBuffer* createBGBufferInstance() = 0;
 

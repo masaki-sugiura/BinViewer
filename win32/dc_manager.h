@@ -54,6 +54,18 @@ protected:
 	virtual void invertRegionInBuffer(int offset, int size) = 0;
 };
 
+// 擬似的に（縦長の）メモリDCを表現するクラス
+//
+//	<---- width ---->
+//	+---------------+↑
+//	|				|
+//	|	+-------+	|height
+//	+---|--view-|---+↓
+//	|	|		|	|
+//	|	+-------+	|
+//	+---------------+
+//	|				|
+//
 class DC_Manager : public BGB_Manager {
 public:
 	DC_Manager(int nBufSize, int nBufCount);
@@ -61,14 +73,46 @@ public:
 	bool onLoadFile(LF_Acceptor* pLFAcceptor);
 	void onUnloadFile();
 
+	// メモリDCの幅を返す
 	int width() const { return m_nWidth; }
-	int height() const { return m_nHeight; }
+//	int height() const { return m_nHeight; }
 
+	// view 領域の座標を返す
 	int getXOffset() const { return m_nXOffset; }
 	filesize_t getYOffset() const { return m_qYOffset; }
 
+	// view 領域のサイズを返す
 	int getViewWidth() const { return m_nViewWidth; }
 	int getViewHeight() const { return m_nViewHeight; }
+
+	// view 領域のサイズを変更する
+	void setViewSize(int nViewWidth, int nViewHeight)
+	{
+		m_nViewWidth  = nViewWidth;
+		m_nViewHeight = nViewHeight;
+	}
+
+	// view 領域の座標を変更する
+	void setViewPosition(int nXOffset, filesize_t qYOffset);
+
+	// view 領域のx座標を変更する
+	void setViewPositionX(int nXOffset)
+	{
+//		setViewPosition(nXOffset, m_qYOffset);
+		m_nXOffset = nXOffset;
+	}
+	// view 領域のy座標を変更する
+	void setViewPositionY(filesize_t qYOffset)
+	{
+		setViewPosition(m_nXOffset, qYOffset);
+	}
+
+	// view 領域の座標とサイズを変更する
+	void setViewRect(int nXOffset, filesize_t qYOffset, int nWidth, int nHeight)
+	{
+		setViewSize(nWidth, nHeight);
+		setViewPosition(nXOffset, qYOffset);
+	}
 
 	// 仮想関数ではなく、BGB_Manager::getCurrentBuffer() を隠す
 	DCBuffer* getCurrentBuffer(int offset = 0)
@@ -83,30 +127,6 @@ public:
 	}
 
 	bool setDrawInfo(DrawInfo* pDrawInfo);
-
-	void setViewSize(int nViewWidth, int nViewHeight)
-	{
-		m_nViewWidth  = nViewWidth;
-		m_nViewHeight = nViewHeight;
-	}
-
-	void setViewPosition(int nXOffset, filesize_t qYOffset);
-
-	void setViewPositionX(int nXOffset)
-	{
-//		setViewPosition(nXOffset, m_qYOffset);
-		m_nXOffset = nXOffset;
-	}
-	void setViewPositionY(filesize_t qYOffset)
-	{
-		setViewPosition(m_nXOffset, qYOffset);
-	}
-
-	void setViewRect(int nXOffset, filesize_t qYOffset, int nWidth, int nHeight)
-	{
-		setViewSize(nWidth, nHeight);
-		setViewPosition(nXOffset, qYOffset);
-	}
 
 	filesize_t setCursorByViewCoordinate(const POINTS& pt);
 	filesize_t getPositionByViewCoordinate(const POINTS& pt);

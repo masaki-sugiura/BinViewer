@@ -19,6 +19,7 @@ CFG=BinViewer - Win32 Debug
 !MESSAGE 
 !MESSAGE "BinViewer - Win32 Release" ("Win32 (x86) Application" —p)
 !MESSAGE "BinViewer - Win32 Debug" ("Win32 (x86) Application" —p)
+!MESSAGE "BinViewer - Win32 ReleaseWithProfiling" ("Win32 (x86) Application" —p)
 !MESSAGE 
 
 # Begin Project
@@ -56,7 +57,8 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /machine:I386
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /profile /debug /machine:I386
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /machine:I386
+# SUBTRACT LINK32 /profile /debug
 
 !ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
 
@@ -87,12 +89,43 @@ LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /debug /machine:I386 /pdbtype:sept
 # ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /debug /machine:I386 /pdbtype:sept
 
+!ELSEIF  "$(CFG)" == "BinViewer - Win32 ReleaseWithProfiling"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "BinViewer___Win32_ReleaseWithProfiling"
+# PROP BASE Intermediate_Dir "BinViewer___Win32_ReleaseWithProfiling"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "BinViewer___Win32_ReleaseWithProfiling"
+# PROP Intermediate_Dir "BinViewer___Win32_ReleaseWithProfiling"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+F90=df.exe
+# ADD BASE F90 /compile_only /include:"Release/" /nologo /warn:nofileopt /winapp
+# ADD F90 /compile_only /include:"Release/" /nologo /warn:nofileopt /winapp
+# ADD BASE CPP /nologo /MT /W3 /GR /GX /Zi /O2 /I "." /I ".." /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D SIDEBYSIDE_COMMONCONTROLS=1 /D _WIN32_WINNT=0x500 /FR /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GR /GX /Zi /O2 /I "." /I ".." /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D SIDEBYSIDE_COMMONCONTROLS=1 /D _WIN32_WINNT=0x500 /FR /YX /FD /c
+# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
+# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
+# ADD BASE RSC /l 0x411 /d "NDEBUG"
+# ADD RSC /l 0x411 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /profile /debug /machine:I386
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /profile /debug /machine:I386
+
 !ENDIF 
 
 # Begin Target
 
 # Name "BinViewer - Win32 Release"
 # Name "BinViewer - Win32 Debug"
+# Name "BinViewer - Win32 ReleaseWithProfiling"
 # Begin Group "Source Files"
 
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat;f90;for;f;fpp"

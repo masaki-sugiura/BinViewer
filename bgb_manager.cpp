@@ -100,7 +100,7 @@ BGBuffer::uninit()
 	[k : m_qCPos + (k - m) * BSIZE ～ m_pCPos + (k - m + 1) * BSIZE - 1]
  */
 
-int
+bool
 BGB_Manager::fillBGBuffer(filesize_t offset)
 {
 	assert(offset >= 0);
@@ -109,7 +109,7 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 		// m_nBufCount 個のリングバッファ要素を追加
 		for (int i = 0; i < m_nBufCount; i++) {
 			BGBuffer* pBuf = createBGBufferInstance();
-			if (!pBuf) return -1;
+			if (!pBuf) return false;
 			m_rbBuffers.addElement(pBuf, i);
 		}
 		m_bRBInit = true;
@@ -118,7 +118,7 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 //	if (!isLoaded()) return -1;
 	LargeFileReader* pLFReader;
 	bool bRet = m_pLFAcceptor->tryLockReader(&pLFReader, INFINITE);
-	if (!bRet) return -1;
+	if (!bRet) return false;
 
 	// offset を nBufSize でアライメント
 	offset = (offset / m_nBufSize) * m_nBufSize;
@@ -177,14 +177,6 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 	// カレントポジションの変更
 	m_qCurrentPos = offset;
 
-	// バッファに貯められているデータサイズの計算
-	int totalsize = 0;
-	for (int i = 0; i < m_nBufCount; i++) {
-		BGBuffer* pbgb = m_rbBuffers.elementAt(i);
-		if (pbgb->m_qAddress >= 0)
-			totalsize += pbgb->m_nDataSize;
-	}
-
-	return totalsize;
+	return true;
 }
 
