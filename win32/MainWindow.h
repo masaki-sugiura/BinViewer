@@ -18,6 +18,17 @@ public:
 	TextColorInfo m_tciHeader;
 };
 
+struct AppConfig {
+	Auto_Ptr<HV_DrawInfo> m_pHVDrawInfo;
+	Auto_Ptr<HD_DrawInfo> m_pHDDrawInfo;
+//	Auto_Ptr<BV_DrawInfo> m_pBVDrawInfo;
+
+	AppConfig()
+		: m_pHVDrawInfo(NULL),
+		  m_pHDDrawInfo(NULL)
+	{}
+};
+
 struct Header : public Renderer {
 	Header();
 
@@ -27,6 +38,8 @@ struct Header : public Renderer {
 				int sx, int sy) const;
 
 	int render();
+
+	void setDrawInfo(HD_DrawInfo* pHDDrawInfo);
 
 protected:
 	HD_DrawInfo* m_pDrawInfo;
@@ -46,15 +59,16 @@ private:
 	LF_Notifier m_lfNotifier;
 	Auto_Ptr<HexView> m_pHexView;
 	Auto_Ptr<LargeFileReader> m_pLFReader;
-	Auto_Ptr<HV_DrawInfo> m_pHVDrawInfo;
-	Auto_Ptr<HD_DrawInfo> m_pHDDrawInfo;
+//	Auto_Ptr<HV_DrawInfo> m_pHVDrawInfo;
+//	Auto_Ptr<HD_DrawInfo> m_pHDDrawInfo;
+	Auto_Ptr<AppConfig> m_pAppConfig;
 	Auto_Ptr<BitmapViewWindow> m_pBitmapViewWindow;
 	Auto_Ptr<StatusBar> m_pStatusBar;
 	HWND m_hWnd;
 	HACCEL m_hAccel;
 	Header m_Header;
 
-	void onCreate(HWND hWnd);
+	bool onCreate(HWND hWnd);
 	void onPaint(HWND hWnd);
 	void onResize(HWND hWnd);
 	void onResizing(HWND hWnd, RECT* pRect);
@@ -62,8 +76,12 @@ private:
 	void onOpenFile();
 	void onCloseFile();
 	void onShowBitmapView();
+	void onJump();
+	void onConfig();
+	void onSetFontConfig(FontConfig* pFontConfig, ColorConfig* pColorConfig);
+	void onSetScrollConfig(ScrollConfig* pScrollConfig);
 
-	void loadDrawInfo(HWND hWnd);
+	AppConfig* loadDrawInfo(HWND hWnd);
 
 	void adjustWindowSize(HWND hWnd, const RECT& rctClient);
 

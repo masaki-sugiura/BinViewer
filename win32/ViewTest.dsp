@@ -102,7 +102,15 @@ SOURCE=.\BitmapView.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\configdlg.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\dc_manager.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\dialog.cpp
 # End Source File
 # Begin Source File
 
@@ -111,6 +119,10 @@ SOURCE=.\drawinfo.cpp
 # Begin Source File
 
 SOURCE=.\HexView.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\jumpdlg.cpp
 # End Source File
 # Begin Source File
 
@@ -166,7 +178,15 @@ SOURCE=.\bitmapview.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\configdlg.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\dc_manager.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\dialog.h
 # End Source File
 # Begin Source File
 
@@ -175,6 +195,10 @@ SOURCE=.\drawinfo.h
 # Begin Source File
 
 SOURCE=.\HexView.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\jumpdlg.h
 # End Source File
 # Begin Source File
 

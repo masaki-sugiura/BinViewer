@@ -1,6 +1,10 @@
 // $Id$
 
+#pragma warning(disable : 4786)
+
 #include "MainWindow.h"
+#include "JumpDlg.h"
+#include "ConfigDlg.h"
 #include "strutils.h"
 #include "resource.h"
 
@@ -18,22 +22,6 @@
 #define IDC_STATUSBAR  10
 #define STATUSBAR_HEIGHT  20
 #define STATUS_POS_HEADER    "カーソルの現在位置： 0x"
-
-#define COLOR_BLACK      RGB(0, 0, 0)
-#define COLOR_GRAY       RGB(128, 128, 128)
-#define COLOR_LIGHTGRAY  RGB(192, 192, 192)
-#define COLOR_WHITE      RGB(255, 255, 255)
-#define COLOR_YELLOW     RGB(255, 255, 0)
-
-#define DEFAULT_FONT_SIZE  12
-#define DEFAULT_FG_COLOR_ADDRESS COLOR_WHITE
-#define DEFAULT_BK_COLOR_ADDRESS COLOR_GRAY
-#define DEFAULT_FG_COLOR_DATA    COLOR_BLACK
-#define DEFAULT_BK_COLOR_DATA    COLOR_WHITE
-#define DEFAULT_FG_COLOR_STRING  COLOR_BLACK
-#define DEFAULT_BK_COLOR_STRING  COLOR_LIGHTGRAY
-#define DEFAULT_FG_COLOR_HEADER  COLOR_BLACK
-#define DEFAULT_BK_COLOR_HEADER  COLOR_YELLOW
 
 
 HD_DrawInfo::HD_DrawInfo(HDC hDC, float fontsize,
@@ -137,11 +125,20 @@ Header::render()
 	return 0; // dummy
 }
 
+void
+Header::setDrawInfo(HD_DrawInfo* pHDDrawInfo)
+{
+	if (prepareDC(pHDDrawInfo)) {
+		render();
+	}
+}
+
 MainWindow::MainWindow(HINSTANCE hInstance, LPCSTR lpszFileName)
 	: m_pHexView(NULL),
 	  m_pLFReader(NULL),
-	  m_pHVDrawInfo(NULL),
-	  m_pHDDrawInfo(NULL),
+//	  m_pHVDrawInfo(NULL),
+//	  m_pHDDrawInfo(NULL),
+	  m_pAppConfig(NULL),
 	  m_pBitmapViewWindow(NULL),
 	  m_pStatusBar(NULL),
 	  m_hWnd(NULL)
@@ -189,7 +186,8 @@ MainWindow::doModal()
 {
 	MSG msg;
 	while (::GetMessage(&msg, NULL, 0, 0)) {
-		if (!::TranslateAccelerator(m_hWnd, m_hAccel, &msg)) {
+		if (!Dialog::isDialogMessage(&msg) &&
+			!::TranslateAccelerator(m_hWnd, m_hAccel, &msg)) {
 			::TranslateMessage(&msg);
 			::DispatchMessage(&msg);
 		}
@@ -198,10 +196,18 @@ MainWindow::doModal()
 	return msg.wParam;
 }
 
-void
+bool
 MainWindow::onCreate(HWND hWnd)
 {
-	loadDrawInfo(hWnd);
+#if 0
+	AppConfig* pAppConfig = loadDrawInfo(hWnd);
+	if (!pAppConfig) {
+		return false;
+	}
+	m_pAppConfig = pAppConfig;
+#else
+	LoadConfig(hWnd, m_pAppConfig);
+#endif
 
 	RECT rctClient;
 	::GetClientRect(hWnd, &rctClient);
@@ -212,19 +218,21 @@ MainWindow::onCreate(HWND hWnd)
 	RECT rctBar;
 	m_pStatusBar->getWindowRect(rctBar);
 
-	rctClient.top = m_pHVDrawInfo->getPixelsPerLine();
+	rctClient.top = m_pAppConfig->m_pHVDrawInfo->getPixelsPerLine();
 	rctClient.bottom -= (rctBar.bottom - rctBar.top);
 
-	m_pHexView = new HexView(hWnd, rctClient, m_pHVDrawInfo.ptr());
+	m_pHexView = new HexView(hWnd, rctClient, m_pAppConfig->m_pHVDrawInfo.ptr());
 	m_pHexView->registTo(m_lfNotifier);
 
 	adjustWindowSize(hWnd, rctClient);
 
-	m_Header.prepareDC(m_pHDDrawInfo.ptr());
+	m_Header.prepareDC(m_pAppConfig->m_pHDDrawInfo.ptr());
 	m_Header.render();
 
 	// BitmapView is created on demand
 //	m_pBitmapViewWindow = new BitmapViewWindow(m_lfNotifier, hWnd);
+
+	return true;
 }
 
 void
@@ -250,7 +258,7 @@ MainWindow::onResize(HWND hWnd)
 	m_pStatusBar->setWindowPos(rctClient);
 
 	rctClient.bottom -= (rctBar.bottom - rctBar.top);
-	rctClient.top = m_pHVDrawInfo->getPixelsPerLine();
+	rctClient.top = m_pAppConfig->m_pHVDrawInfo->getPixelsPerLine();
 	m_pHexView->setFrameRect(rctClient, true);
 }
 
@@ -275,7 +283,7 @@ MainWindow::onResizing(HWND hWnd, RECT* prctNew)
 	m_pStatusBar->setWindowPos(rctClient);
 
 	rctClient.bottom -= (rctBar.bottom - rctBar.top);
-	rctClient.top = m_pHVDrawInfo->getPixelsPerLine();
+	rctClient.top = m_pAppConfig->m_pHVDrawInfo->getPixelsPerLine();
 	m_pHexView->setFrameRect(rctClient, true);
 }
 
@@ -283,12 +291,13 @@ void
 MainWindow::onQuit()
 {
 	m_lfNotifier.unloadFile();
-	m_pLFReader = NULL;
-	m_pBitmapViewWindow = NULL;
-	m_pStatusBar = NULL;
-	m_pHexView = NULL;
-	m_pHDDrawInfo = NULL;
-	m_pHVDrawInfo = NULL;
+//	m_pLFReader = NULL;
+//	m_pBitmapViewWindow = NULL;
+//	m_pStatusBar = NULL;
+//	m_pHexView = NULL;
+//	m_pAppConfig = NULL;
+//	m_pHDDrawInfo = NULL;
+//	m_pHVDrawInfo = NULL;
 }
 
 void
@@ -322,21 +331,75 @@ MainWindow::onShowBitmapView()
 }
 
 void
+MainWindow::onJump()
+{
+	JumpDlg(m_lfNotifier).doModal(m_hWnd);
+}
+
+void
+MainWindow::onConfig()
+{
+	ConfigMainDlg(m_pAppConfig).doModal(m_hWnd);
+}
+
+void
+MainWindow::onSetFontConfig(FontConfig* pFontConfig, ColorConfig* pColorConfig)
+{
+	HV_DrawInfo* pHVDrawInfo = m_pAppConfig->m_pHVDrawInfo.ptr();
+	HD_DrawInfo* pHDDrawInfo = m_pAppConfig->m_pHDDrawInfo.ptr();
+
+	if (pFontConfig) {
+		pHVDrawInfo->m_FontInfo.setFont(pHVDrawInfo->getDC(), *pFontConfig);
+		pHDDrawInfo->m_FontInfo.setFont(pHDDrawInfo->getDC(), *pFontConfig);
+	}
+
+	if (pColorConfig) {
+		pHVDrawInfo->m_tciAddress.setColor(pColorConfig[TCI_ADDRESS]);
+		pHVDrawInfo->m_tciData.setColor(pColorConfig[TCI_DATA]);
+		pHVDrawInfo->m_tciString.setColor(pColorConfig[TCI_STRING]);
+		pHDDrawInfo->m_tciHeader.setColor(pColorConfig[3]);
+	}
+
+	if (pFontConfig || pColorConfig) {
+		m_pHexView->setDrawInfo(pHVDrawInfo);
+		m_pHexView->redrawView();
+		m_Header.setDrawInfo(pHDDrawInfo);
+		::InvalidateRect(m_hWnd, NULL, TRUE);
+		::UpdateWindow(m_hWnd);
+	}
+
+	SaveConfig(m_pAppConfig);
+}
+
+void
+MainWindow::onSetScrollConfig(ScrollConfig* pScrollConfig)
+{
+	if (!pScrollConfig) return;
+
+	m_pAppConfig->m_pHVDrawInfo->m_ScrollConfig = *pScrollConfig;
+	m_pHexView->setDrawInfo(m_pAppConfig->m_pHVDrawInfo.ptr());
+
+	SaveConfig(m_pAppConfig);
+}
+
+AppConfig*
 MainWindow::loadDrawInfo(HWND hWnd)
 {
+	AppConfig* pAppConfig = new AppConfig();
 	HDC hDC = ::GetDC(hWnd);
-	m_pHVDrawInfo = new HV_DrawInfo(hDC, DEFAULT_FONT_SIZE,
-									"FixedSys", false,
-									DEFAULT_FG_COLOR_ADDRESS, DEFAULT_BK_COLOR_ADDRESS,
-									DEFAULT_FG_COLOR_DATA, DEFAULT_BK_COLOR_DATA,
-									DEFAULT_FG_COLOR_STRING, DEFAULT_BK_COLOR_STRING,
-									CARET_STATIC, WHEEL_AS_ARROW_KEYS);
+	pAppConfig->m_pHVDrawInfo = new HV_DrawInfo(hDC, DEFAULT_FONT_SIZE,
+												"FixedSys", false,
+												DEFAULT_FG_COLOR_ADDRESS, DEFAULT_BK_COLOR_ADDRESS,
+												DEFAULT_FG_COLOR_DATA, DEFAULT_BK_COLOR_DATA,
+												DEFAULT_FG_COLOR_STRING, DEFAULT_BK_COLOR_STRING,
+												CARET_STATIC, WHEEL_AS_ARROW_KEYS);
 
-	m_pHDDrawInfo = new HD_DrawInfo(hDC, DEFAULT_FONT_SIZE,
-									"FixedSys", false,
-									DEFAULT_FG_COLOR_HEADER, DEFAULT_BK_COLOR_HEADER);
+	pAppConfig->m_pHDDrawInfo = new HD_DrawInfo(hDC, DEFAULT_FONT_SIZE,
+												"FixedSys", false,
+												DEFAULT_FG_COLOR_HEADER, DEFAULT_BK_COLOR_HEADER);
 
 	//	::ReleaseDC(hWnd, hDC);
+	return pAppConfig;
 }
 
 void
@@ -481,7 +544,10 @@ MainWindow::MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			CREATESTRUCT* pCs = (CREATESTRUCT*)lParam;
 			::SetWindowLong(hWnd, GWL_USERDATA, (LONG)pCs->lpCreateParams);
 			MainWindow* pMainWindow = (MainWindow*)pCs->lpCreateParams;
-			pMainWindow->onCreate(hWnd);
+			if (!pMainWindow->onCreate(hWnd)) {
+				::SetWindowLong(hWnd, GWL_USERDATA, NULL);
+				return -1;
+			}
 			return 0;
 		}
 	}
@@ -512,6 +578,7 @@ MainWindow::MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		case IDM_CONFIG:
 //			ConfigMainDlg(g_pDrawInfo).doModal(hWnd);
+			pMainWindow->onConfig();
 			break;
 
 		case IDM_SEARCH:
@@ -526,6 +593,7 @@ MainWindow::MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		case IDM_JUMP:
 //			JumpDlg(*g_pViewFrame).doModal(hWnd);
+			pMainWindow->onJump();
 			break;
 
 		case IDM_BITMAPVIEW:
@@ -568,6 +636,14 @@ MainWindow::MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 //			g_pViewFrame->onHorizontalMove(-1);
 			break;
 		}
+		break;
+
+	case WM_USER_SET_FONT_CONFIG:
+		pMainWindow->onSetFontConfig((FontConfig*)wParam, (ColorConfig*)lParam);
+		break;
+
+	case WM_USER_SET_SCROLL_CONFIG:
+		pMainWindow->onSetScrollConfig((ScrollConfig*)lParam);
 		break;
 
 	case WM_PAINT:

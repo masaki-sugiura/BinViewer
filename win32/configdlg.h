@@ -3,7 +3,7 @@
 #ifndef CONFIGDLG_H_INC
 #define CONFIGDLG_H_INC
 
-#include "drawinfo.h"
+#include "MainWindow.h"
 #include "dialog.h"
 #include "messages.h"
 #include "auto_ptr.h"
@@ -52,18 +52,18 @@ class CreateDialogError : public exception {};
 
 class ConfigDialog : public Dialog {
 public:
-	ConfigDialog(int nDialogID, Auto_Ptr<DrawInfo>& pDrawInfo);
+	ConfigDialog(int nDialogID, Auto_Ptr<AppConfig>& pAppConfig);
 	~ConfigDialog();
 
 	virtual bool applyChanges() = 0;
 
 protected:
-	Auto_Ptr<DrawInfo>& m_pDrawInfo;
+	Auto_Ptr<AppConfig>& m_pAppConfig;
 };
 
 class ConfigPage : public ConfigDialog {
 public:
-	ConfigPage(int nDialogID, Auto_Ptr<DrawInfo>& pDrawInfo,
+	ConfigPage(int nDialogID, Auto_Ptr<AppConfig>& pAppConfig,
 			   const char* pszTabText);
 
 	const char* getTabText() const { return m_strTabText.c_str(); }
@@ -117,7 +117,7 @@ private:
 
 class FontConfigPage : public ConfigPage {
 public:
-	FontConfigPage(Auto_Ptr<DrawInfo>& pDrawInfo);
+	FontConfigPage(Auto_Ptr<AppConfig>& pAppConfig);
 
 	bool applyChanges();
 
@@ -174,7 +174,7 @@ protected:
 
 class CursorConfigPage : public ConfigPage {
 public:
-	CursorConfigPage(Auto_Ptr<DrawInfo>& pDrawInfo);
+	CursorConfigPage(Auto_Ptr<AppConfig>& pAppConfig);
 
 	bool applyChanges();
 
@@ -187,7 +187,7 @@ protected:
 
 class ConfigMainDlg : public ConfigDialog {
 public:
-	ConfigMainDlg(Auto_Ptr<DrawInfo>& pDrawInfo);
+	ConfigMainDlg(Auto_Ptr<AppConfig>& pAppConfig);
 	~ConfigMainDlg();
 
 	bool applyChanges();
@@ -207,7 +207,7 @@ protected:
 	bool createPage(int i);
 };
 
-void LoadConfig(Auto_Ptr<DrawInfo>& pDrawInfo);
-void SaveConfig(const Auto_Ptr<DrawInfo>& pDrawInfo);
+void LoadConfig(HWND hWnd, Auto_Ptr<AppConfig>& pAppConfig);
+void SaveConfig(const Auto_Ptr<AppConfig>& pAppConfig);
 
 #endif

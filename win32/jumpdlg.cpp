@@ -5,30 +5,41 @@
 #define _WIN32_WINNT  0x500  // to support mouse wheel
 
 #include "jumpdlg.h"
+#include "LargeFileReader.h"
 #include "strutils.h"
 #include "resource.h"
 #include <assert.h>
 
-JumpDlg::JumpDlg(ViewFrame& viewFrame)
+JumpDlg::JumpDlg(LF_Notifier& lfNotifier)
 	: Dialog(IDD_JUMP),
-	  m_ViewFrame(viewFrame)
+	  m_lfNotifier(lfNotifier)
 {
 }
 
 BOOL
 JumpDlg::initDialog(HWND hDlg)
 {
-	filesize_t size = m_ViewFrame.getFileSize();
+	LargeFileReader* pLFReader = NULL;
+	m_lfNotifier.tryLockReader(&pLFReader, INFINITE);
+	if (!pLFReader) {
+		return FALSE;
+	}
+
+	filesize_t size = pLFReader->size();
 	char str[32];
 	::CopyMemory(str, "0 - 0x", 6);
 	QwordToStr((UINT)size, (UINT)(size >> 32), str + 6);
 	str[22] = '\0';
 	::SetWindowText(::GetDlgItem(hDlg, IDC_JUMPINFO), str);
-	filesize_t pos = m_ViewFrame.getPosition();
+
+	m_lfNotifier.releaseReader(pLFReader);
+
+	filesize_t pos = m_lfNotifier.getCursorPos();
 	str[0] = '0';  str[1] = 'x';
 	QwordToStr((UINT)pos, (UINT)(pos >> 32), str + 2);
 	str[18] = '\0';
 	::SetWindowText(::GetDlgItem(hDlg, IDC_JUMPADDRESS), str);
+
 	return TRUE;
 }
 
@@ -61,7 +72,7 @@ JumpDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				char buf[32];
 				::GetWindowText(::GetDlgItem(m_hwndDlg, IDC_JUMPADDRESS), buf, 32);
 				filesize_t pos = ParseNumber(buf);
-				m_ViewFrame.onJump(pos, m_ViewFrame.getPageLineNum() * 8);
+				m_lfNotifier.setCursorPos(pos);
 			}
 			// through down
 		case IDCANCEL:

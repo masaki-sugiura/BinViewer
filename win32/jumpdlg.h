@@ -3,12 +3,12 @@
 #ifndef JUMPDLG_H_INC
 #define JUMPDLG_H_INC
 
-#include "viewframe.h"
+#include "LF_Notify.h"
 #include "dialog.h"
 
 class JumpDlg : public Dialog {
 public:
-	JumpDlg(ViewFrame& viewFrame);
+	JumpDlg(LF_Notifier& lfNotifier);
 
 protected:
 	BOOL initDialog(HWND hDlg);
@@ -16,7 +16,7 @@ protected:
 	BOOL dialogProcMain(UINT, WPARAM, LPARAM);
 
 private:
-	ViewFrame& m_ViewFrame;
+	LF_Notifier& m_lfNotifier;
 };
 
 #endif
