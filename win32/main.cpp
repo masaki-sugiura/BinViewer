@@ -29,6 +29,8 @@
 
 #define IDC_STATUSBAR  10
 
+#define STATUS_POS_HEADER    "カーソルの現在位置： 0x"
+
 #define MAINWND_CLASSNAME    "BinViewerClass32"
 
 // resources
@@ -219,11 +221,13 @@ UnloadFile()
 static void
 OnSetPosition(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
+	static int hlen = lstrlen(STATUS_POS_HEADER);
 	char msgbuf[40];
-	::CopyMemory(msgbuf, "カーソルの現在位置： 0x", 23);
-	QuadToStr((UINT)lParam, (UINT)wParam, msgbuf + 23);
-	msgbuf[39] = '\0';
-	::SetWindowText(g_hwndStatusBar, msgbuf);
+	::CopyMemory(msgbuf, STATUS_POS_HEADER, hlen);
+	QuadToStr((UINT)lParam, (UINT)wParam, msgbuf + hlen);
+	msgbuf[hlen + 16] = '\0';
+//	::SetWindowText(g_hwndStatusBar, msgbuf);
+	::SendMessage(g_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)msgbuf);
 }
 
 static void
@@ -255,7 +259,9 @@ OnResize(HWND hWnd, WPARAM fwSizeType)
 	RECT rctClient;
 	::GetClientRect(hWnd, &rctClient);
 	rctClient.bottom -= STATUSBAR_HEIGHT;
+
 	g_pViewFrame->setFrameRect(rctClient);
+
 	::SetWindowPos(g_hwndStatusBar, 0,
 				   0, rctClient.bottom,
 				   rctClient.right - rctClient.left,
@@ -298,6 +304,16 @@ OnCreate(HWND hWnd)
 		::SendMessage(hWnd, WM_CLOSE, 0, 0);
 		return;
 	}
+
+	HDC hDC = ::GetDC(g_hwndStatusBar);
+	char status[80];
+	lstrcpy(status, STATUS_POS_HEADER);
+	lstrcat(status, "MMMMMMMMMMMMMMMM");
+	SIZE tsize;
+	::GetTextExtentPoint32(hDC, status, lstrlen(status), &tsize);
+	int psize = tsize.cx /* * 255 / (rctClient.right - rctClient.left) */;
+	::SendMessage(g_hwndStatusBar, SB_SETPARTS, 1, (LPARAM)&psize);
+	::ReleaseDC(g_hwndStatusBar, hDC);
 
 	if (g_strImageFile.length() == 0) {
 		EnableEditMenu(hWnd, FALSE);
@@ -502,8 +518,10 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	::InitCommonControls();
 
-	g_hwndMain = ::CreateWindowEx(WS_EX_OVERLAPPEDWINDOW | WS_EX_ACCEPTFILES,
+	g_hwndMain = ::CreateWindowEx(/*WS_EX_OVERLAPPEDWINDOW |*/ WS_EX_ACCEPTFILES,
 								  wc.lpszClassName, "BinViewer",
+//								  WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU |
+//								   WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
 								  WS_OVERLAPPEDWINDOW,
 								  CW_USEDEFAULT, CW_USEDEFAULT,
 								  W_WIDTH, W_HEIGHT,

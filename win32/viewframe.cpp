@@ -37,7 +37,7 @@ ViewFrame::ViewFrame(HWND hwndParent, const RECT& rct,
 		m_hInstance = wc.hInstance;
 	}
 
-	m_hwndView = ::CreateWindowEx(/*WS_EX_CLIENTEDGE*/0,
+	m_hwndView = ::CreateWindowEx(WS_EX_CLIENTEDGE,
 								  VIEWFRAME_CLASSNAME, "",
 								  WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL,
 								  rct.left, rct.top,
