@@ -98,7 +98,9 @@ MainWindow::onResize()
 	::GetClientRect(m_hWnd, &rctClient);
 
 	rctClient.top = rctClient.bottom - STATUSBAR_HEIGHT;
-	m_pStatusBar->setWindowPos(rctClient);
+	if (m_pStatusBar.ptr()) {
+		m_pStatusBar->setWindowPos(rctClient);
+	}
 
 	rctClient.bottom -= STATUSBAR_HEIGHT;
 	rctClient.top = 0;
@@ -120,7 +122,9 @@ MainWindow::onResizing(RECT* prctNew)
 //					  - STATUSBAR_HEIGHT;
 
 	rctClient.top = rctClient.bottom - STATUSBAR_HEIGHT;
-	m_pStatusBar->setWindowPos(rctClient);
+	if (m_pStatusBar.ptr()) {
+		m_pStatusBar->setWindowPos(rctClient);
+	}
 
 	rctClient.bottom -= STATUSBAR_HEIGHT;
 	rctClient.top = 0;
