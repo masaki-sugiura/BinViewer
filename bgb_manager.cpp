@@ -133,7 +133,8 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 		offset >= m_qCurrentPos + 2 * radius ||
 		offset <  m_qCurrentPos - 2 * radius) {
 		// ‘S‚­V‹K‚É“Ç‚Ýž‚Ý
-		if (m_qCurrentPos < 0) m_qCurrentPos = 0;
+//		if (m_qCurrentPos < 0) m_qCurrentPos = 0;
+		m_qCurrentPos = offset;
 		int i = - radius / m_nBufSize;
 		filesize_t start, end;
 		start = m_qCurrentPos - radius;
