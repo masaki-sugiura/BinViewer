@@ -92,11 +92,6 @@ public:
 	{
 	}
 
-	filesize_t getPositionByCoordinate(int x, filesize_t y)
-	{
-		return 0;
-	}
-
 protected:
 	BGBuffer* createBGBufferInstance()
 	{
@@ -131,33 +126,7 @@ public:
 		delete m_pDCManager;
 	}
 
-	void setFrameRect(const RECT& rctFrame)
-	{
-		View::setFrameRect(rctFrame);
-		::InvalidateRect(m_hwndView, NULL, FALSE);
-		::UpdateWindow(m_hwndView);
-	}
-
 protected:
-	void onHScroll(WPARAM wParam, LPARAM lParam)
-	{
-		View::onHScroll(wParam, lParam);
-		::InvalidateRect(m_hwndView, NULL, FALSE);
-		::UpdateWindow(m_hwndView);
-	}
-	void onVScroll(WPARAM wParam, LPARAM lParam)
-	{
-		View::onVScroll(wParam, lParam);
-		::InvalidateRect(m_hwndView, NULL, FALSE);
-		::UpdateWindow(m_hwndView);
-	}
-	void onLButtonDown(WPARAM wParam, LPARAM lParam)
-	{
-		View::onLButtonDown(wParam, lParam);
-		::InvalidateRect(m_hwndView, NULL, FALSE);
-		::UpdateWindow(m_hwndView);
-	}
-
 	LRESULT viewWndProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		return View::viewWndProcMain(uMsg, wParam, lParam);
@@ -217,7 +186,7 @@ AdjustWindowSize(HWND hWnd, const RECT& rctFrame)
 				   rctWnd.bottom - rctWnd.top,
 				   SWP_NOZORDER);
 
-	g_pViewFrame->setFrameRect(rctClient);
+	g_pViewFrame->setFrameRect(rctClient, true);
 }
 
 static void OnSetPosition(HWND, WPARAM, LPARAM);
@@ -246,13 +215,15 @@ OnResizing(HWND hWnd, RECT* prctNew)
 					  - (rctWnd.bottom - rctWnd.top)
 					  - STATUSBAR_HEIGHT;
 
-	g_pViewFrame->setFrameRect(rctClient);
+	g_pViewFrame->setFrameRect(rctClient, false);
 
 	::SetWindowPos(g_hwndStatusBar, 0,
 				   0, rctClient.bottom,
 				   rctClient.right - rctClient.left,
 				   STATUSBAR_HEIGHT,
 				   SWP_NOZORDER);
+
+	g_pViewFrame->redrawView();
 }
 
 static void
@@ -262,13 +233,15 @@ OnResize(HWND hWnd, WPARAM fwSizeType)
 	::GetClientRect(hWnd, &rctClient);
 	rctClient.bottom -= STATUSBAR_HEIGHT;
 
-	g_pViewFrame->setFrameRect(rctClient);
+	g_pViewFrame->setFrameRect(rctClient, false);
 
 	::SetWindowPos(g_hwndStatusBar, 0,
 				   0, rctClient.bottom,
 				   rctClient.right - rctClient.left,
 				   STATUSBAR_HEIGHT,
 				   SWP_NOZORDER);
+
+	g_pViewFrame->redrawView();
 }
 
 static void

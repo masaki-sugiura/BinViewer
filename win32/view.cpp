@@ -117,6 +117,11 @@ View::setCurrentLine(filesize_t newline, bool bRedraw)
 	}
 
 	m_pDCManager->setViewPositionY(newline * m_pDrawInfo->getPixelsPerLine());
+
+	if (bRedraw) {
+		::InvalidateRect(m_hwndView, NULL, FALSE);
+		::UpdateWindow(m_hwndView);
+	}
 }
 
 void
@@ -154,7 +159,7 @@ View::adjustWindowRect(RECT& rctFrame)
 }
 
 void
-View::setFrameRect(const RECT& rctFrame)
+View::setFrameRect(const RECT& rctFrame, bool bRedraw)
 {
 	int nViewWidth  = rctFrame.right - rctFrame.left,
 		nViewHeight = rctFrame.bottom - rctFrame.top;
@@ -176,13 +181,18 @@ View::setFrameRect(const RECT& rctFrame)
 		m_smVert.disable();
 	else
 		m_smVert.setInfo(size / m_nBytesPerLine, nPageLineNum, m_smVert.getCurrentPos());
+
+	if (bRedraw) {
+		::InvalidateRect(m_hwndView, NULL, FALSE);
+		::UpdateWindow(m_hwndView);
+	}
 }
 
 void
 View::onVScroll(WPARAM wParam, LPARAM lParam)
 {
 	// 表示領域の更新
-	setCurrentLine(m_smVert.onScroll(LOWORD(wParam)), false);
+	setCurrentLine(m_smVert.onScroll(LOWORD(wParam)), true);
 }
 
 void
@@ -190,6 +200,8 @@ View::onHScroll(WPARAM wParam, LPARAM lParam)
 {
 	// 表示領域の更新
 	m_pDCManager->setViewPositionX(m_smHorz.onScroll(LOWORD(wParam)));
+	::InvalidateRect(m_hwndView, NULL, FALSE);
+	::UpdateWindow(m_hwndView);
 }
 
 void
@@ -198,6 +210,8 @@ View::onLButtonDown(WPARAM wParam, LPARAM lParam)
 	if (!m_pDCManager->isLoaded()) return;
 
 	m_pDCManager->setCursorByViewCoordinate(MAKEPOINTS(lParam));
+	::InvalidateRect(m_hwndView, NULL, FALSE);
+	::UpdateWindow(m_hwndView);
 }
 
 LRESULT CALLBACK

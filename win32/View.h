@@ -42,15 +42,19 @@ public:
 		 DrawInfo* pDrawInfo);
 	virtual ~View();
 
-	virtual void ensureVisible(filesize_t pos, bool bRedraw);
-	virtual void setCurrentLine(filesize_t newline, bool bRedraw);
 	virtual void setPosition(filesize_t pos, bool bRedraw);
 
 	// ウィンドウを指定された短形に変形
-	virtual void setFrameRect(const RECT& rctFrame);
+	virtual void setFrameRect(const RECT& rctFrame, bool bRedraw);
 
 	// ウィンドウサイズを行高・文字幅の整数倍に調整
 	void adjustWindowRect(RECT& rctFrame);
+
+	void redrawView()
+	{
+		::InvalidateRect(m_hwndView, NULL, FALSE);
+		::UpdateWindow(m_hwndView);
+	}
 
 	// View クラスが投げる例外の基底クラス
 	class ViewException {};
@@ -72,6 +76,9 @@ protected:
 	void onUnloadFile();
 
 	void bitBlt(const RECT& rcPaint);
+
+	virtual void ensureVisible(filesize_t pos, bool bRedraw);
+	virtual void setCurrentLine(filesize_t newline, bool bRedraw);
 
 	virtual void onHScroll(WPARAM wParam, LPARAM lParam);
 	virtual void onVScroll(WPARAM wParam, LPARAM lParam);
