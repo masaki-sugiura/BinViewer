@@ -28,6 +28,13 @@ ConfigPage::ConfigPage(int nDialogID, Auto_Ptr<DrawInfo>& pDrawInfo,
 {
 }
 
+BOOL
+ConfigPage::initDialog(HWND hDlg)
+{
+	Dialog::setTextureToTabColor();
+	return TRUE;
+}
+
 void
 ConfigPage::destroyDialog()
 {
@@ -424,6 +431,8 @@ FontConfigPage::FontConfigPage(Auto_Ptr<DrawInfo>& pDrawInfo)
 BOOL
 FontConfigPage::initDialog(HWND hDlg)
 {
+	ConfigPage::initDialog(hDlg);
+
 	m_FontConfig = m_pDrawInfo->m_FontInfo.getFontConfig();
 
 	prepareFontList(m_FontConfig.m_bProportional, m_FontConfig.m_pszFontFace);
@@ -828,6 +837,8 @@ CursorConfigPage::CursorConfigPage(Auto_Ptr<DrawInfo>& pDrawInfo)
 BOOL
 CursorConfigPage::initDialog(HWND hDlg)
 {
+	ConfigPage::initDialog(hDlg);
+
 	switch (m_ScrollConfig.m_caretMove) {
 	case CARET_STATIC:
 		::SendDlgItemMessage(hDlg, IDC_CONFIG_CARET_STATIC,

@@ -83,6 +83,7 @@ protected:
 	string m_strTabText;
 	bool m_bShown;
 
+	BOOL initDialog(HWND hDlg);
 	void destroyDialog();
 };
 

@@ -9,6 +9,8 @@
 Lock Dialog::m_lckActiveDialogs;
 int  Dialog::m_nActiveDialogNum;
 DialogMap Dialog::m_activeDialogs;
+HMODULE  Dialog::m_hmUxTheme;
+PFN_ETDT Dialog::m_pfnEnableThemeDialogTexture;
 
 Dialog::Dialog(int idd)
 	: m_nDialogID(idd),
@@ -78,6 +80,26 @@ Dialog::removeFromMessageLoop(Dialog* that)
 	m_activeDialogs.erase(that->m_hwndDlg);
 	m_nActiveDialogNum--;
 	return TRUE;
+}
+
+BOOL
+Dialog::initializeTheme()
+{
+	if (m_hmUxTheme) return m_pfnEnableThemeDialogTexture != NULL;
+
+	m_hmUxTheme = ::LoadLibrary("UxTheme.dll");
+	if (!m_hmUxTheme) return FALSE;
+
+	m_pfnEnableThemeDialogTexture
+		= (PFN_ETDT)::GetProcAddress(m_hmUxTheme, "EnableThemeDialogTexture");
+
+	return m_pfnEnableThemeDialogTexture != NULL;
+}
+
+void
+Dialog::uninitializeTheme()
+{
+	if (m_hmUxTheme) ::FreeLibrary(m_hmUxTheme);
 }
 
 BOOL

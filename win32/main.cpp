@@ -524,33 +524,35 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	GetParameters();
 
-	WNDCLASS wc;
-
 	// Main Window's WindowClass
+	WNDCLASS wc;
 	::ZeroMemory(&wc, sizeof(WNDCLASS));
 	wc.hInstance = hInstance;
-	wc.style = CS_OWNDC /* | CS_HREDRAW | CS_VREDRAW */;
+	wc.style = CS_OWNDC;
 	wc.hIcon = ::LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MAINICON));
 	wc.hCursor = ::LoadCursor(NULL, IDC_ARROW);
-//	wc.hbrBackground = (HBRUSH)(COLOR_APPWORKSPACE + 1);
 	wc.lpfnWndProc = (WNDPROC)MainWndProc;
 	wc.lpszClassName = MAINWND_CLASSNAME;
 	wc.lpszMenuName = MAKEINTRESOURCE(IDM_MAINMENU);
 	if (!::RegisterClass(&wc)) return -1;
 
-	HACCEL hAccel = ::LoadAccelerators(hInstance, MAKEINTRESOURCE(IDR_KEYACCEL));
+	HACCEL hAccel = ::LoadAccelerators(hInstance,
+									   MAKEINTRESOURCE(IDR_KEYACCEL));
 
 	::InitCommonControls();
 
-	g_hwndMain = ::CreateWindowEx(/*WS_EX_OVERLAPPEDWINDOW |*/ WS_EX_ACCEPTFILES,
+	Dialog::initializeTheme();
+
+	g_hwndMain = ::CreateWindowEx(WS_EX_ACCEPTFILES,
 								  wc.lpszClassName, "BinViewer",
-//								  WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU |
-//								   WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
 								  WS_OVERLAPPEDWINDOW,
 								  CW_USEDEFAULT, CW_USEDEFAULT,
 								  W_WIDTH, W_HEIGHT,
 								  NULL, NULL, hInstance, NULL);
-	if (!g_hwndMain) return -1;
+	if (!g_hwndMain) {
+		Dialog::uninitializeTheme();
+		return -1;
+	}
 
 	::ShowWindow(g_hwndMain, SW_SHOW);
 
@@ -562,6 +564,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 			::DispatchMessage(&msg);
 		}
 	}
+
+	Dialog::uninitializeTheme();
 
 	return msg.wParam;
 }
