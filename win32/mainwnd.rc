@@ -203,6 +203,22 @@ BEGIN
     CONTROL         "スクロールバーと同じ(&B)",
                     IDC_CONFIG_WHEEL_AS_SCROLL_BAR,"Button",
                     BS_AUTORADIOBUTTON,14,109,86,10
+    GROUPBOX        "",IDC_STATIC,123,7,110,121
+    CONTROL         109,IDC_STATIC,"Static",SS_BITMAP,141,29,73,85
+END
+
+IDD_SEARCH_RESULT DIALOGEX 0, 0, 223, 149
+STYLE DS_MODALFRAME | DS_3DLOOK | DS_CENTER | WS_POPUP | WS_VISIBLE | 
+    WS_CAPTION | WS_SYSMENU
+CAPTION "検索結果一覧"
+FONT 9, "ＭＳ Ｐゴシック"
+BEGIN
+    DEFPUSHBUTTON   "ジャンプ",IDC_JUMP,166,7,50,14
+    PUSHBUTTON      "閉じる",IDC_CLOSE,166,24,50,14
+    CONTROL         "List1",IDC_SEARCH_RESULT_LVIEW,"SysListView32",
+                    LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | 
+                    LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,7,157,135,
+                    WS_EX_CLIENTEDGE
 END
 
 
@@ -253,9 +269,24 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 158
     END
+
+    IDD_SEARCH_RESULT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 216
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 142
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDB_CONFIG_PLACE_HOLDER BITMAP  DISCARDABLE     "config_p.bmp"
 #endif    // 日本語 resources
 /////////////////////////////////////////////////////////////////////////////
 

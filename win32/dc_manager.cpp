@@ -139,28 +139,38 @@ DCBuffer::render()
 	// バッファのデータは不正
 	if (m_qAddress < 0) return 0;
 
-	int linenum = m_nDataSize >> 4;
-	int xoffset, yoffset;
-
+	int i, linenum = m_nDataSize >> 4, xoffset, yoffset;
 	TCHAR linebuf[WIDTH_PER_XPITCH + 1], strbuf[17];
-	for (int i = 0; i < linenum; i++) {
-		yoffset = i * nYPitch;
-		int idx_top = (i << 4);
-#if 1
-		filesize_t qCurAddress = m_qAddress + idx_top;
-//		wsprintf(linebuf, "%08X%08X", (int)(qCurAddress >> 32), (int)qCurAddress);
+	filesize_t qCurAddress;
+
+	// アドレス
+	m_pDrawInfo->m_tciAddress.setColorToDC(m_hDC);
+	for (i = 0; i < linenum; i++) {
+		qCurAddress = m_qAddress + (i << 4);
 		QuadToStr((UINT)qCurAddress, (UINT)(qCurAddress >> 32), linebuf);
-		m_pDrawInfo->m_tciAddress.setColorToDC(m_hDC);
-		::ExtTextOut(m_hDC, nXPitch, yoffset, 0, NULL, linebuf, 16, m_anXPitch);
-		m_pDrawInfo->m_tciData.setColorToDC(m_hDC);
+		::ExtTextOut(m_hDC, nXPitch, i * nYPitch, 0, NULL,
+					 linebuf, 16, m_anXPitch);
+	}
+	if (m_nDataSize & 15) {
+		qCurAddress = m_qAddress + (linenum << 4);
+		QuadToStr((UINT)qCurAddress, (UINT)(qCurAddress >> 32), linebuf);
+		::ExtTextOut(m_hDC, nXPitch, linenum * nYPitch, 0, NULL,
+					 linebuf, 16, m_anXPitch);
+	}
+
+	// データ
+	m_pDrawInfo->m_tciData.setColorToDC(m_hDC);
+	for (i = 0; i < linenum; i++) {
+		int idx_top = (i << 4), j = 0;
 		xoffset = nXPitch * 19;
+		yoffset = i * nYPitch;
 		linebuf[2] = 0;
-		int j = 0;
 		while (j < 8) {
 			BYTE data = m_DataBuf[idx_top + j++];
 			linebuf[0] = hex[(data >> 4) & 0x0F];
 			linebuf[1] = hex[(data >> 0) & 0x0F];
-			::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL, linebuf, 2, m_anXPitch);
+			::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL,
+						 linebuf, 2, m_anXPitch);
 			xoffset += nXPitch * 3;
 		}
 		::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL, "-", 1, m_anXPitch);
@@ -169,84 +179,53 @@ DCBuffer::render()
 			BYTE data = m_DataBuf[idx_top + j++];
 			linebuf[0] = hex[(data >> 4) & 0x0F];
 			linebuf[1] = hex[(data >> 0) & 0x0F];
-			::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL, linebuf, 2, m_anXPitch);
+			::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL,
+						 linebuf, 2, m_anXPitch);
 			xoffset += nXPitch * 3;
 		}
-		xoffset += nXPitch;
-		TranslateToString((BYTE*)strbuf, m_DataBuf + idx_top, 16);
-		m_pDrawInfo->m_tciString.setColorToDC(m_hDC);
-		::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL, strbuf, 16, m_anXPitch);
-#else
-		TranslateToString((BYTE*)strbuf, m_DataBuf + idx_top, 16);
-		strbuf[16] = '\0';
-		filesize_t qCurAddress = m_qAddress + idx_top;
-		wsprintf(linebuf,
-				 " %08X%08X %02x %02x %02x %02x %02x %02x %02x %02x - %02x %02x %02x %02x %02x %02x %02x %02x %s",
-				 (int)(qCurAddress >> 32),
-				 (int)qCurAddress,
-				 m_DataBuf[idx_top +  0],
-				 m_DataBuf[idx_top +  1],
-				 m_DataBuf[idx_top +  2],
-				 m_DataBuf[idx_top +  3],
-				 m_DataBuf[idx_top +  4],
-				 m_DataBuf[idx_top +  5],
-				 m_DataBuf[idx_top +  6],
-				 m_DataBuf[idx_top +  7],
-				 m_DataBuf[idx_top +  8],
-				 m_DataBuf[idx_top +  9],
-				 m_DataBuf[idx_top + 10],
-				 m_DataBuf[idx_top + 11],
-				 m_DataBuf[idx_top + 12],
-				 m_DataBuf[idx_top + 13],
-				 m_DataBuf[idx_top + 14],
-				 m_DataBuf[idx_top + 15],
-				 strbuf);
-		::TextOut(m_hDC, 0, yoffset, linebuf, WIDTH_PER_XPITCH);
-#endif
 	}
-
-	if (m_nDataSize & 0x0F) {
-		yoffset = linenum * nYPitch;
-		filesize_t qCurAddress = m_qAddress + (linenum << 4);
-//		wsprintf(linebuf, "%08X%08X", (int)(qCurAddress >> 32), (int)qCurAddress);
-		QuadToStr((UINT)qCurAddress, (UINT)(qCurAddress >> 32), linebuf);
-		m_pDrawInfo->m_tciAddress.setColorToDC(m_hDC);
-		::ExtTextOut(m_hDC, nXPitch, yoffset, 0, NULL, linebuf, 16, m_anXPitch);
-		m_pDrawInfo->m_tciData.setColorToDC(m_hDC);
-		xoffset = nXPitch * 19;
-		linebuf[2] = 0;
+	if (m_nDataSize & 15) {
 		int idx_top = (linenum << 4), j = 0;
+		xoffset = nXPitch * 19;
+		yoffset = linenum * nYPitch;
+		linebuf[2] = 0;
 		while (j < 8) {
-			if (idx_top + j < m_nDataSize) {
-				BYTE data = m_DataBuf[idx_top + j];
-				linebuf[0] = hex[(data >> 4) & 0x0F];
-				linebuf[1] = hex[(data >> 0) & 0x0F];
-				::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL,
-							 linebuf, 2, m_anXPitch);
-			}
+			BYTE data = m_DataBuf[idx_top + j];
+			linebuf[0] = hex[(data >> 4) & 0x0F];
+			linebuf[1] = hex[(data >> 0) & 0x0F];
+			::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL,
+						 linebuf, 2, m_anXPitch);
 			xoffset += nXPitch * 3;
-			j++;
+			if (idx_top + ++j >= m_nDataSize) goto _data_end;
 		}
-		if (idx_top + 8 < m_nDataSize)
-			::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL, "-", 1, m_anXPitch);
+		::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL, "-", 1, m_anXPitch);
 		xoffset += nXPitch * 2;
 		while (j < 16) {
-			if (idx_top + j < m_nDataSize) {
-				BYTE data = m_DataBuf[idx_top + j];
-				linebuf[0] = hex[(data >> 4) & 0x0F];
-				linebuf[1] = hex[(data >> 0) & 0x0F];
-				::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL,
-							 linebuf, 2, m_anXPitch);
-			}
+			BYTE data = m_DataBuf[idx_top + j];
+			linebuf[0] = hex[(data >> 4) & 0x0F];
+			linebuf[1] = hex[(data >> 0) & 0x0F];
+			::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL,
+						 linebuf, 2, m_anXPitch);
 			xoffset += nXPitch * 3;
-			j++;
+			if (idx_top + ++j >= m_nDataSize) goto _data_end;
 		}
-		xoffset += nXPitch;
-		TranslateToString((BYTE*)strbuf, m_DataBuf + idx_top, m_nDataSize & 0x0F);
-		m_pDrawInfo->m_tciString.setColorToDC(m_hDC);
-		::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL,
+_data_end:
+		/* jump point */;
+	}
+
+	// 文字列
+	xoffset = nXPitch * (1 + 16 + 2 + 8 * 3 + 2 + 8 * 3 + 1);
+	m_pDrawInfo->m_tciString.setColorToDC(m_hDC);
+	for (i = 0; i < linenum; i++) {
+		TranslateToString((BYTE*)strbuf, m_DataBuf + (i << 4), 16);
+		::ExtTextOut(m_hDC, xoffset, i * nYPitch, 0, NULL,
+					 strbuf, 16, m_anXPitch);
+	}
+	if (m_nDataSize & 0x0F) {
+		TranslateToString((BYTE*)strbuf, m_DataBuf + (linenum << 4),
+						  m_nDataSize & 0x0F);
+		::ExtTextOut(m_hDC, xoffset, linenum * nYPitch, 0, NULL,
 					 strbuf, m_nDataSize & 0x0F, m_anXPitch);
-//		linenum++;
 	}
 
 	return m_nDataSize;
