@@ -33,6 +33,11 @@ public:
 		return m_pDC_Manager->getFileSize();
 	}
 
+	filesize_t getCurrentLine() const
+	{
+		return m_qCurrentLine;
+	}
+
 	filesize_t getMaxLine() const
 	{
 		return m_qMaxLine;
@@ -110,17 +115,20 @@ private:
 	int m_nPageLineNum;
 	RECT m_rctClient;
 	bool m_bOverlapped;
-	filesize_t m_qCurrentPos;
+	filesize_t m_qCurrentLine;
 	filesize_t m_qMaxLine;
 	int m_nTopOffset, m_nXOffset;
 	DCBuffer *m_pCurBuf, *m_pNextBuf;
+	filesize_t m_qCurrentPos;
 	filesize_t m_qPrevSelectedPos;
 	int m_nPrevSelectedSize;
 
 	void initParams()
 	{
-		m_qCurrentPos = 0;
-		m_nTopOffset = 0;
+		m_qCurrentLine = m_qMaxLine = 0;
+		m_qCurrentPos = m_qPrevSelectedPos = -1;
+		m_nPrevSelectedSize = 0;
+		m_nTopOffset = m_nXOffset = 0;
 		m_bOverlapped = false;
 		m_pCurBuf = m_pNextBuf = NULL;
 	}

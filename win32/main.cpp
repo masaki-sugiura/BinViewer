@@ -586,17 +586,17 @@ OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	::GetScrollInfo(hWnd, SB_VERT, &sinfo);
 	if (sinfo.nMax <= sinfo.nPage) return;
 
-	filesize_t qPosition = g_pViewFrame->getPosition() >> 4,
+	filesize_t qPosition = g_pViewFrame->getPosition(),
 			   qMaxLine = g_pViewFrame->getMaxLine();
 	int nPageLineNum = g_pViewFrame->getPageLineNum();
 
 	switch (LOWORD(wParam)) {
 	case SB_LINEDOWN:
-		if (qPosition < qMaxLine) {
-			qPosition++;
+		if ((qPosition / 16) < qMaxLine) {
+			qPosition += 16;
 			if (!g_bMapScrollBarLinearly) {
 				// ファイルサイズが大きい場合
-				sinfo.nPos = (qPosition << 32) / qMaxLine;
+				sinfo.nPos = ((qPosition / 16) << 32) / qMaxLine;
 			} else {
 				sinfo.nPos++;
 			}
@@ -604,11 +604,11 @@ OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case SB_LINEUP:
-		if (qPosition > 0) {
-			qPosition--;
+		if ((qPosition / 16) > 0) {
+			qPosition -= 16;
 			if (!g_bMapScrollBarLinearly) {
 				// ファイルサイズが大きい場合
-				sinfo.nPos = (qPosition << 32) / qMaxLine;
+				sinfo.nPos = ((qPosition / 16) << 32) / qMaxLine;
 			} else {
 				sinfo.nPos--;
 			}
@@ -616,13 +616,13 @@ OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case SB_PAGEDOWN:
-		if ((qPosition += nPageLineNum) > qMaxLine) {
-			qPosition = qMaxLine;
+		if (((qPosition += 16 * nPageLineNum) / 16) > qMaxLine) {
+			qPosition = qMaxLine * 16;
 			sinfo.nPos = sinfo.nMax;
 		} else {
 			if (!g_bMapScrollBarLinearly) {
 				// ファイルサイズが大きい場合
-				sinfo.nPos = (qPosition << 32) / qMaxLine;
+				sinfo.nPos = ((qPosition / 16) << 32) / qMaxLine;
 			} else {
 				sinfo.nPos += sinfo.nPage;
 			}
@@ -630,13 +630,13 @@ OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case SB_PAGEUP:
-		if ((qPosition -= nPageLineNum) < 0) {
+		if (((qPosition -= nPageLineNum * 16) / 16) < 0) {
 			qPosition = 0;
 			sinfo.nPos = sinfo.nMin;
 		} else {
 			if (!g_bMapScrollBarLinearly) {
 				// ファイルサイズが大きい場合
-				sinfo.nPos = (qPosition << 32) / qMaxLine;
+				sinfo.nPos = ((qPosition / 16) << 32) / qMaxLine;
 			} else {
 				sinfo.nPos -= sinfo.nPage;
 			}
@@ -649,7 +649,7 @@ OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case SB_BOTTOM:
-		qPosition = qMaxLine;
+		qPosition = qMaxLine * 16;
 		sinfo.nPos = sinfo.nMax;
 		break;
 
@@ -658,9 +658,9 @@ OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		sinfo.nPos = sinfo.nTrackPos;
 		if (!g_bMapScrollBarLinearly) {
 			// ファイルサイズが大きい場合
-			qPosition = (sinfo.nPos * qMaxLine) >> 32;
+			qPosition = (sinfo.nPos * qMaxLine * 16) >> 32;
 		} else {
-			qPosition = sinfo.nPos;
+			qPosition = sinfo.nPos * 16;
 		}
 		break;
 
@@ -670,7 +670,7 @@ OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	::SetScrollInfo(hWnd, SB_VERT, &sinfo, TRUE);
 
 	// prepare the correct BGBuffer
-	g_pViewFrame->setPosition(qPosition << 4);
+	g_pViewFrame->setPosition(qPosition);
 
 	// get the region of BGBuffer to be drawn
 	UpdateClientRect();
@@ -759,6 +759,13 @@ OnHScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 }
 
 static void
+OnHorizontalMove(HWND hWnd, int diff)
+{
+	g_pViewFrame->setPosition(g_pViewFrame->getPosition() + diff);
+	UpdateClientRect();
+}
+
+static void
 OnMouseWheel(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	if (!g_pViewFrame->isLoaded()) return;
@@ -776,6 +783,13 @@ OnMouseWheel(HWND hWnd, WPARAM wParam, LPARAM lParam)
 			OnVScroll(hWnd, SB_LINEDOWN, 0);
 		}
 	}
+}
+
+static void
+OnLButtonDown(HWND hWnd, WPARAM wParam, LPARAM lParam)
+{
+	g_pViewFrame->setPositionByCoordinate(MAKEPOINTS(lParam));
+	UpdateClientRect();
 }
 
 static void
@@ -943,11 +957,13 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case IDK_RIGHT:
-			OnHScroll(hWnd, SB_LINEDOWN, 0);
+			OnHorizontalMove(hWnd, 1);
+//			OnHScroll(hWnd, SB_LINEDOWN, 0);
 			break;
 
 		case IDK_LEFT:
-			OnHScroll(hWnd, SB_LINEUP, 0);
+			OnHorizontalMove(hWnd, -1);
+//			OnHScroll(hWnd, SB_LINEUP, 0);
 			break;
 		}
 		break;
@@ -973,7 +989,7 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_LBUTTONDOWN:
-		g_pViewFrame->setPositionByCoordinate(MAKEPOINTS(lParam));
+		OnLButtonDown(hWnd, wParam, lParam);
 		break;
 
 	case WM_CLOSE:

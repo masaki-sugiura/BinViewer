@@ -196,13 +196,14 @@ DCBuffer::render()
 		int idx_top = (linenum << 4), j = 0;
 		while (j < 8) {
 			if (idx_top + j < m_nDataSize) {
-				BYTE data = m_DataBuf[idx_top + j++];
+				BYTE data = m_DataBuf[idx_top + j];
 				linebuf[0] = hex[(data >> 4) & 0x0F];
 				linebuf[1] = hex[(data >> 0) & 0x0F];
 				::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL,
 							 linebuf, 2, m_anXPitch);
 			}
 			xoffset += nXPitch * 3;
+			j++;
 		}
 		if (idx_top + 8 < m_nDataSize)
 			::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL, "-", 1, m_anXPitch);

@@ -7,17 +7,13 @@
 
 ViewFrame::ViewFrame(HWND hWnd, const DrawInfo* pDrawInfo,
 					 LargeFileReader* pLFReader)
-	: m_pDC_Manager(NULL), m_pDrawInfo(pDrawInfo),
-	  m_nTopOffset(0), m_nXOffset(0),
-	  m_qPrevSelectedPos(-1), m_nPrevSelectedSize(0)
+	: m_pDC_Manager(NULL), m_pDrawInfo(pDrawInfo)
 {
 	HDC hDC = ::GetDC(hWnd);
 
 	initParams();
 
 	m_pDC_Manager = new DC_Manager(hDC, m_pDrawInfo, pLFReader);
-
-	calcMaxLine();
 
 	m_nLineHeight = m_pDrawInfo->m_FontInfo.getYPitch();
 	m_nCharWidth  = m_pDrawInfo->m_FontInfo.getXPitch();
@@ -50,7 +46,7 @@ ViewFrame::setFrameRect(const RECT& rctClient)
 	if (!m_pDC_Manager->isLoaded()) return;
 
 	// ウィンドウを広げた結果次のバッファとオーバーラップした場合に必要
-	m_bOverlapped = is_overlapped(m_nTopOffset, m_nPageLineNum);
+	m_bOverlapped = is_overlapped(m_nTopOffset / m_nLineHeight, m_nPageLineNum);
 }
 
 void
@@ -58,20 +54,41 @@ ViewFrame::setPosition(filesize_t pos)
 {
 	if (!m_pDC_Manager->isLoaded()) return;
 
-	m_qCurrentPos = pos;
-	filesize_t buffer_top = m_pDC_Manager->setPosition(pos);
+	filesize_t fsize = this->getFileSize();
+	if (fsize == 0) return;
 
-	int cur_offset = ((int)(pos - buffer_top) / 16) * m_nLineHeight;
-	if (cur_offset < m_nTopOffset ||
-		cur_offset >= m_nTopOffset + m_nPageLineNum * m_nLineHeight) {
-		m_nTopOffset = cur_offset;
-	}
+	if (pos >= fsize)
+		pos = fsize - 1;
+	if (pos < 0) pos = 0; // else では NG!! (filesize == 0 の場合)
+
+	filesize_t prev_buffer_top = 0;
+	if (m_pCurBuf) prev_buffer_top = m_pCurBuf->m_qAddress;
 
 	unselect();
 	select(pos, 1);
+	// この時点でリングバッファの状態が変化する
+
+	m_qCurrentPos = pos;
+	filesize_t line_diff = pos / 16 - m_qCurrentLine;
+	if (line_diff <= -1) {
+		// 上にジャンプ/スクロール
+		m_qCurrentLine = pos / 16;
+	} else if (line_diff < m_nPageLineNum) {
+		// スクロールは発生しない
+	} else {
+		// 下にジャンプ/スクロール
+		m_qCurrentLine = pos / 16 - m_nPageLineNum + 1;
+	}
+	if (m_qCurrentLine < 0) m_qCurrentLine = 0;
+	if (m_qCurrentLine > m_qMaxLine) m_qCurrentLine = m_qMaxLine;
+
+	filesize_t buffer_top = m_pDC_Manager->setPosition(m_qCurrentLine * 16);
+
+	m_nTopOffset = (int)(m_qCurrentLine - buffer_top / 16) * m_nLineHeight;
+	assert(m_nTopOffset < HEIGHT_PER_YPITCH * m_nLineHeight);
 
 	// 次のバッファとオーバーラップしているかどうか
-	m_bOverlapped = is_overlapped(m_nTopOffset / 16, m_nPageLineNum);
+	m_bOverlapped = is_overlapped(m_nTopOffset / m_nLineHeight, m_nPageLineNum);
 
 	m_pCurBuf  = m_pDC_Manager->getCurrentBuffer(0);
 	m_pNextBuf = m_pDC_Manager->getCurrentBuffer(1);
@@ -80,9 +97,31 @@ ViewFrame::setPosition(filesize_t pos)
 void
 ViewFrame::setPositionByCoordinate(const POINTS& pos)
 {
+	// header
+	if (pos.y < m_nLineHeight) return;
+	int y_pos = pos.y - m_nLineHeight + m_nTopOffset;
+	int height = HEIGHT_PER_YPITCH * m_nLineHeight;
+
+	filesize_t qPos = 0;
+	if (!m_bOverlapped || y_pos < height) {
+		// in m_pCurBuf
+		qPos = m_pCurBuf->m_qAddress + (y_pos / m_nLineHeight) * 16;
+	} else {
+		// in m_pNextBuf
+		qPos = m_pNextBuf->m_qAddress + ((y_pos - height) / m_nLineHeight) * 16;
+	}
+
 	int x_pos = m_pDC_Manager->getXPositionByCoordinate(pos.x + m_nXOffset);
 	if (x_pos < 0) return;
 
+	qPos += x_pos;
+
+	if (qPos >= this->getFileSize()) {
+		qPos = this->getFileSize() - 1;
+		if (qPos < 0) qPos = 0;
+	}
+
+	this->setPosition(qPos);
 }
 
 void
