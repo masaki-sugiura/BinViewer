@@ -681,15 +681,22 @@ ViewFrame::onLButtonDown(WPARAM wParam, LPARAM lParam)
 }
 
 void
-ViewFrame::onJump(filesize_t pos)
+ViewFrame::onJump(filesize_t pos, int size)
 {
+	assert(size > 0);
+
 	if (!isLoaded()) return;
 
 	SCROLLINFO sinfo;
 	sinfo.cbSize = sizeof(SCROLLINFO);
 	sinfo.fMask = SIF_ALL;
-
 	::GetScrollInfo(m_hwndView, SB_VERT, &sinfo);
+
+	if (size > 1) {
+		// pos ～ pos + size のデータが可能な限り表示されることを保証する
+		setPosition(pos + size);
+	}
+
 	if (pos < 0) {
 		pos = 0;
 		sinfo.nPos = sinfo.nMin;
@@ -704,6 +711,7 @@ ViewFrame::onJump(filesize_t pos)
 			sinfo.nPos = (int)(pos / 16);
 		}
 	}
+
 	::SetScrollInfo(m_hwndView, SB_VERT, &sinfo, TRUE);
 
 	// prepare the correct BGBuffer

@@ -9,23 +9,22 @@
 #include "resource.h"
 #include <assert.h>
 
-JumpDlg::JumpDlg(ViewFrame* pViewFrame)
+JumpDlg::JumpDlg(ViewFrame& viewFrame)
 	: Dialog(IDD_JUMP),
-	  m_pViewFrame(pViewFrame)
+	  m_ViewFrame(viewFrame)
 {
-	assert(pViewFrame);
 }
 
 BOOL
 JumpDlg::initDialog(HWND hDlg)
 {
-	filesize_t size = m_pViewFrame->getFileSize();
+	filesize_t size = m_ViewFrame.getFileSize();
 	char str[32];
 	::CopyMemory(str, "0 - 0x", 6);
 	QuadToStr((UINT)size, (UINT)(size >> 32), str + 6);
 	str[22] = '\0';
 	::SetWindowText(::GetDlgItem(hDlg, IDC_JUMPINFO), str);
-	filesize_t pos = m_pViewFrame->getPosition();
+	filesize_t pos = m_ViewFrame.getPosition();
 	str[0] = '0';  str[1] = 'x';
 	QuadToStr((UINT)pos, (UINT)(pos >> 32), str + 2);
 	str[18] = '\0';
@@ -62,8 +61,7 @@ JumpDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				char buf[32];
 				::GetWindowText(::GetDlgItem(m_hwndDlg, IDC_JUMPADDRESS), buf, 32);
 				filesize_t pos = ParseNumber(buf);
-				m_pViewFrame->onJump(pos + m_pViewFrame->getPageLineNum() * 8);
-				m_pViewFrame->onJump(pos);
+				m_ViewFrame.onJump(pos, m_ViewFrame.getPageLineNum() * 8);
 			}
 			// through down
 		case IDCANCEL:

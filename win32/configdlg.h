@@ -52,18 +52,18 @@ class CreateDialogError : public exception {};
 
 class ConfigDialog : public Dialog {
 public:
-	ConfigDialog(int nDialogID, DrawInfo* pDrawInfo);
+	ConfigDialog(int nDialogID, Auto_Ptr<DrawInfo>& pDrawInfo);
 	~ConfigDialog();
 
 	virtual bool applyChanges() = 0;
 
 protected:
-	DrawInfo* m_pDrawInfo;
+	Auto_Ptr<DrawInfo>& m_pDrawInfo;
 };
 
 class ConfigPage : public ConfigDialog {
 public:
-	ConfigPage(int nDialogID, DrawInfo* pDrawInfo,
+	ConfigPage(int nDialogID, Auto_Ptr<DrawInfo>& pDrawInfo,
 			   const char* pszTabText);
 
 	const char* getTabText() const { return m_strTabText.c_str(); }
@@ -116,7 +116,7 @@ private:
 
 class FontConfigPage : public ConfigPage {
 public:
-	FontConfigPage(DrawInfo* pDrawInfo);
+	FontConfigPage(Auto_Ptr<DrawInfo>& pDrawInfo);
 
 	bool applyChanges();
 
@@ -151,7 +151,7 @@ protected:
 
 class CursorConfigPage : public ConfigPage {
 public:
-	CursorConfigPage(DrawInfo* pDrawInfo);
+	CursorConfigPage(Auto_Ptr<DrawInfo>& pDrawInfo);
 
 	bool applyChanges();
 
@@ -164,7 +164,7 @@ protected:
 
 class ConfigMainDlg : public ConfigDialog {
 public:
-	ConfigMainDlg(DrawInfo* pDrawInfo);
+	ConfigMainDlg(Auto_Ptr<DrawInfo>& pDrawInfo);
 	~ConfigMainDlg();
 
 	bool applyChanges();

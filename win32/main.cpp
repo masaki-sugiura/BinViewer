@@ -102,12 +102,23 @@ EnableMenuForLoadedFile(HWND hWnd, BOOL bEnable)
 	HMENU hMenu = ::GetMenu(hWnd);
 	assert(hMenu);
 	HMENU hFileMenu = ::GetSubMenu(hMenu, 0);
-	assert(hMenu);
+	assert(hFileMenu);
 	::EnableMenuItem(hFileMenu, IDM_CLOSE,
 					 MF_BYCOMMAND | (bEnable ? MF_ENABLED : MF_GRAYED));
 	::EnableMenuItem(hMenu, 1,
 					 MF_BYPOSITION | (bEnable ? MF_ENABLED : MF_GRAYED));
 	::SendMessage(hWnd, WM_NCPAINT, 1, 0);
+}
+
+static void
+EnableSearchMenu(HWND hWnd, BOOL bEnable)
+{
+	HMENU hMenu = ::GetMenu(hWnd);
+	assert(hMenu);
+	HMENU hFileMenu = ::GetSubMenu(hMenu, 1);
+	assert(hFileMenu);
+	::EnableMenuItem(hFileMenu, IDM_SEARCH,
+					 MF_BYCOMMAND | (bEnable ? MF_ENABLED : MF_GRAYED));
 }
 
 static BOOL
@@ -232,7 +243,7 @@ OnCreate(HWND hWnd)
 	g_pViewFrame = new ViewFrame(hWnd, rctClient, g_pDrawInfo.ptr(), NULL);
 	assert(g_pViewFrame.ptr());
 
-	g_pSearchDlg = new SearchMainDlg(g_pViewFrame.ptr());
+	g_pSearchDlg = new SearchMainDlg(*g_pViewFrame);
 
 	AdjustWindowSize(hWnd, rctClient);
 
@@ -380,7 +391,7 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case IDM_CONFIG:
-			ConfigMainDlg(g_pDrawInfo.ptr()).doModal(hWnd);
+			ConfigMainDlg(g_pDrawInfo).doModal(hWnd);
 			break;
 
 		case IDM_SEARCH:
@@ -388,10 +399,11 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			if (!g_pSearchDlg->create(hWnd)) {
 				::MessageBox(hWnd, "検索ダイアログの表示に失敗しました", NULL, MB_OK);
 			}
+			EnableSearchMenu(hWnd, FALSE);
 			break;
 
 		case IDM_JUMP:
-			JumpDlg(g_pViewFrame.ptr()).doModal(hWnd);
+			JumpDlg(*g_pViewFrame).doModal(hWnd);
 			break;
 
 		case IDK_LINEDOWN:
@@ -430,6 +442,10 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			g_pViewFrame->onHorizontalMove(-1);
 			break;
 		}
+		break;
+
+	case WM_USER_CLOSE_SEARCH_DIALOG:
+		EnableSearchMenu(hWnd, TRUE);
 		break;
 
 	case WM_USER_SETPOSITION:

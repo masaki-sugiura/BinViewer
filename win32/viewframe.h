@@ -138,7 +138,7 @@ public:
 	void onLButtonDown(WPARAM, LPARAM);
 	void onMouseWheel(WPARAM, LPARAM);
 
-	void onJump(filesize_t);
+	void onJump(filesize_t, int size = 1);
 	void onHorizontalMove(int diff);
 	void onVerticalMove(int diff);
 

@@ -7,11 +7,11 @@
 #include <commctrl.h>
 #include <assert.h>
 
-ConfigDialog::ConfigDialog(int nDialogID, DrawInfo* pDrawInfo)
+ConfigDialog::ConfigDialog(int nDialogID, Auto_Ptr<DrawInfo>& pDrawInfo)
 	: Dialog(nDialogID),
 	  m_pDrawInfo(pDrawInfo)
 {
-	if (!pDrawInfo) {
+	if (!pDrawInfo.ptr()) {
 		throw CreateDialogError();
 	}
 }
@@ -20,7 +20,7 @@ ConfigDialog::~ConfigDialog()
 {
 }
 
-ConfigPage::ConfigPage(int nDialogID, DrawInfo* pDrawInfo,
+ConfigPage::ConfigPage(int nDialogID, Auto_Ptr<DrawInfo>& pDrawInfo,
 					   const char* pszTabText)
 	: ConfigDialog(nDialogID, pDrawInfo),
 	  m_strTabText(pszTabText),
@@ -35,7 +35,7 @@ ConfigPage::destroyDialog()
 //	::MessageBox(NULL, "ConfigPage::destroyDialog()", NULL, MB_OK);
 }
 
-ConfigMainDlg::ConfigMainDlg(DrawInfo* pDrawInfo)
+ConfigMainDlg::ConfigMainDlg(Auto_Ptr<DrawInfo>& pDrawInfo)
 	: ConfigDialog(IDD_CONFIG_MAIN, pDrawInfo)
 {
 	m_pConfigPages[0] = new FontConfigPage(pDrawInfo);
@@ -413,7 +413,7 @@ get_font_pt_from_pixel(HDC hDC, int pixel, LPSTR buf)
 	sprintf(buf, "%4.1f", pt_size);
 }
 
-FontConfigPage::FontConfigPage(DrawInfo* pDrawInfo)
+FontConfigPage::FontConfigPage(Auto_Ptr<DrawInfo>& pDrawInfo)
 	: ConfigPage(IDD_CONFIG_FONT, pDrawInfo, "フォント"),
 	  m_icFgColor(pDrawInfo->m_hDC),
 	  m_icBkColor(pDrawInfo->m_hDC),
@@ -818,7 +818,7 @@ FontConfigPage::chooseColor(COLORREF& cref)
 	return false;
 }
 
-CursorConfigPage::CursorConfigPage(DrawInfo* pDrawInfo)
+CursorConfigPage::CursorConfigPage(Auto_Ptr<DrawInfo>& pDrawInfo)
 	: ConfigPage(IDD_CONFIG_CURSOR, pDrawInfo, "カーソル"),
 	  m_ScrollConfig(pDrawInfo->m_ScrollConfig)
 {

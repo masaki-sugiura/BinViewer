@@ -8,7 +8,7 @@
 
 class SearchDlg : public Dialog {
 public:
-	SearchDlg(Dialog* pParentDlg, ViewFrame* pViewFrame);
+	SearchDlg(Dialog* pParentDlg, ViewFrame& viewFrame);
 	~SearchDlg();
 
 	bool prepareFindCallbackArg(FindCallbackArg*& pFindCallbackArg);
@@ -22,7 +22,7 @@ protected:
 
 private:
 	Dialog* m_pParentDlg;
-	ViewFrame* m_pViewFrame;
+	ViewFrame& m_ViewFrame;
 	bool m_bSearching;
 
 	void enableControls(int dir, bool);
@@ -34,7 +34,8 @@ private:
 
 class GrepDlg : public Dialog {
 public:
-	GrepDlg(Dialog* pParentDlg, SearchDlg* pSearchDlg, ViewFrame* pViewFrame);
+	GrepDlg(Dialog* pParentDlg, SearchDlg* pSearchDlg,
+			ViewFrame& viewFrame);
 	~GrepDlg();
 
 	bool grep();
@@ -47,14 +48,14 @@ protected:
 private:
 	Dialog* m_pParentDlg;
 	SearchDlg* m_pSearchDlg;
-	ViewFrame* m_pViewFrame;
+	ViewFrame& m_ViewFrame;
 
 	static void GrepCallbackProc(void* arg);
 };
 
 class SearchMainDlg : public Dialog {
 public:
-	SearchMainDlg(ViewFrame* pViewFrame);
+	SearchMainDlg(ViewFrame& viewFrame);
 	~SearchMainDlg();
 
 protected:
@@ -63,7 +64,7 @@ protected:
 	BOOL dialogProcMain(UINT, WPARAM, LPARAM);
 
 private:
-	ViewFrame* m_pViewFrame;
+	ViewFrame& m_ViewFrame;
 	SearchDlg* m_pSearchDlg;
 	GrepDlg*   m_pGrepDlg;
 	bool m_bShowGrepDialog;

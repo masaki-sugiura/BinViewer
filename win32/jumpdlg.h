@@ -8,7 +8,7 @@
 
 class JumpDlg : public Dialog {
 public:
-	JumpDlg(ViewFrame* pViewFrame);
+	JumpDlg(ViewFrame& viewFrame);
 
 protected:
 	BOOL initDialog(HWND hDlg);
@@ -16,7 +16,7 @@ protected:
 	BOOL dialogProcMain(UINT, WPARAM, LPARAM);
 
 private:
-	ViewFrame* m_pViewFrame;
+	ViewFrame& m_ViewFrame;
 };
 
 #endif
