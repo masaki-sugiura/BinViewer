@@ -62,7 +62,8 @@ Renderer::setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo)
 
 DCBuffer::DCBuffer(HDC hDC, const DrawInfo* pDrawInfo)
 	: BGBuffer(),
-	  Renderer(hDC, pDrawInfo, WIDTH_PER_XPITCH, HEIGHT_PER_YPITCH)
+	  Renderer(hDC, pDrawInfo, WIDTH_PER_XPITCH, HEIGHT_PER_YPITCH),
+	  m_bHasSelectedRegion(false)
 {
 }
 
@@ -122,6 +123,8 @@ int
 DCBuffer::render()
 {
 	assert(m_pDrawInfo);
+
+	m_bHasSelectedRegion = false;
 
 	int nXPitch = m_pDrawInfo->m_FontInfo.getXPitch(),
 		nYPitch = m_pDrawInfo->m_FontInfo.getYPitch();
@@ -259,11 +262,15 @@ DCBuffer::invertOneLineRegion(int column, int lineno, int n_char)
 }
 
 void
-DCBuffer::invertRegion(filesize_t pos, int size)
+DCBuffer::invertRegion(filesize_t pos, int size, bool bSelected)
 {
+	if (m_bHasSelectedRegion == bSelected) return;
+
 	if (m_qAddress >= pos + size ||
 		m_qAddress + MAX_DATASIZE_PER_BUFFER <= pos)
 		return;
+
+	m_bHasSelectedRegion = bSelected;
 
 	int offset = (int)(pos - m_qAddress);
 	if (offset < 0) offset = 0;

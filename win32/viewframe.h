@@ -186,17 +186,14 @@ private:
 
 	void calcMaxLine()
 	{
-		m_qMaxLine = (m_pDC_Manager->getFileSize() >> 4);
-		if (m_qMaxLine <= 0) m_qMaxLine = 1;
+		m_qMaxLine = m_pDC_Manager->getFileSize() / 16;
 	}
 
 	void modifyVScrollInfo();
 	void modifyHScrollInfo(int width);
 	void bitBlt(const RECT& rcPaint);
 
-	void invertOneLineRegion(HDC hDC, int column, int lineno, int n_char);
-	void invertOneBufferRegion(DCBuffer* pDCBuffer, filesize_t pos, int size);
-	void invertRegion(filesize_t pos, int size);
+	void invertRegion(filesize_t pos, int size, bool bSelected);
 
 	static bool m_bRegisterClass;
 	static WORD m_wNextID;

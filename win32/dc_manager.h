@@ -56,12 +56,14 @@ struct DCBuffer : public BGBuffer, public Renderer {
 	int init(LargeFileReader& LFReader, filesize_t offset);
 	void uninit();
 
-	void invertRegion(filesize_t pos, int size);
+	void invertRegion(filesize_t pos, int size, bool bSelected);
 
 	void bitBlt(HDC hDC, int x, int y, int cx, int cy,
 				int sx, int sy) const;
 
 protected:
+	bool m_bHasSelectedRegion;
+
 	int render();
 
 	void invertOneLineRegion(int column, int lineno, int n_char);

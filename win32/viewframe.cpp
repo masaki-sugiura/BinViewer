@@ -111,11 +111,10 @@ ViewFrame::setCurrentLine(filesize_t newline)
 		newline = m_qMaxLine;
 	else if (newline < 0) newline = 0;
 
-	m_qCurrentLine = newline;
+	// DCBuffer の内容を表示領域に変更する
+	filesize_t buffer_top = m_pDC_Manager->setPosition(newline * 16);
 
-	filesize_t buffer_top = m_pDC_Manager->setPosition(m_qCurrentLine * 16);
-
-	m_nTopOffset = (int)(m_qCurrentLine - buffer_top / 16) * m_nLineHeight;
+	m_nTopOffset = (int)(newline - buffer_top / 16) * m_nLineHeight;
 	assert(m_nTopOffset < HEIGHT_PER_YPITCH * m_nLineHeight);
 
 	// 次のバッファとオーバーラップしているかどうか
@@ -123,6 +122,22 @@ ViewFrame::setCurrentLine(filesize_t newline)
 
 	m_pCurBuf  = m_pDC_Manager->getCurrentBuffer(0);
 	m_pNextBuf = m_pDC_Manager->getCurrentBuffer(1);
+
+	// スクロールバーの更新
+	SCROLLINFO sinfo;
+	sinfo.cbSize = sizeof(sinfo);
+	sinfo.fMask = SIF_POS;
+
+	if (!m_bMapScrollBarLinearly) {
+		// スクロールバーが native に扱えるファイルサイズを越えている
+		assert(m_qMaxLine > 0);
+		sinfo.nPos = (int)((newline << 32) / m_qMaxLine);
+	} else {
+		sinfo.nPos = (int)newline;
+	}
+	::SetScrollInfo(m_hwndView, SB_VERT, &sinfo, TRUE);
+
+	m_qCurrentLine = newline;
 }
 
 void
@@ -157,7 +172,7 @@ ViewFrame::setPosition(filesize_t pos)
 		}
 		setCurrentLine(newline);
 	}
-	modifyVScrollInfo();
+//	modifyVScrollInfo();
 
 	select(pos, 1);
 
@@ -265,14 +280,14 @@ ViewFrame::bitBlt(const RECT& rcPaint)
 }
 
 void
-ViewFrame::invertRegion(filesize_t pos, int size)
+ViewFrame::invertRegion(filesize_t pos, int size, bool bSelected)
 {
 	int min = m_pDC_Manager->getMinBufferIndex(),
 		max = m_pDC_Manager->getMaxBufferIndex();
 	for (int i = min; i <= max; i++) {
 		DCBuffer* pDCBuffer = m_pDC_Manager->getCurrentBuffer(i);
 		if (pDCBuffer) {
-			pDCBuffer->invertRegion(pos, size);
+			pDCBuffer->invertRegion(pos, size, bSelected);
 		}
 	}
 }
@@ -285,7 +300,7 @@ ViewFrame::select(filesize_t pos, int size)
 	// unselect previously selected region
 	unselect();
 
-	invertRegion(pos, size);
+	invertRegion(pos, size, true);
 
 	m_qPrevSelectedPos  = pos;
 	m_nPrevSelectedSize = size;
@@ -297,7 +312,7 @@ void
 ViewFrame::unselect()
 {
 	if (m_qPrevSelectedPos >= 0 && m_nPrevSelectedSize > 0) {
-		invertRegion(m_qPrevSelectedPos, m_nPrevSelectedSize);
+		invertRegion(m_qPrevSelectedPos, m_nPrevSelectedSize, false);
 		m_qPrevSelectedPos  = -1;
 		m_nPrevSelectedSize = 0;
 		updateWithoutHeader();
@@ -433,13 +448,6 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 {
 	if (!isLoaded()) return;
 
-	SCROLLINFO sinfo;
-	sinfo.cbSize = sizeof(SCROLLINFO);
-	sinfo.fMask = SIF_ALL;
-
-	::GetScrollInfo(m_hwndView, SB_VERT, &sinfo);
-	if (sinfo.nMax <= sinfo.nPage) return;
-
 	filesize_t qCurLine = m_qCurrentLine,
 			   qCurDiff = m_qCurrentPos - m_qCurrentLine * 16;
 
@@ -450,18 +458,8 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 	case SB_LINEDOWN:
 		if (qCurLine < m_qMaxLine) {
 			qCurLine++;
-			if (!m_bMapScrollBarLinearly) {
-				// ファイルサイズが大きい場合
-				sinfo.nPos = (qCurLine << 32) / m_qMaxLine;
-			} else {
-				sinfo.nPos++;
-			}
 			if (bEnsureVisible && qCurDiff >= 16) {
 				qCurDiff -= 16;
-			}
-		} else {
-			if (qCurLine + qCurDiff / 16 + 1 < m_qMaxLine) {
-				qCurDiff += 16;
 			}
 		}
 		break;
@@ -469,31 +467,16 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 	case SB_LINEUP:
 		if (qCurLine > 0) {
 			qCurLine--;
-			if (!m_bMapScrollBarLinearly) {
-				// ファイルサイズが大きい場合
-				sinfo.nPos = (qCurLine << 32) / m_qMaxLine;
-			} else {
-				sinfo.nPos--;
-			}
 			if (bEnsureVisible && qCurDiff < (m_nPageLineNum - 1) * 16) {
 				qCurDiff += 16;
 			}
-		} else {
-			if (qCurDiff - 16 >= 0) qCurDiff -= 16;
 		}
 		break;
 
 	case SB_PAGEDOWN:
 		if ((qCurLine += m_nPageLineNum) > m_qMaxLine) {
 			qCurLine = m_qMaxLine;
-			sinfo.nPos = sinfo.nMax;
 		} else {
-			if (!m_bMapScrollBarLinearly) {
-				// ファイルサイズが大きい場合
-				sinfo.nPos = (qCurLine << 32) / m_qMaxLine;
-			} else {
-				sinfo.nPos += sinfo.nPage;
-			}
 			if (bEnsureVisible) {
 				qCurDiff %= 16;
 			}
@@ -503,14 +486,7 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 	case SB_PAGEUP:
 		if ((qCurLine -= m_nPageLineNum) < 0) {
 			qCurLine = 0;
-			sinfo.nPos = sinfo.nMin;
 		} else {
-			if (!m_bMapScrollBarLinearly) {
-				// ファイルサイズが大きい場合
-				sinfo.nPos = (qCurLine << 32) / m_qMaxLine;
-			} else {
-				sinfo.nPos -= sinfo.nPage;
-			}
 			if (bEnsureVisible) {
 				qCurDiff = (m_nPageLineNum - 1) * 16 + qCurDiff % 16;
 			}
@@ -520,29 +496,37 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 	case SB_TOP:
 		qCurLine = 0;
 		qCurDiff = 0;
-		sinfo.nPos = sinfo.nMin;
 		break;
 
 	case SB_BOTTOM:
 		qCurLine = m_qMaxLine;
 		qCurDiff = 15;
-		sinfo.nPos = sinfo.nMax;
 		break;
 
 	case SB_THUMBTRACK:
 	case SB_THUMBPOSITION:
-		sinfo.nPos = sinfo.nTrackPos;
-		if (!m_bMapScrollBarLinearly) {
-			// ファイルサイズが大きい場合
-			qCurLine = (sinfo.nPos * m_qMaxLine) >> 32;
-		} else {
-			qCurLine = sinfo.nPos;
-		}
-		if (bEnsureVisible) {
-			if (qCurLine > m_qCurrentLine) {
-				qCurDiff %= 16;
-			} else if (qCurLine < m_qCurrentLine) {
-				qCurDiff = (m_nPageLineNum - 1) * 16 + qCurDiff % 16;
+		{
+			SCROLLINFO sinfo;
+			sinfo.cbSize = sizeof(SCROLLINFO);
+			sinfo.fMask = SIF_ALL;
+
+			::GetScrollInfo(m_hwndView, SB_VERT, &sinfo);
+			if (sinfo.nMax <= sinfo.nPage) return;
+
+			if (!m_bMapScrollBarLinearly) {
+				// ファイルサイズが大きい場合
+				qCurLine = (sinfo.nTrackPos * m_qMaxLine) >> 32;
+			} else {
+				qCurLine = sinfo.nTrackPos;
+			}
+			if (bEnsureVisible) {
+				if (qCurLine * 16 > m_qCurrentPos) {
+					qCurDiff %= 16;
+				} else if ((qCurLine + m_nPageLineNum) * 16 <= m_qCurrentPos) {
+					qCurDiff = (m_nPageLineNum - 1) * 16 + qCurDiff % 16;
+				} else {
+					qCurDiff = m_qCurrentPos - qCurLine * 16;
+				}
 			}
 		}
 		break;
@@ -550,7 +534,7 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 	default:
 		return;
 	}
-	::SetScrollInfo(m_hwndView, SB_VERT, &sinfo, TRUE);
+//	::SetScrollInfo(m_hwndView, SB_VERT, &sinfo, TRUE);
 
 	// prepare the correct BGBuffer
 	setCurrentLine(qCurLine);
@@ -687,32 +671,12 @@ ViewFrame::onJump(filesize_t pos, int size)
 
 	if (!isLoaded()) return;
 
-	SCROLLINFO sinfo;
-	sinfo.cbSize = sizeof(SCROLLINFO);
-	sinfo.fMask = SIF_ALL;
-	::GetScrollInfo(m_hwndView, SB_VERT, &sinfo);
+	if (pos < 0) pos = 0;
 
 	if (size > 1) {
 		// pos ～ pos + size のデータが可能な限り表示されることを保証する
 		setPosition(pos + size);
 	}
-
-	if (pos < 0) {
-		pos = 0;
-		sinfo.nPos = sinfo.nMin;
-	} else if (pos / 16 > m_qMaxLine) {
-		pos = m_qMaxLine * 16;
-		sinfo.nPos = sinfo.nMax;
-	} else {
-		if (!m_bMapScrollBarLinearly) {
-			// ファイルサイズが大きい場合
-			sinfo.nPos = ((pos / 16) << 32) / m_qMaxLine;
-		} else {
-			sinfo.nPos = (int)(pos / 16);
-		}
-	}
-
-	::SetScrollInfo(m_hwndView, SB_VERT, &sinfo, TRUE);
 
 	// prepare the correct BGBuffer
 	setPosition(pos);
