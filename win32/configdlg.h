@@ -24,7 +24,7 @@ public:
 	HWND getHWND() const { return m_hwndDlg; }
 	HWND getParentHWND() const { return m_hwndParent; }
 
-	virtual void applyChanges() = 0;
+	virtual bool applyChanges() = 0;
 
 protected:
 	HWND m_hwndParent, m_hwndDlg;
@@ -52,15 +52,22 @@ public:
 	void close()
 	{
 		::SendMessage(m_hwndDlg, WM_CLOSE, 0, 0);
+		m_bShown = false;
 	}
 	void show(BOOL bShow)
 	{
 		::ShowWindow(m_hwndDlg, bShow ? SW_SHOW : SW_HIDE);
 	}
 
+	bool isShown() const
+	{
+		return m_bShown;
+	}
+
 protected:
 	int m_nPageTemplateID;
 	string m_strTabText;
+	bool m_bShown;
 
 	void destroyDialog();
 };
@@ -69,7 +76,7 @@ class FontConfigPage : public ConfigPage {
 public:
 	FontConfigPage(DrawInfo* pDrawInfo);
 
-	void applyChanges();
+	bool applyChanges();
 
 protected:
 	bool m_bShowPropFonts;
@@ -99,7 +106,7 @@ class CursorConfigPage : public ConfigPage {
 public:
 	CursorConfigPage(DrawInfo* pDrawInfo);
 
-	void applyChanges();
+	bool applyChanges();
 
 protected:
 	BOOL initDialog(HWND hDlg);
@@ -113,7 +120,7 @@ public:
 
 	bool doModal(HWND hwndParent);
 
-	void applyChanges();
+	bool applyChanges();
 
 protected:
 	RECT m_rctPage;
@@ -121,6 +128,8 @@ protected:
 
 	BOOL initDialog(HWND hDlg);
 	void destroyDialog();
+
+	int getCurrentPage() const;
 
 	BOOL dialogProcMain(UINT, WPARAM, LPARAM);
 

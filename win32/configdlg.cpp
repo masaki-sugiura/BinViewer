@@ -7,6 +7,8 @@
 #include <commctrl.h>
 #include <assert.h>
 
+#define WM_USER_ENABLE_APPLY_BUTTON  (WM_USER + 1000)
+
 ConfigDialog::ConfigDialog(DrawInfo* pDrawInfo)
 	: m_hwndParent(NULL), m_hwndDlg(NULL),
 	  m_pDrawInfo(pDrawInfo)
@@ -60,7 +62,8 @@ ConfigPage::ConfigPage(DrawInfo* pDrawInfo,
 					   int nPageTemplateID, const char* pszTabText)
 	: ConfigDialog(pDrawInfo),
 	  m_nPageTemplateID(nPageTemplateID),
-	  m_strTabText(pszTabText)
+	  m_strTabText(pszTabText),
+	  m_bShown(false)
 {
 }
 
@@ -83,6 +86,8 @@ ConfigPage::create(HWND hwndParent, const RECT& rctPage)
 				   rctPage.left, rctPage.top,
 				   0, 0,
 				   SWP_NOSIZE | SWP_NOOWNERZORDER | SWP_SHOWWINDOW);
+
+	m_bShown = true;
 
 	return true;
 }
@@ -118,13 +123,39 @@ ConfigMainDlg::doModal(HWND hwndParent)
 							 (LPARAM)this);
 }
 
-void
+int
+ConfigMainDlg::getCurrentPage() const
+{
+	if (!m_hwndDlg) return -1;
+
+	HWND hwndTab = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_TAB);
+	int iItem = TabCtrl_GetCurSel(hwndTab);
+	TCITEM tcItem;
+	tcItem.mask = TCIF_PARAM;
+	tcItem.lParam = -1;
+	TabCtrl_GetItem(hwndTab, iItem, &tcItem);
+
+	assert((UINT)tcItem.lParam < CONFIG_DIALOG_PAGE_NUM);
+	assert(m_pConfigPages[tcItem.lParam]);
+
+	return tcItem.lParam;
+}
+
+bool
 ConfigMainDlg::applyChanges()
 {
 	for (int i = 0; i < CONFIG_DIALOG_PAGE_NUM; i++) {
-		if (m_pConfigPages[i])
-			m_pConfigPages[i]->applyChanges();
+		ConfigPage* pPage = m_pConfigPages[i];
+		if (pPage && pPage->isShown()) {
+			if (!pPage->applyChanges()) {
+				int pnum = getCurrentPage();
+				if (pnum >= 0) m_pConfigPages[pnum]->show(FALSE);
+				pPage->show(TRUE);
+				return false;
+			}
+		}
 	}
+	return true;
 }
 
 BOOL
@@ -186,43 +217,43 @@ ConfigMainDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case IDC_APPLY:
-			applyChanges();
+			if (HIWORD(wParam) == BN_CLICKED && applyChanges()) {
+				::SendMessage(m_hwndDlg, WM_USER_ENABLE_APPLY_BUTTON, FALSE, 0);
+			}
 			break;
 		case IDOK:
-			applyChanges();
-			// through down
+			if (HIWORD(wParam) == BN_CLICKED && applyChanges()) {
+				::SendMessage(m_hwndDlg, WM_CLOSE, 0, 0);
+			}
+			break;
 		case IDCANCEL:
-			::SendMessage(m_hwndDlg, WM_CLOSE, 0, 0);
+			if (HIWORD(wParam) == BN_CLICKED) {
+				::SendMessage(m_hwndDlg, WM_CLOSE, 0, 0);
+			}
+			break;
+		default:
 			break;
 		}
 		break;
 
 	case WM_NOTIFY:
 		if (((NMHDR*)lParam)->idFrom == IDC_CONFIG_TAB) {
-			HWND hwndTab = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_TAB);
 			NMHDR* phdr = (NMHDR*)lParam;
-			int iItem;
-			TCITEM tcItem;
-			tcItem.mask = TCIF_PARAM;
-			tcItem.lParam = -1;
+			int pnum;
 			switch (phdr->code) {
 			case TCN_SELCHANGING:
-				iItem = TabCtrl_GetCurSel(hwndTab);
-				TabCtrl_GetItem(hwndTab, iItem, &tcItem);
-				assert((UINT)tcItem.lParam < CONFIG_DIALOG_PAGE_NUM);
-				assert(m_pConfigPages[tcItem.lParam]);
-				m_pConfigPages[tcItem.lParam]->show(FALSE);
+				pnum = getCurrentPage();
+				if (pnum >= 0) m_pConfigPages[pnum]->show(FALSE);
 				break;
 			case TCN_SELCHANGE:
-				iItem = TabCtrl_GetCurSel(hwndTab);
-				TabCtrl_GetItem(hwndTab, iItem, &tcItem);
-				assert((UINT)tcItem.lParam < CONFIG_DIALOG_PAGE_NUM);
-				if (!createPage(tcItem.lParam)) {
-					::MessageBox(m_hwndDlg, "", NULL, MB_OK);
+				pnum = getCurrentPage();
+				if (pnum < 0) break;
+				if (!createPage(pnum)) {
+					::MessageBox(m_hwndDlg, "ダイアログの作成に失敗しました。",
+								 NULL, MB_OK);
 					break;
 				}
-				assert(m_pConfigPages[tcItem.lParam]);
-				m_pConfigPages[tcItem.lParam]->show(TRUE);
+				m_pConfigPages[pnum]->show(TRUE);
 				break;
 			default:
 				break;
@@ -233,6 +264,10 @@ ConfigMainDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_CLOSE:
 		::SetForegroundWindow(m_hwndParent);
 		::DestroyWindow(m_hwndDlg);
+		break;
+
+	case WM_USER_ENABLE_APPLY_BUTTON:
+		::EnableWindow(::GetDlgItem(m_hwndDlg, IDC_APPLY), wParam);
 		break;
 
 	default:
@@ -363,6 +398,10 @@ FontConfigPage::addFont(const LOGFONT& logFont, DWORD fontType)
 void
 FontConfigPage::prepareFontSize()
 {
+	HWND hwndFontSize = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_SIZE);
+	char sizebuf[8];
+	::GetWindowText(hwndFontSize, sizebuf, 7);
+
 	HWND hwndFontList = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_NAME);
 	int sel = ::SendMessage(hwndFontList, CB_GETCURSEL, 0, 0);
 	if (sel == CB_ERR) return;
@@ -374,8 +413,7 @@ FontConfigPage::prepareFontSize()
 	::SendMessage(hwndFontList, CB_GETLBTEXT, sel,
 				  (LPARAM)logFont.lfFaceName);
 
-	::SendDlgItemMessage(m_hwndDlg, IDC_CONFIG_FONT_SIZE,
-						 CB_RESETCONTENT, 0, 0);
+	::SendMessage(hwndFontSize, CB_RESETCONTENT, 0, 0);
 
 	DWORD fontType = m_mapFontName[logFont.lfFaceName];
 	if ((fontType & TRUETYPE_FONTTYPE) != 0 ||
@@ -399,12 +437,20 @@ FontConfigPage::prepareFontSize()
 		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"36.0");
 		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"48.0");
 		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"72.0");
+		::SetWindowText(hwndFontSize, sizebuf);
 	} else {
 		::EnumFontFamiliesEx(m_pDrawInfo->m_hDC,
 							 &logFont,
 							 (FONTENUMPROC)FontConfigPage::enumSpecificFontProc,
 							 (LPARAM)this,
 							 0);
+		if (sizebuf[0] != '\0') {
+			int pos = ::SendMessage(hwndFontSize, CB_FINDSTRINGEXACT,
+									-1, (LPARAM)sizebuf);
+			if (pos != CB_ERR) {
+				::SetWindowText(hwndFontSize, sizebuf);
+			}
+		}
 	}
 }
 
@@ -444,6 +490,7 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		switch (LOWORD(wParam)) {
 		case IDC_CONFIG_FONT_NAME:
 			if (HIWORD(wParam) == CBN_SELCHANGE) {
+				::SendMessage(m_hwndParent, WM_USER_ENABLE_APPLY_BUTTON, TRUE, 0);
 				prepareFontSize();
 			}
 			break;
@@ -492,9 +539,29 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return TRUE;
 }
 
-void
+bool
 FontConfigPage::applyChanges()
 {
+	char faceName[LF_FACESIZE];
+	::GetWindowText(::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_NAME),
+					faceName, LF_FACESIZE - 1);
+	if (faceName[0] == '\0') {
+		::MessageBox(m_hwndDlg, "フォント名が指定されていません。",
+					 NULL, MB_OK);
+		return false;
+	}
+	char fontSize[8];
+	::GetWindowText(::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_SIZE),
+					fontSize, 7);
+	int font_size = (int)(strtod(fontSize, NULL)
+						  * ::GetDeviceCaps(m_pDrawInfo->m_hDC, LOGPIXELSY) / 72);
+	if (font_size <= 0) {
+		::MessageBox(m_hwndDlg, "フォントサイズの指定が不正です。",
+					 NULL, MB_OK);
+		return false;
+	}
+
+	return true;
 }
 
 void
@@ -550,8 +617,9 @@ CursorConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return TRUE;
 }
 
-void
+bool
 CursorConfigPage::applyChanges()
 {
+	return true;
 }
 
