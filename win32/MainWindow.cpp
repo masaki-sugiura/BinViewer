@@ -41,6 +41,7 @@ Header::prepareDC(DrawInfo* pDrawInfo)
 	m_pDrawInfo = pHVDrawInfo;
 
 	::SelectObject(m_hDC, (HGDIOBJ)m_pDrawInfo->m_FontInfo.getFont());
+	::SetBkColor(m_hDC, pHVDrawInfo->m_tciHeader.getBkColor());
 
 	int nXPitch = m_pDrawInfo->m_FontInfo.getXPitch();
 	for (int i = 0; i < sizeof(m_anXPitch) / sizeof(m_anXPitch[0]); i++) {
@@ -122,7 +123,7 @@ MainWindow::MainWindow(HINSTANCE hInstance, LPCSTR lpszFileName)
 	m_hAccel = ::LoadAccelerators(hInstance,
 								  MAKEINTRESOURCE(IDR_KEYACCEL));
 
-	m_hWnd = ::CreateWindowEx(0,
+	m_hWnd = ::CreateWindowEx(WS_EX_CLIENTEDGE,
 							  MAINWND_CLASSNAME, "BinViewer",
 							  WS_OVERLAPPEDWINDOW,
 							  CW_USEDEFAULT, CW_USEDEFAULT,
@@ -134,6 +135,9 @@ MainWindow::MainWindow(HINSTANCE hInstance, LPCSTR lpszFileName)
 
 	if (lpszFileName) {
 		openFile(lpszFileName);
+	} else {
+		::SetWindowText(m_hWnd, "BinViewer");
+		enableMenuForOpenFile(false);
 	}
 }
 
@@ -167,22 +171,24 @@ MainWindow::onCreate(HWND hWnd)
 {
 	m_pHVDrawInfo = loadDrawInfo(hWnd);
 
-	m_Header.prepareDC(m_pHVDrawInfo.ptr());
-	m_Header.render();
-
 	RECT rctClient;
 	::GetClientRect(hWnd, &rctClient);
 
 	rctClient.top = rctClient.bottom - STATUSBAR_HEIGHT;
 
 	m_pStatusBar = new StatusBar(m_lfNotifier, hWnd, rctClient);
+	RECT rctBar;
+	m_pStatusBar->getWindowRect(rctBar);
 
 	rctClient.top = m_pHVDrawInfo->getPixelsPerLine();
-	rctClient.bottom -= STATUSBAR_HEIGHT;
+	rctClient.bottom -= (rctBar.bottom - rctBar.top);
 
 	m_pHexView = new HexView(m_lfNotifier, hWnd, rctClient, m_pHVDrawInfo.ptr());
 
 	adjustWindowSize(hWnd, rctClient);
+
+	m_Header.prepareDC(m_pHVDrawInfo.ptr());
+	m_Header.render();
 
 	// BitmapView
 	m_pBitmapViewWindow = new BitmapViewWindow(m_lfNotifier, hWnd);
@@ -196,22 +202,21 @@ MainWindow::onPaint(HWND hWnd)
 	m_Header.bitBlt(ps.hdc, ps.rcPaint.left, ps.rcPaint.top,
 					ps.rcPaint.right - ps.rcPaint.left,
 					ps.rcPaint.bottom - ps.rcPaint.top,
-					0, 0);
+					ps.rcPaint.left, ps.rcPaint.top);
 	::EndPaint(hWnd, &ps);
 }
 
 void
 MainWindow::onResize(HWND hWnd)
 {
-	RECT rctClient;
+	RECT rctClient, rctBar;
 	::GetClientRect(hWnd, &rctClient);
+	m_pStatusBar->getWindowRect(rctBar);
 
-	rctClient.top = rctClient.bottom - STATUSBAR_HEIGHT;
-	if (m_pStatusBar.ptr()) {
-		m_pStatusBar->setWindowPos(rctClient);
-	}
+	rctClient.top = rctClient.bottom - (rctBar.bottom - rctBar.top);
+	m_pStatusBar->setWindowPos(rctClient);
 
-	rctClient.bottom -= STATUSBAR_HEIGHT;
+	rctClient.bottom -= (rctBar.bottom - rctBar.top);
 	rctClient.top = m_pHVDrawInfo->getPixelsPerLine();
 	m_pHexView->setFrameRect(rctClient, true);
 }
@@ -230,12 +235,13 @@ MainWindow::onResizing(HWND hWnd, RECT* prctNew)
 					  - (rctWnd.bottom - rctWnd.top);
 //					  - STATUSBAR_HEIGHT;
 
-	rctClient.top = rctClient.bottom - STATUSBAR_HEIGHT;
-	if (m_pStatusBar.ptr()) {
-		m_pStatusBar->setWindowPos(rctClient);
-	}
+	RECT rctBar;
+	m_pStatusBar->getWindowRect(rctBar);
 
-	rctClient.bottom -= STATUSBAR_HEIGHT;
+	rctClient.top = rctClient.bottom - (rctBar.bottom - rctBar.top);
+	m_pStatusBar->setWindowPos(rctClient);
+
+	rctClient.bottom -= (rctBar.bottom - rctBar.top);
 	rctClient.top = m_pHVDrawInfo->getPixelsPerLine();
 	m_pHexView->setFrameRect(rctClient, true);
 }
@@ -298,7 +304,7 @@ MainWindow::loadDrawInfo(HWND hWnd)
 											 DEFAULT_FG_COLOR_STRING, DEFAULT_BK_COLOR_STRING,
 											 DEFAULT_FG_COLOR_HEADER, DEFAULT_BK_COLOR_HEADER,
 											 CARET_STATIC, WHEEL_AS_ARROW_KEYS);
-	::ReleaseDC(hWnd, hDC);
+//	::ReleaseDC(hWnd, hDC);
 
 	return pDrawInfo;
 }

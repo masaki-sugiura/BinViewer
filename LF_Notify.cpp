@@ -27,6 +27,14 @@ LF_Acceptor::LF_Acceptor(LF_Notifier& lfNotifier)
 LF_Acceptor::~LF_Acceptor()
 {
 	GetLock lock(m_lckData);
+
+	LargeFileReader* pLFReader;
+	tryLockReader(&pLFReader, INFINITE);
+
+	if (pLFReader) {
+		unloadFile();
+	}
+
 	m_lfNotifier.unregisterAcceptor(this);
 }
 
@@ -44,8 +52,16 @@ LF_Acceptor::unloadFile()
 	onUnloadFile();
 }
 
+void
+LF_Acceptor::setCursorPos(filesize_t pos)
+{
+	GetLock lock(m_lckData);
+	onSetCursorPos(pos);
+}
+
 LF_Notifier::LF_Notifier()
-	: m_pLFReader(NULL)
+	: m_pLFReader(NULL),
+	  m_qCursorPos(-1)
 {
 	// nothing to do.
 }
@@ -74,9 +90,13 @@ LF_Notifier::releaseReader(LargeFileReader* pLFReader)
 bool
 LF_Notifier::loadFile(LargeFileReader* pLFReader)
 {
-	GetLock lock(m_lckReader);
+	assert(pLFReader);
+
+	GetLock lockReader(m_lckReader);
+	GetLock lockCursor(m_lckCursor);
 
 	m_pLFReader = pLFReader;
+	m_qCursorPos = 0;
 
 	for (LFAList::iterator itr = m_lstLFAcceptor.begin();
 		 itr != m_lstLFAcceptor.end();
@@ -84,6 +104,7 @@ LF_Notifier::loadFile(LargeFileReader* pLFReader)
 		if (!(*itr)->loadFile()) {
 			return false;
 		}
+		(*itr)->setCursorPos(0);
 	}
 
 	return true;
@@ -101,6 +122,22 @@ LF_Notifier::unloadFile()
 	}
 
 	m_pLFReader = NULL;
+}
+
+void
+LF_Notifier::setCursorPos(filesize_t newpos)
+{
+	assert(newpos >= 0);
+
+	GetLock lock(m_lckCursor);
+
+	m_qCursorPos = newpos;
+
+	for (LFAList::iterator itr = m_lstLFAcceptor.begin();
+		 itr != m_lstLFAcceptor.end();
+		 ++itr) {
+		(*itr)->setCursorPos(newpos);
+	}
 }
 
 bool

@@ -25,6 +25,7 @@ public:
 	bool prepareDC(DrawInfo* pDrawInfo);
 	int render();
 	int setCursorByCoordinate(int x, int y);
+	int getPositionByCoordinate(int x, int y) const;
 
 protected:
 	BV_DrawInfo* m_pBVDrawInfo;

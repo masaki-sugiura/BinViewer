@@ -194,6 +194,19 @@ _data_end:
 int
 HV_DCBuffer::setCursorByCoordinate(int x, int y)
 {
+	int offset = getPositionByCoordinate(x, y);
+	if (offset >= 0) {
+		// データ領域と文字列領域にカーソルをセットする
+//		invertRegionInBuffer(offset, 1);
+		setCursor(offset);
+	}
+
+	return offset;
+}
+
+int
+HV_DCBuffer::getPositionByCoordinate(int x, int y) const
+{
 	// バッファのデータは不正
 	if (m_qAddress < 0) {
 		return -1;
@@ -229,10 +242,6 @@ HV_DCBuffer::setCursorByCoordinate(int x, int y)
 	if (column < 0) {
 		return -1;
 	}
-
-	// データ領域と文字列領域にカーソルをセットする
-//	invertRegionInBuffer(column + line * 16, 1);
-	setCursor(column + line * 16);
 
 	return column + line * 16;
 }

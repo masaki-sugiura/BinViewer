@@ -56,6 +56,12 @@ StatusBar::onUnloadFile()
 }
 
 void
+StatusBar::onSetCursorPos(filesize_t pos)
+{
+	setStatus(pos);
+}
+
+void
 StatusBar::setWindowPos(const RECT& rctBar)
 {
 	::SetWindowPos(m_hwndStatusBar, 0,
@@ -63,6 +69,12 @@ StatusBar::setWindowPos(const RECT& rctBar)
 				   rctBar.right - rctBar.left,
 				   rctBar.bottom - rctBar.top,
 				   SWP_NOZORDER);
+}
+
+void
+StatusBar::getWindowRect(RECT& rctWindow)
+{
+	::GetWindowRect(m_hwndStatusBar, &rctWindow);
 }
 
 void

@@ -66,6 +66,7 @@ public:
 
 	bool onLoadFile();
 	void onUnloadFile();
+	void onSetCursorPos(filesize_t pos);
 
 	// View クラスが投げる例外の基底クラス
 	class ViewException {};

@@ -107,6 +107,14 @@ View::onUnloadFile()
 }
 
 void
+View::onSetCursorPos(filesize_t pos)
+{
+	ensureVisible(pos, false);
+	m_pDCManager->setCursor(pos);
+	redrawView();
+}
+
+void
 View::initScrollInfo()
 {
 	m_smHorz.setInfo(m_pDCManager->width(),
@@ -126,7 +134,7 @@ View::ensureVisible(filesize_t pos, bool bRedraw)
 {
 	filesize_t newline = pos / m_nBytesPerLine;
 	filesize_t line_diff = newline - m_smVert.getCurrentPos();
-	filesize_t valid_page_line_num = m_smVert.getGripWidth();
+	filesize_t valid_page_line_num = (m_pDCManager->getViewHeight() - 1) / m_pDrawInfo->getPixelsPerLine();
 	if (line_diff < 0) {
 		m_smVert.setPosition(newline);
 		setCurrentLine(newline, bRedraw);
@@ -190,7 +198,7 @@ View::adjustWindowRect(RECT& rctFrame)
 //	rctFrame.left = rctFrame.top = 0;
 	rctFrame.right = rctFrame.left + m_pDCManager->width() + x_diff;
 	rctFrame.bottom = rctFrame.top
-					+ ((rctClient.bottom - rctClient.top + nPixelsPerLine - 1) / nPixelsPerLine)
+					+ ((rctClient.bottom + nPixelsPerLine - 1) / nPixelsPerLine)
 					   * nPixelsPerLine
 					+ y_diff;
 }
@@ -266,15 +274,19 @@ void
 View::onVScroll(WPARAM wParam, LPARAM lParam)
 {
 	// 表示領域の更新
-	setCurrentLine(m_smVert.onScroll(LOWORD(wParam)), true);
+	if (wParam != SB_ENDSCROLL) {
+		setCurrentLine(m_smVert.onScroll(LOWORD(wParam)), true);
+	}
 }
 
 void
 View::onHScroll(WPARAM wParam, LPARAM lParam)
 {
 	// 表示領域の更新
-	m_pDCManager->setViewPositionX(m_smHorz.onScroll(LOWORD(wParam)));
-	redrawView();
+	if (wParam != SB_ENDSCROLL) {
+		m_pDCManager->setViewPositionX(m_smHorz.onScroll(LOWORD(wParam)));
+		redrawView();
+	}
 }
 
 void
@@ -282,9 +294,10 @@ View::onLButtonDown(WPARAM wParam, LPARAM lParam)
 {
 	if (!m_pDCManager->isLoaded()) return;
 
-	m_pDCManager->setCursorByViewCoordinate(MAKEPOINTS(lParam));
+	filesize_t pos = m_pDCManager->getPositionByViewCoordinate(MAKEPOINTS(lParam));
+	if (pos < 0) return;
 
-	redrawView();
+	m_lfNotifier.setCursorPos(pos);
 }
 
 LRESULT CALLBACK

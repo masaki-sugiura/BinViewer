@@ -71,6 +71,18 @@ BV_DCBuffer::render()
 int
 BV_DCBuffer::setCursorByCoordinate(int x, int y)
 {
+	int offset = getPositionByCoordinate(x, y);
+	if (offset >= 0) {
+//		invertRegionInBuffer(offset, 1);
+		setCursor(offset);
+	}
+
+	return offset;
+}
+
+int
+BV_DCBuffer::getPositionByCoordinate(int x, int y) const
+{
 	// バッファのデータは不正
 	if (m_qAddress < 0) {
 		return -1;
@@ -78,12 +90,7 @@ BV_DCBuffer::setCursorByCoordinate(int x, int y)
 
 	assert(m_pBVDrawInfo);
 
-	int offset = x + y * m_pBVDrawInfo->getWidth();
-
-//	invertRegionInBuffer(offset, 1);
-	setCursor(offset);
-
-	return offset;
+	return x + y * m_pBVDrawInfo->getWidth();
 }
 
 void

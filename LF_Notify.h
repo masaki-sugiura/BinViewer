@@ -24,14 +24,18 @@ public:
 	bool loadFile(LargeFileReader* pLFReader);
 	void unloadFile();
 
+	filesize_t getCursorPos() const { return m_qCursorPos; }
+	void setCursorPos(filesize_t newpos);
+
 	bool registerAcceptor(LF_Acceptor* pLFAcceptor);
 	void unregisterAcceptor(LF_Acceptor* pLFAcceptor);
 
 private:
 	LargeFileReader* m_pLFReader;
+	filesize_t m_qCursorPos;
 	typedef list<LF_Acceptor*> LFAList;
 	LFAList m_lstLFAcceptor;
-	Lock m_lckReader;
+	Lock m_lckReader, m_lckCursor;
 };
 
 class LF_Acceptor {
@@ -52,6 +56,8 @@ public:
 	virtual bool onLoadFile() = 0;
 	virtual void onUnloadFile() = 0;
 
+	virtual void onSetCursorPos(filesize_t pos) = 0;
+
 protected:
 	LF_Notifier& m_lfNotifier;
 
@@ -60,6 +66,7 @@ private:
 
 	bool loadFile();
 	void unloadFile();
+	void setCursorPos(filesize_t pos);
 
 	friend LF_Notifier;
 };

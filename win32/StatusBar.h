@@ -16,8 +16,10 @@ public:
 
 	bool onLoadFile();
 	void onUnloadFile();
+	void onSetCursorPos(filesize_t pos);
 
 	void setWindowPos(const RECT& rctBar);
+	void getWindowRect(RECT& rctWindow);
 
 private:
 	HWND m_hwndParent, m_hwndStatusBar;

@@ -301,20 +301,33 @@ DC_Manager::bitBlt(HDC hdcDst, const RECT& rcPaint)
 	}
 }
 
-void
+filesize_t
 DC_Manager::setCursorByViewCoordinate(const POINTS& pt)
 {
 	filesize_t qYCoord = m_qYOffset + pt.y;
 	filesize_t qByteOffset = (qYCoord / m_nHeight) * m_nBufSize;
 	DCBuffer* pCurBuf = getBuffer(qByteOffset);
-	if (!pCurBuf) return;
+	if (!pCurBuf) return -1;
 
 	// 既にカーソルを持っていた場合、それを一度消去
 	setCursor(-1);
 
 	int offset = pCurBuf->setCursorByCoordinate(pt.x, (int)(qYCoord % m_nHeight));
 
-	m_qCursorPos = qByteOffset + offset;
+	return m_qCursorPos = qByteOffset + offset;
+}
+
+filesize_t
+DC_Manager::getPositionByViewCoordinate(const POINTS& pt)
+{
+	filesize_t qYCoord = m_qYOffset + pt.y;
+	filesize_t qByteOffset = (qYCoord / m_nHeight) * m_nBufSize;
+	DCBuffer* pCurBuf = getBuffer(qByteOffset);
+	if (!pCurBuf) return -1;
+
+	int offset = pCurBuf->getPositionByCoordinate(pt.x, (int)(qYCoord % m_nHeight));
+
+	return qByteOffset + offset;
 }
 
 void
@@ -325,7 +338,7 @@ DC_Manager::setCursor(filesize_t pos)
 	filesize_t fsize = getFileSize();
 	if (fsize <= pos) return;
 
-	for (int i = getMinBufferIndex(); i < getMaxBufferIndex(); i++) {
+	for (int i = getMinBufferIndex(); i <= getMaxBufferIndex(); i++) {
 		DCBuffer* pBuf = static_cast<DCBuffer*>(m_rbBuffers.elementAt(i));
 		if (!pBuf || pBuf->m_qAddress == -1) continue;
 		// 既にカーソルを持っていた場合、それを一度消去
@@ -335,7 +348,7 @@ DC_Manager::setCursor(filesize_t pos)
 		if (pBuf->m_qAddress <= pos &&
 			pos < pBuf->m_qAddress + pBuf->m_nDataSize) {
 			pBuf->setCursor((int)(pos - pBuf->m_qAddress));
-			break;
+//			break;
 		}
 	}
 	m_qCursorPos = pos;

@@ -78,6 +78,7 @@ struct DCBuffer : public BGBuffer, public Renderer {
 
 	// return: cursor offset bytes
 	virtual int setCursorByCoordinate(int x, int y) = 0;
+	virtual int getPositionByCoordinate(int x, int y) const = 0;
 
 protected:
 	int  m_nCursorPos;
@@ -140,7 +141,8 @@ public:
 		setViewPosition(nXOffset, qYOffset);
 	}
 
-	void setCursorByViewCoordinate(const POINTS& pt);
+	filesize_t setCursorByViewCoordinate(const POINTS& pt);
+	filesize_t getPositionByViewCoordinate(const POINTS& pt);
 
 #ifdef _DEBUG
 	virtual void bitBlt(HDC hDCDst, const RECT& rcDst);
