@@ -285,7 +285,7 @@ OnCreate(HWND hWnd)
 	rctClient.bottom -= STATUSBAR_HEIGHT;
 
 	// create default DrawInfo
-	g_pDrawInfo = new DrawInfo(NULL, DEFAULT_FONT_SIZE,
+	g_pDrawInfo = new DrawInfo(NULL, DEFAULT_FONT_SIZE, "FixedSys", false,
 							   DEFAULT_FG_COLOR_ADDRESS, DEFAULT_BK_COLOR_ADDRESS,
 							   DEFAULT_FG_COLOR_DATA, DEFAULT_BK_COLOR_DATA,
 							   DEFAULT_FG_COLOR_STRING, DEFAULT_BK_COLOR_STRING,

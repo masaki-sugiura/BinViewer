@@ -165,19 +165,19 @@ BEGIN
                     CBS_SORT | WS_VSCROLL | WS_TABSTOP
     CONTROL         "プロポーショナルフォントも表示(&P)",
                     IDC_CONFIG_SHOW_PROPFONT,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,7,52,112,10
+                    WS_TABSTOP,7,67,112,10
     LISTBOX         IDC_PART_LIST,126,31,101,65,LBS_SORT | 
                     LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
     CONTROL         "太字にする(&H)",IDC_CONFIG_FONT_BOLD,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,126,104,59,10
-    PUSHBUTTON      "",IDC_CONFIG_FONT_FGCOLOR,176,119,50,14,BS_BITMAP | 
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,51,59,10
+    PUSHBUTTON      "",IDC_CONFIG_FONT_FGCOLOR,210,109,16,16,BS_ICON | 
                     BS_NOTIFY
-    PUSHBUTTON      "",IDC_CONFIG_FONT_BGCOLOR,176,138,50,14,BS_BITMAP | 
+    PUSHBUTTON      "",IDC_CONFIG_FONT_BKCOLOR,210,130,16,16,BS_ICON | 
                     BS_NOTIFY
-    GROUPBOX        "サンプル",IDC_SAMPLE_VIEW,7,65,113,93
+    GROUPBOX        "サンプル",IDC_SAMPLE_VIEW,7,83,113,75
     GROUPBOX        "フォントの個別設定",IDC_STATIC,122,7,111,151
-    LTEXT           "前景色(&F)：",IDC_STATIC,126,122,35,8
-    LTEXT           "背景色(&B)：",IDC_STATIC,126,141,35,8
+    LTEXT           "フォントの色(&F)：",IDC_STATIC,126,113,74,8
+    LTEXT           "背景色(&B)：",IDC_STATIC,126,134,73,8
     LTEXT           "フォント変更箇所(&C)：",IDC_STATIC,126,19,100,8
     LTEXT           "フォント名(&N)：",IDC_STATIC,7,7,45,8
     LTEXT           "フォントサイズ(&S)：",IDC_STATIC,7,35,55,8

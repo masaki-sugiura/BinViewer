@@ -52,7 +52,10 @@ ViewFrame::ViewFrame(HWND hwndParent, const RECT& rct,
 	m_hDC = ::GetDC(m_hwndView);
 
 	m_pDrawInfo->m_hDC = m_hDC;
-	m_pDrawInfo->m_FontInfo.setFont(m_hDC, m_pDrawInfo->m_nFontSize);
+	m_pDrawInfo->m_FontInfo.setFont(m_hDC,
+									m_pDrawInfo->m_FontInfo.getFontSize(),
+									m_pDrawInfo->m_FontInfo.getFaceName(),
+									m_pDrawInfo->m_FontInfo.isBoldFace());
 
 	initParams();
 

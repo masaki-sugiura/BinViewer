@@ -292,55 +292,102 @@ FontConfigPage::FontConfigPage(DrawInfo* pDrawInfo)
 BOOL
 FontConfigPage::initDialog(HWND hDlg)
 {
-	if (!ConfigPage::initDialog(hDlg)) return FALSE;
+	if (!ConfigPage::initDialog(hDlg) ||
+		!initFontConfig()) return FALSE;
 
-	prepareFontList();
+	prepareFontList(m_pDrawInfo->m_FontInfo.isProportional());
 
-	char faceName[LF_FACESIZE];
-	faceName[0] = '\0';
-	if (::GetTextFace(m_pDrawInfo->m_hDC, LF_FACESIZE, faceName)) {
-		HWND hwndFontList = ::GetDlgItem(hDlg, IDC_CONFIG_FONT_NAME);
-		int pos = ::SendMessage(hwndFontList,
-								CB_FINDSTRINGEXACT,
-								-1, (LPARAM)faceName);
-		if (pos != CB_ERR) {
-			::SendMessage(hwndFontList, CB_SETCURSEL,
-						  pos, 0);
+	HWND hwndFontList = ::GetDlgItem(hDlg, IDC_CONFIG_FONT_NAME);
+	int pos = ::SendMessage(hwndFontList,
+							CB_FINDSTRINGEXACT,
+							-1,
+							(LPARAM)m_FontConfig.m_pszFontFace);
+	if (pos == CB_ERR) return FALSE;
 
-			prepareFontSize();
+	::SendMessage(hwndFontList, CB_SETCURSEL, pos, 0);
 
-			TEXTMETRIC tm;
-			::GetTextMetrics(m_pDrawInfo->m_hDC, &tm);
-			char buf[8];
-			get_font_pt_from_pixel(m_pDrawInfo->m_hDC, tm.tmHeight, buf);
-			HWND hwndFontSize = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_SIZE);
-			int pos = ::SendMessage(hwndFontSize, CB_FINDSTRINGEXACT,
-									(WPARAM)-1, (LPARAM)buf);
-			if (pos != CB_ERR) {
-				::SendMessage(hwndFontSize, CB_SETCURSEL, pos, 0);
-			} else {
-				::SetWindowText(hwndFontSize, buf);
-			}
-		}
+	if (m_pDrawInfo->m_FontInfo.isProportional())
+		::CheckDlgButton(hDlg, IDC_CONFIG_SHOW_PROPFONT, BST_CHECKED);
+
+	prepareFontSize();
+
+	TEXTMETRIC tm;
+	::GetTextMetrics(m_pDrawInfo->m_hDC, &tm);
+	char buf[8];
+	get_font_pt_from_pixel(m_pDrawInfo->m_hDC, tm.tmHeight, buf);
+	HWND hwndFontSize = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_SIZE);
+	pos = ::SendMessage(hwndFontSize, CB_FINDSTRINGEXACT,
+						(WPARAM)-1, (LPARAM)buf);
+	if (pos != CB_ERR) {
+		::SendMessage(hwndFontSize, CB_SETCURSEL, pos, 0);
+	} else {
+		::SetWindowText(hwndFontSize, buf);
 	}
 
 	HWND hwndList = ::GetDlgItem(hDlg, IDC_PART_LIST);
 
-	::SendMessage(hwndList, LB_INSERTSTRING, 0, (LPARAM)"ヘッダ");
-	::SendMessage(hwndList, LB_INSERTSTRING, 1, (LPARAM)"アドレス");
-	::SendMessage(hwndList, LB_INSERTSTRING, 2, (LPARAM)"データ");
-	::SendMessage(hwndList, LB_INSERTSTRING, 3, (LPARAM)"文字表示");
+	::SendMessage(hwndList, LB_INSERTSTRING,
+				  CC_HEADER, (LPARAM)"ヘッダ");
+	::SendMessage(hwndList, LB_INSERTSTRING,
+				  CC_ADDRESS, (LPARAM)"アドレス");
+	::SendMessage(hwndList, LB_INSERTSTRING,
+				  CC_DATA, (LPARAM)"データ");
+	::SendMessage(hwndList, LB_INSERTSTRING,
+				  CC_STRING, (LPARAM)"文字表示");
+
+	m_icFgColor.m_hIcon = NULL;
+	m_icBkColor.m_hIcon = NULL;
 
 	return TRUE;
 }
 
 void
-FontConfigPage::prepareFontList()
+FontConfigPage::destroyDialog()
 {
-	m_bShowPropFonts
-		= ::SendMessage(::GetDlgItem(m_hwndDlg, IDC_CONFIG_SHOW_PROPFONT),
-						BM_GETCHECK,
-						0, 0) == BST_CHECKED;
+	if (m_icFgColor.m_hIcon) {
+		::DestroyIcon(m_icFgColor.m_hIcon);
+		::DestroyIcon(m_icBkColor.m_hIcon);
+		::DeleteObject(m_icFgColor.m_hbmColor);
+		::DeleteObject(m_icFgColor.m_hbmMask);
+		::DeleteObject(m_icBkColor.m_hbmColor);
+		::DeleteObject(m_icBkColor.m_hbmMask);
+	}
+}
+
+bool
+FontConfigPage::initFontConfig()
+{
+	lstrcpy(m_FontConfig.m_pszFontFace, m_pDrawInfo->m_FontInfo.getFaceName());
+	m_FontConfig.m_nFontSize = m_pDrawInfo->m_FontInfo.getFontSize();
+	m_FontConfig.m_bBoldFace = m_pDrawInfo->m_FontInfo.isBoldFace();
+
+	m_FontConfig.m_ColorConfig[CC_HEADER].m_crFgColor
+		= m_pDrawInfo->m_tciHeader.getFgColor();
+	m_FontConfig.m_ColorConfig[CC_HEADER].m_crBkColor
+		= m_pDrawInfo->m_tciHeader.getBkColor();
+
+	m_FontConfig.m_ColorConfig[CC_ADDRESS].m_crFgColor
+		= m_pDrawInfo->m_tciAddress.getFgColor();
+	m_FontConfig.m_ColorConfig[CC_ADDRESS].m_crBkColor
+		= m_pDrawInfo->m_tciAddress.getBkColor();
+
+	m_FontConfig.m_ColorConfig[CC_DATA].m_crFgColor
+		= m_pDrawInfo->m_tciData.getFgColor();
+	m_FontConfig.m_ColorConfig[CC_DATA].m_crBkColor
+		= m_pDrawInfo->m_tciData.getBkColor();
+
+	m_FontConfig.m_ColorConfig[CC_STRING].m_crFgColor
+		= m_pDrawInfo->m_tciString.getFgColor();
+	m_FontConfig.m_ColorConfig[CC_STRING].m_crBkColor
+		= m_pDrawInfo->m_tciString.getBkColor();
+
+	return true;
+}
+
+void
+FontConfigPage::prepareFontList(bool bShowPropFonts)
+{
+	m_bShowPropFonts = bShowPropFonts;
 
 	::SendMessage(::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_NAME),
 				  CB_RESETCONTENT,
@@ -504,7 +551,11 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 					::SendMessage(hwndFontList, CB_GETLBTEXT,
 								  sel, (LPARAM)faceName);
 				}
-				prepareFontList();
+				bool bShowPropFonts
+					= ::SendMessage(::GetDlgItem(m_hwndDlg, IDC_CONFIG_SHOW_PROPFONT),
+									BM_GETCHECK,
+									0, 0) == BST_CHECKED;
+				prepareFontList(bShowPropFonts);
 				if (sel != CB_ERR) {
 					int pos = ::SendMessage(hwndFontList,
 											CB_FINDSTRINGEXACT,
@@ -517,17 +568,80 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			}
 			break;
 		case IDC_PART_LIST:
+			if (HIWORD(wParam) == LBN_SELCHANGE) {
+				int pos = ::SendDlgItemMessage(m_hwndDlg, IDC_PART_LIST,
+											   LB_GETCURSEL, 0, 0);
+				if (pos != LB_ERR) {
+					selectFontPageList(pos);
+				}
+			}
 			break;
 		case IDC_CONFIG_FONT_BOLD:
 			break;
 		case IDC_CONFIG_FONT_FGCOLOR:
+			if (HIWORD(wParam) == BN_CLICKED) {
+				int pos = ::SendDlgItemMessage(m_hwndDlg, IDC_PART_LIST,
+											   LB_GETCURSEL, 0, 0);
+				if (pos != LB_ERR) {
+					if (chooseColor(m_FontConfig.m_ColorConfig[pos].m_crFgColor))
+						selectFontPageList(pos);
+				}
+			}
 			break;
-		case IDC_CONFIG_FONT_BGCOLOR:
+		case IDC_CONFIG_FONT_BKCOLOR:
+			if (HIWORD(wParam) == BN_CLICKED) {
+				int pos = ::SendDlgItemMessage(m_hwndDlg, IDC_PART_LIST,
+											   LB_GETCURSEL, 0, 0);
+				if (pos != LB_ERR) {
+					if (chooseColor(m_FontConfig.m_ColorConfig[pos].m_crBkColor))
+						selectFontPageList(pos);
+				}
+			}
 			break;
 		default:
 			break;
 		}
 		break;
+
+#if 0
+	case WM_DRAWITEM:
+		{
+			LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT)lParam;
+			if (lpdis->itemAction != ODA_DRAWENTIRE) break;
+
+			HWND hwndButton = ::GetDlgItem(m_hwndDlg, lpdis->CtlID);
+			RECT rctClient, rctPaint;
+			::GetClientRect(hwndButton, &rctClient);
+			rctClient.left   += 6;
+			rctClient.right  -= 6;
+			rctClient.top    += 3;
+			rctClient.bottom -= 3;
+			if (!::IntersectRect(&rctPaint, &rctClient, &lpdis->rcItem))
+				break;
+
+			int pos = ::SendDlgItemMessage(m_hwndDlg, IDC_PART_LIST,
+										   LB_GETCURSEL, 0, 0);
+			COLORREF crBrush = RGB(255, 255, 255);
+			if (pos != LB_ERR) {
+				switch (lpdis->CtlID) {
+				case IDC_CONFIG_FONT_FGCOLOR:
+					crBrush = m_FontConfig.m_ColorConfig[pos].m_crFgColor;
+					break;
+				case IDC_CONFIG_FONT_BKCOLOR:
+					crBrush = m_FontConfig.m_ColorConfig[pos].m_crBkColor;
+					break;
+				default:
+					assert(0);
+					break;
+				}
+			}
+
+			HBRUSH hBrush = ::CreateSolidBrush(crBrush);
+			::FillRect(lpdis->hDC, &rctPaint, hBrush);
+			::DeleteObject(hBrush);
+		}
+		break;
+#endif
 
 	case WM_NOTIFY:
 		break;
@@ -569,8 +683,80 @@ FontConfigPage::selectFontPageList(int index)
 {
 	assert(index >= 0 && index < 4);
 
-	HWND hwndFontName = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_NAME);
-	
+	RECT rctIcon;
+	rctIcon.left = rctIcon.top = 0;
+	rctIcon.right = rctIcon.bottom = 16;
+
+	HDC hDC = ::GetDC(m_hwndDlg);
+
+	HDC hCDC = ::CreateCompatibleDC(hDC);
+
+	if (!m_icFgColor.m_hIcon) {
+		m_icFgColor.m_hbmColor = ::CreateCompatibleBitmap(hDC, 16, 16);
+		m_icFgColor.m_hbmMask  = ::CreateCompatibleBitmap(hDC, 16, 16);
+		m_icBkColor.m_hbmColor = ::CreateCompatibleBitmap(hDC, 16, 16);
+		m_icBkColor.m_hbmMask  = ::CreateCompatibleBitmap(hDC, 16, 16);
+		::SelectObject(hCDC, m_icFgColor.m_hbmMask);
+		HBRUSH hbrMask = ::CreateSolidBrush(RGB(0, 0, 0));
+		::FillRect(hCDC, &rctIcon, hbrMask);
+		::SelectObject(hCDC, m_icBkColor.m_hbmMask);
+		::FillRect(hCDC, &rctIcon, hbrMask);
+		::DeleteObject(hbrMask);
+	} else {
+		::DestroyIcon(m_icFgColor.m_hIcon);
+		::DestroyIcon(m_icBkColor.m_hIcon);
+	}
+	::ReleaseDC(m_hwndDlg, hDC);
+
+	::SelectObject(hCDC, m_icFgColor.m_hbmColor);
+
+	HBRUSH hBrush = ::CreateSolidBrush(m_FontConfig.m_ColorConfig[index].m_crFgColor);
+	::FillRect(hCDC, &rctIcon, hBrush);
+	::DeleteObject(hBrush);
+	hBrush = ::CreateSolidBrush(m_FontConfig.m_ColorConfig[index].m_crBkColor);
+	::SelectObject(hCDC, m_icBkColor.m_hbmColor);
+	::FillRect(hCDC, &rctIcon, hBrush);
+	::DeleteObject(hBrush);
+
+	::DeleteDC(hCDC);
+
+	ICONINFO iconInfo;
+	iconInfo.fIcon = TRUE;
+	iconInfo.hbmColor = m_icFgColor.m_hbmColor;
+	iconInfo.hbmMask  = m_icFgColor.m_hbmMask;
+	m_icFgColor.m_hIcon = ::CreateIconIndirect(&iconInfo);
+	iconInfo.hbmColor = m_icBkColor.m_hbmColor;
+	iconInfo.hbmMask  = m_icBkColor.m_hbmMask;
+	m_icBkColor.m_hIcon = ::CreateIconIndirect(&iconInfo);
+
+	::SendDlgItemMessage(m_hwndDlg, IDC_CONFIG_FONT_FGCOLOR,
+						 BM_SETIMAGE, IMAGE_ICON,
+						 (LPARAM)m_icFgColor.m_hIcon);
+	::SendDlgItemMessage(m_hwndDlg, IDC_CONFIG_FONT_BKCOLOR,
+						 BM_SETIMAGE, IMAGE_ICON,
+						 (LPARAM)m_icBkColor.m_hIcon);
+}
+
+bool
+FontConfigPage::chooseColor(COLORREF& cref)
+{
+	CHOOSECOLOR cc;
+
+	COLORREF cref_user[16];
+	::ZeroMemory(cref_user, sizeof(cref_user));
+
+	::ZeroMemory(&cc, sizeof(cc));
+	cc.lStructSize = sizeof(cc);
+	cc.hwndOwner = m_hwndDlg;
+	cc.rgbResult = cref;
+	cc.lpCustColors = cref_user;
+	cc.Flags = CC_ANYCOLOR | CC_RGBINIT;
+
+	if (::ChooseColor(&cc)) {
+		cref = cc.rgbResult;
+		return true;
+	}
+	return false;
 }
 
 CursorConfigPage::CursorConfigPage(DrawInfo* pDrawInfo)

@@ -23,10 +23,20 @@ TextColorInfo::setColor(COLORREF crFgColor, COLORREF crBkColor)
 	m_hbrBackground = ::CreateSolidBrush(crBkColor);
 }
 
-FontInfo::FontInfo(HDC hDC, int fontsize)
+FontInfo::FontInfo(HDC hDC, int fontsize,
+				   const char* faceName, bool bBoldFace)
 	: m_hFont(NULL)
 {
-	if (hDC) setFont(hDC, fontsize);
+	if (hDC) {
+		setFont(hDC, fontsize, faceName, bBoldFace);
+	} else {
+		m_nFontSize = fontsize;
+		if (faceName)
+			lstrcpy(m_pszFontFace, faceName);
+		else
+			m_pszFontFace[0] = '\0';
+		m_bBoldFace = bBoldFace;
+	}
 }
 
 FontInfo::~FontInfo()
@@ -35,17 +45,16 @@ FontInfo::~FontInfo()
 }
 
 void
-FontInfo::setFont(HDC hDC, int fontsize)
+FontInfo::setFont(HDC hDC, int fontsize,
+				  const char* faceName, bool bBoldFace)
 {
-	if (m_hFont != NULL) ::DeleteObject(m_hFont);
-
 	// フォントの生成
 	LOGFONT lfont;
 	lfont.lfHeight = - MulDiv(fontsize, GetDeviceCaps(hDC, LOGPIXELSY), 72);
 	lfont.lfWidth  = 0;
 	lfont.lfEscapement = 0;
 	lfont.lfOrientation = 0;
-	lfont.lfWeight = FW_NORMAL;
+	lfont.lfWeight = bBoldFace ? FW_BOLD : FW_NORMAL;
 	lfont.lfItalic = FALSE;
 	lfont.lfUnderline = FALSE;
 	lfont.lfStrikeOut = FALSE;
@@ -53,38 +62,50 @@ FontInfo::setFont(HDC hDC, int fontsize)
 	lfont.lfOutPrecision = OUT_DEFAULT_PRECIS;
 	lfont.lfClipPrecision = CLIP_DEFAULT_PRECIS;
 	lfont.lfQuality = DEFAULT_QUALITY;
-	lfont.lfPitchAndFamily = FIXED_PITCH | FF_DONTCARE;
-//	lfont.lfFaceName[0] = '\0';
-	lstrcpy(lfont.lfFaceName, "FixedSys");
+	lfont.lfPitchAndFamily = /* FIXED_PITCH | */ FF_DONTCARE;
+	if (faceName)
+		lstrcpy(lfont.lfFaceName, faceName);
+	else
+		lfont.lfFaceName[0] = '\0';
 
-	m_hFont = ::CreateFontIndirect(&lfont);
-	if (!m_hFont) throw InvalidFontError();
+	HFONT hFont = ::CreateFontIndirect(&lfont);
+	if (!hFont) throw InvalidFontError();
 
-	HGDIOBJ orgFont = ::SelectObject(hDC, m_hFont);
+	HGDIOBJ orgFont = ::SelectObject(hDC, hFont);
 
-	// "M" の横幅を元に文字間隔を設定
-	SIZE tsize;
-	if (!::GetTextExtentPoint32(hDC, "M", 1, &tsize)) {
+	// facename, textmetrics を取得
+	TEXTMETRIC tm;
+	if (!::GetTextFace(hDC, LF_FACESIZE, lfont.lfFaceName) ||
+		!::GetTextMetrics(hDC, &tm)) {
 		::SelectObject(hDC, orgFont);
+		::DeleteObject(hFont);
 		throw InvalidFontError();
 	}
-//	::SelectObject(hDC, orgFont);
+
+	lstrcpy(m_pszFontFace, lfont.lfFaceName);
+
+	if (m_hFont != NULL) ::DeleteObject(m_hFont);
+	m_hFont = hFont;
+	m_nFontSize = fontsize;
+
+	m_bBoldFace = bBoldFace;
+	// 下記の？？については SDK マニュアル参照
+	m_bProportional = ((tm.tmPitchAndFamily & TMPF_FIXED_PITCH) != 0);
 
 	// 文字間隔の設定
-//	m_nXPitch = tsize.cx + 1;
-	m_nXPitch = tsize.cx;
+	m_nXPitch = tm.tmAveCharWidth;
 	// 行間隔の設定
-	m_nYPitch = tsize.cy + 1;
+	m_nYPitch = tm.tmHeight + 1;
 }
 
 DrawInfo::DrawInfo(HDC hDC, int fontsize,
+				   const char* faceName, bool bBoldFace,
 				   COLORREF crFgColorAddr, COLORREF crBkColorAddr,
 				   COLORREF crFgColorData, COLORREF crBkColorData,
 				   COLORREF crFgColorStr, COLORREF crBkColorStr,
 				   COLORREF crFgColorHeader, COLORREF crBkColorHeader)
 	: m_hDC(hDC),
-	  m_nFontSize(fontsize),
-	  m_FontInfo(hDC, fontsize),
+	  m_FontInfo(hDC, fontsize, faceName, bBoldFace),
 	  m_tciAddress(crFgColorAddr, crBkColorAddr),
 	  m_tciData(crFgColorData, crBkColorData),
 	  m_tciString(crFgColorStr, crBkColorStr),

@@ -72,6 +72,29 @@ protected:
 	void destroyDialog();
 };
 
+struct ColorConfig {
+	COLORREF m_crFgColor;
+	COLORREF m_crBkColor;
+};
+
+struct FontConfig {
+	char m_pszFontFace[LF_FACESIZE];
+	int  m_nFontSize;
+	bool m_bBoldFace;
+	ColorConfig m_ColorConfig[4];
+};
+
+#define CC_HEADER  0
+#define CC_ADDRESS 1
+#define CC_DATA    2
+#define CC_STRING  3
+
+struct Icon {
+	HICON   m_hIcon;
+	HBITMAP m_hbmColor;
+	HBITMAP m_hbmMask;
+};
+
 class FontConfigPage : public ConfigPage {
 public:
 	FontConfigPage(DrawInfo* pDrawInfo);
@@ -81,16 +104,21 @@ public:
 protected:
 	bool m_bShowPropFonts;
 	map<string, DWORD> m_mapFontName;
+	Icon m_icFgColor, m_icBkColor;
+	FontConfig m_FontConfig;
 
 	BOOL initDialog(HWND hDlg);
+	void destroyDialog();
 	BOOL dialogProcMain(UINT, WPARAM, LPARAM);
 
-	void prepareFontList();
+	bool initFontConfig();
+	void prepareFontList(bool bShowPropFonts);
 	void addFont(const LOGFONT& logFont, DWORD fontType);
 	void prepareFontSize();
 	void addSize(int size);
 
 	void selectFontPageList(int index);
+	bool chooseColor(COLORREF& cref);
 
 	static int CALLBACK enumFontProc(ENUMLOGFONTEX *lpelfe,
 									 NEWTEXTMETRICEX *lpntme,

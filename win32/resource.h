@@ -29,8 +29,8 @@
 #define IDC_CONFIG_SHOW_PROPFONT        1017
 #define IDC_CONFIG_FONT_BOLD            1018
 #define IDC_CONFIG_FONT_FGCOLOR         1020
-#define IDC_CONFIG_FONT_BGCOLOR         1021
 #define IDC_CONFIG_CARET_STATIC         1021
+#define IDC_CONFIG_FONT_BKCOLOR         1021
 #define IDC_CONFIG_CARET_ENSURE_VISIBLE 1022
 #define IDC_CONFIG_CARET_SCROLL         1023
 #define IDR_OPEN                        40001
