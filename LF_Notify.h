@@ -52,9 +52,11 @@ public:
 	virtual bool onLoadFile() = 0;
 	virtual void onUnloadFile() = 0;
 
+protected:
+	LF_Notifier& m_lfNotifier;
+
 private:
 	Lock m_lckData;
-	LF_Notifier& m_lfNotifier;
 
 	bool loadFile();
 	void unloadFile();

@@ -33,6 +33,8 @@ static HWND g_hwndMain, g_hwndStatusBar;
 static string g_strAppName;
 
 #if 0
+
+#if 0
 class TestDCBuffer : public DCBuffer {
 public:
 	TestDCBuffer(int nBufSize)
@@ -407,5 +409,31 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	}
 
 	return msg.wParam;
+}
+
+#endif
+
+#include "MainWindow.h"
+
+int WINAPI
+WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
+		LPSTR lpszCmdLine, int nCmdShow)
+{
+	::InitCommonControls();
+
+	try {
+		LF_Notifier lfNotifier;
+
+		MainWindow mainWnd(hInstance, lfNotifier);
+
+		mainWnd.show(nCmdShow);
+
+		return mainWnd.doModal();
+
+	} catch (...) {
+		::MessageBox(NULL, "Failed to ...", NULL, MB_OK);
+	}
+
+	return 1;
 }
 

@@ -126,6 +126,10 @@ SOURCE=.\lock.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\MainWindow.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\strutils.cpp
 # End Source File
 # Begin Source File
@@ -179,6 +183,10 @@ SOURCE=..\LF_Notify.h
 # Begin Source File
 
 SOURCE=..\lock.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\MainWindow.h
 # End Source File
 # Begin Source File
 

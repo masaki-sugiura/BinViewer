@@ -20,6 +20,7 @@ public:
 class BV_DCBuffer : public DCBuffer {
 public:
 	BV_DCBuffer(int nBufSize);
+	~BV_DCBuffer();
 
 	bool prepareDC(DrawInfo* pDrawInfo);
 	int render();
@@ -27,6 +28,7 @@ public:
 
 protected:
 	BV_DrawInfo* m_pBVDrawInfo;
+	HBRUSH m_hbrSelectMask;
 	
 	void invertRegionInBuffer(int offset, int size);
 	void invertOneLineRegion(int start_column, int end_column, int line);

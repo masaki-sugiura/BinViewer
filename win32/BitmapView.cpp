@@ -14,6 +14,12 @@ BV_DCBuffer::BV_DCBuffer(int nBufSize)
 	: DCBuffer(nBufSize),
 	  m_pBVDrawInfo(NULL)
 {
+	m_hbrSelectMask = ::CreateSolidBrush(RGB(0, 255, 255));
+}
+
+BV_DCBuffer::~BV_DCBuffer()
+{
+	::DeleteObject(m_hbrSelectMask);
 }
 
 bool
@@ -45,7 +51,7 @@ BV_DCBuffer::render()
 	int x = 0, y = 0;
 	for (int i = 0; i < m_nDataSize; i++) {
 		BYTE val = 255 - m_pDataBuf[i]; // 0 ‚ª”’‚É‚È‚é‚æ‚¤‚É
-		::SetPixel(m_hDC, x, y, RGB(val, val, val));
+		::SetPixelV(m_hDC, x, y, RGB(val, val, val));
 		if (++x == width) {
 			x = 0; y++;
 		}
@@ -53,7 +59,7 @@ BV_DCBuffer::render()
 
 	COLORREF crBkColor = m_pBVDrawInfo->getBkColor();
 	while (y < height) {
-		::SetPixel(m_hDC, x, y, crBkColor);
+		::SetPixelV(m_hDC, x, y, crBkColor);
 		if (++x == width) {
 			x = 0; y++;
 		}
@@ -121,11 +127,17 @@ BV_DCBuffer::invertOneLineRegion(int start_column, int end_column, int line)
 {
 	assert(m_pBVDrawInfo && start_column < end_column && line >= 0);
 
+#if 0
 	int width = m_pBVDrawInfo->getWidth();
 	for (int i = start_column; i < end_column; i++) {
 		COLORREF cRef = ::GetPixel(m_hDC, i, line);
 		::SetPixel(m_hDC, i, line, cRef ^ RGB(0, 255, 255));
 	}
+#else
+	HGDIOBJ hOrgBrush = ::SelectObject(m_hDC, m_hbrSelectMask);
+	::PatBlt(m_hDC, start_column, line, end_column - start_column, 1, PATINVERT);
+	::SelectObject(m_hDC, hOrgBrush);
+#endif
 }
 
 BV_DCManager::BV_DCManager()
