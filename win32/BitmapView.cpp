@@ -24,7 +24,7 @@ BitmapView::BitmapView(HWND hwndOwner, ViewFrame* pViewFrame)
 	wc.hInstance = hInstance;
 	wc.style = CS_OWNDC;
 	wc.hIcon = NULL;
-	wc.hCursor = NULL;
+	wc.hCursor = ::LoadCursor(NULL, IDC_ARROW);
 	wc.lpfnWndProc = (WNDPROC)BitmapViewWndProc;
 	wc.lpszClassName = "BinViewer_BitmapViewClass32";
 	wc.lpszMenuName = NULL;
