@@ -183,6 +183,20 @@ BEGIN
     LTEXT           "フォントサイズ(&S)：",IDC_STATIC,7,35,55,8
 END
 
+IDD_CONFIG_CURSOR DIALOG DISCARDABLE  0, 0, 240, 165
+STYLE DS_CONTROL | WS_CHILD
+FONT 9, "ＭＳ Ｐゴシック"
+BEGIN
+    GROUPBOX        "キャレットの挙動",IDC_STATIC,7,7,125,62
+    CONTROL         "固定位置(&F)",IDC_CONFIG_CARET_STATIC,"Button",
+                    BS_AUTORADIOBUTTON,14,21,86,10
+    CONTROL         "はみ出そうな場合はスクロール(&E)",
+                    IDC_CONFIG_CARET_ENSURE_VISIBLE,"Button",
+                    BS_AUTORADIOBUTTON,14,37,113,10
+    CONTROL         "一緒にスクロール(&S)",IDC_CONFIG_CARET_SCROLL,"Button",
+                    BS_AUTORADIOBUTTON,14,54,113,10
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -217,6 +231,14 @@ BEGIN
     END
 
     IDD_CONFIG_FONT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 233
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 158
+    END
+
+    IDD_CONFIG_CURSOR, DIALOG
     BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 233

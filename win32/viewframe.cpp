@@ -290,7 +290,9 @@ ViewFrame::bitBlt(const RECT& rcPaint)
 void
 ViewFrame::invertRegion(filesize_t pos, int size)
 {
-	for (int i = -1; i < 2; i++) {
+	int min = m_pDC_Manager->getMinBufferIndex(),
+		max = m_pDC_Manager->getMaxBufferIndex();
+	for (int i = min; i <= max; i++) {
 		DCBuffer* pDCBuffer = m_pDC_Manager->getCurrentBuffer(i);
 		if (pDCBuffer) {
 			pDCBuffer->invertRegion(pos, size);

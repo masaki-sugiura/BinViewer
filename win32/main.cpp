@@ -384,7 +384,7 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case IDM_CONFIG:
-			ConfigDlg::doModal(hWnd, g_pDrawInfo.ptr());
+			ConfigMainDlg(hWnd, g_pDrawInfo.ptr()).doModal();
 			break;
 
 		case IDM_SEARCH:

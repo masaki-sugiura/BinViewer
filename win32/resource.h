@@ -12,6 +12,7 @@
 #define IDD_SEARCH                      105
 #define IDD_CONFIG_MAIN                 106
 #define IDD_CONFIG_FONT                 107
+#define IDD_CONFIG_CURSOR               108
 #define IDC_JUMPADDRESS                 1000
 #define IDC_JUMPINFO                    1002
 #define IDC_SEARCHDATA                  1003
@@ -29,6 +30,9 @@
 #define IDC_CONFIG_FONT_BOLD            1018
 #define IDC_CONFIG_FONT_FGCOLOR         1020
 #define IDC_CONFIG_FONT_BGCOLOR         1021
+#define IDC_CONFIG_CARET_STATIC         1021
+#define IDC_CONFIG_CARET_ENSURE_VISIBLE 1022
+#define IDC_CONFIG_CARET_SCROLL         1023
 #define IDR_OPEN                        40001
 #define IDM_OPEN                        40001
 #define IDR_CLOSE                       40002
@@ -59,9 +63,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        108
+#define _APS_NEXT_RESOURCE_VALUE        109
 #define _APS_NEXT_COMMAND_VALUE         40020
-#define _APS_NEXT_CONTROL_VALUE         1021
+#define _APS_NEXT_CONTROL_VALUE         1022
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

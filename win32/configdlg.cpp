@@ -5,91 +5,192 @@
 #include <commctrl.h>
 #include <assert.h>
 
-HINSTANCE ConfigDlg::m_hInstance;
-HWND ConfigDlg::m_hwndMain;
-HWND ConfigDlg::m_hwndFontPage;
-DrawInfo* ConfigDlg::m_pDrawInfo;
-
-bool
-ConfigDlg::doModal(HWND hwndParent, DrawInfo* pDrawInfo)
+ConfigDialog::ConfigDialog(HWND hwndParent, DrawInfo* pDrawInfo)
 {
-	assert(pDrawInfo);
+	if (!pDrawInfo) {
+		throw CreateDialogError();
+	}
 
-	m_hInstance = (HINSTANCE)::GetWindowLong(hwndParent, GWL_HINSTANCE);
+	m_hwndParent = hwndParent;
+	m_hwndDlg = NULL;
 	m_pDrawInfo = pDrawInfo;
 
-	bool ret = !::DialogBox(m_hInstance,
-							MAKEINTRESOURCE(IDD_CONFIG_MAIN),
-							hwndParent,
-							(DLGPROC)ConfigDlg::ConfigDlgProc);
-//	::SetForegroundWindow(hwndParent);
-	return ret;
+	m_hInstance = (HINSTANCE)::GetWindowLong(hwndParent, GWL_HINSTANCE);
+	if (!m_hInstance) {
+		throw CreateDialogError();
+	}
+}
+
+ConfigDialog::~ConfigDialog()
+{
+}
+
+BOOL CALLBACK
+ConfigDialog::configDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	ConfigDialog* pCD = NULL;
+
+	if (uMsg == WM_INITDIALOG) {
+		pCD = (ConfigDialog*)lParam;
+		assert(pCD);
+		::SetWindowLong(hDlg, DWL_USER, (LONG)lParam);
+		pCD->m_hwndDlg = hDlg;
+		if (!pCD->initDialog(hDlg)) {
+			::SendMessage(hDlg, WM_CLOSE, 0, 0);
+			pCD->m_hwndDlg = NULL;
+		}
+		return FALSE;
+	}
+
+	pCD = (ConfigDialog*)::GetWindowLong(hDlg, DWL_USER);
+	if (!pCD) return FALSE;
+
+	if (uMsg == WM_DESTROY) {
+		pCD->destroyDialog();
+		pCD->m_hwndDlg = NULL;
+		return TRUE;
+	}
+
+	return pCD->dialogProcMain(uMsg, wParam, lParam);
+}
+
+BOOL
+ConfigDialog::initDialog(HWND hDlg)
+{
+	m_hwndDlg = hDlg;
+	return TRUE;
+}
+
+ConfigPage::ConfigPage(HWND hwndParent, DrawInfo* pDrawInfo,
+					   int nPageTemplateID)
+	: ConfigDialog(hwndParent, pDrawInfo)
+{
+	m_nPageTemplateID = nPageTemplateID;
 }
 
 bool
-ConfigDlg::initMainDlg(HWND hDlg)
+ConfigPage::create(const RECT& rctPage)
 {
 	assert(m_hInstance);
 
-	HWND hwndTab = ::GetDlgItem(hDlg, IDC_CONFIG_TAB);
-	if (!hwndTab) {
-		::SendMessage(m_hwndFontPage, WM_CLOSE, 0, 0);
-		m_hwndFontPage = NULL;
-		return false;
-	}
+	m_hwndDlg = ::CreateDialogParam(m_hInstance,
+									MAKEINTRESOURCE(m_nPageTemplateID),
+									m_hwndParent,
+									(DLGPROC)ConfigDialog::configDialogProc,
+									(LPARAM)this);
+	if (!m_hwndDlg) return false;
 
-	m_hwndFontPage = ::CreateDialog(m_hInstance,
-									MAKEINTRESOURCE(IDD_CONFIG_FONT),
-									hDlg,
-									(DLGPROC)ConfigDlg::FontPageProc);
-	if (!m_hwndFontPage) return false;
-
-	TCITEM tcItem;
-	tcItem.mask = TCIF_TEXT | TCIF_PARAM;
-	tcItem.pszText = "フォント";
-	tcItem.lParam  = (LPARAM)m_hwndFontPage;
-	if (TabCtrl_InsertItem(hwndTab, 0, &tcItem) != 0) {
-		::SendMessage(m_hwndFontPage, WM_CLOSE, 0, 0);
-		m_hwndFontPage = NULL;
-		return false;
-	}
-
-	// 何か項目を追加した後でないとこの計算が失敗する
-	RECT rctFrame;
-	::GetWindowRect(hwndTab, &rctFrame);
-	TabCtrl_AdjustRect(hwndTab, FALSE, &rctFrame);
-	POINT ptOrg;
-	ptOrg.x = rctFrame.left;
-	ptOrg.y = rctFrame.top;
-	::ScreenToClient(hDlg, &ptOrg);
-	rctFrame.right  = ptOrg.x + (rctFrame.right - rctFrame.left);
-	rctFrame.bottom = ptOrg.y + (rctFrame.bottom - rctFrame.top);
-	rctFrame.left   = ptOrg.x;
-	rctFrame.top    = ptOrg.y;
-	
-	::SetWindowPos(m_hwndFontPage, HWND_TOP,
-				   rctFrame.left, rctFrame.top,
+	::SetWindowPos(m_hwndDlg, HWND_TOP,
+				   rctPage.left, rctPage.top,
 				   0, 0,
 				   SWP_NOSIZE | SWP_NOOWNERZORDER | SWP_SHOWWINDOW);
-
-	m_hwndMain = hDlg;
 
 	return true;
 }
 
 void
-ConfigDlg::applyChanges()
+ConfigPage::destroyDialog()
 {
+//	::MessageBox(NULL, "ConfigPage::destroyDialog()", NULL, MB_OK);
 }
 
-BOOL CALLBACK
-ConfigDlg::ConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+ConfigMainDlg::ConfigMainDlg(HWND hwndParent, DrawInfo* pDrawInfo)
+	: ConfigDialog(hwndParent, pDrawInfo)
+{
+	::ZeroMemory(m_pConfigPages, sizeof(m_pConfigPages));
+
+	m_pszTabText[0] = "フォント";
+	m_pszTabText[1] = "カーソル";
+}
+
+bool
+ConfigMainDlg::doModal()
+{
+	return !::DialogBoxParam(m_hInstance,
+							 MAKEINTRESOURCE(IDD_CONFIG_MAIN),
+							 m_hwndParent,
+							 (DLGPROC)ConfigDialog::configDialogProc,
+							 (LPARAM)this);
+}
+
+void
+ConfigMainDlg::applyChanges()
+{
+	for (int i = 0; i < CONFIG_DIALOG_PAGE_NUM; i++) {
+		if (m_pConfigPages[i])
+			m_pConfigPages[i]->applyChanges();
+	}
+}
+
+BOOL
+ConfigMainDlg::initDialog(HWND hDlg)
+{
+	HWND hwndTab = ::GetDlgItem(hDlg, IDC_CONFIG_TAB);
+	if (!hwndTab) return FALSE;
+
+	TCITEM tcItem;
+	tcItem.mask = TCIF_TEXT | TCIF_PARAM;
+	for (int i = 0; i < CONFIG_DIALOG_PAGE_NUM; i++) {
+		tcItem.pszText = (LPSTR)m_pszTabText[i];
+		tcItem.lParam  = i;
+		if (TabCtrl_InsertItem(hwndTab, i, &tcItem) != i) {
+			return FALSE;
+		}
+	}
+
+	// 何か項目を追加した後でないとこの計算が失敗する
+	::GetWindowRect(hwndTab, &m_rctPage);
+	TabCtrl_AdjustRect(hwndTab, FALSE, &m_rctPage);
+	POINT ptOrg;
+	ptOrg.x = m_rctPage.left;
+	ptOrg.y = m_rctPage.top;
+	::ScreenToClient(hDlg, &ptOrg);
+	m_rctPage.right  = ptOrg.x + (m_rctPage.right - m_rctPage.left);
+	m_rctPage.bottom = ptOrg.y + (m_rctPage.bottom - m_rctPage.top);
+	m_rctPage.left   = ptOrg.x;
+	m_rctPage.top    = ptOrg.y;
+
+	return createPage(0);
+}
+
+void
+ConfigMainDlg::destroyDialog()
+{
+	for (int i = 0; i < CONFIG_DIALOG_PAGE_NUM; i++) {
+		if (m_pConfigPages[i]) {
+			m_pConfigPages[i]->close();
+		}
+	}
+	::EndDialog(m_hwndDlg, 0);
+}
+
+bool
+ConfigMainDlg::createPage(int i)
+{
+	assert(i >= 0 && i < CONFIG_DIALOG_PAGE_NUM);
+
+	if (m_pConfigPages[i]) return true;
+
+	ConfigPage* pCP = NULL;
+	switch (i) {
+	case 0:
+		pCP = new FontConfigPage(m_hwndDlg, m_pDrawInfo);
+		break;
+	case 1:
+		pCP = new CursorConfigPage(m_hwndDlg, m_pDrawInfo);
+		break;
+	default:
+		break;
+	}
+	m_pConfigPages[i] = pCP;
+
+	return pCP != NULL && pCP->create(m_rctPage);
+}
+
+BOOL
+ConfigMainDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg) {
-	case WM_INITDIALOG:
-		if (!initMainDlg(hDlg)) ::SendMessage(hDlg, WM_CLOSE, 0, 0);
-		break;
-
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case IDC_APPLY:
@@ -99,28 +200,39 @@ ConfigDlg::ConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			applyChanges();
 			// through down
 		case IDCANCEL:
-			::SendMessage(hDlg, WM_CLOSE, 0, 0);
+			::SendMessage(m_hwndDlg, WM_CLOSE, 0, 0);
 			break;
 		}
 		break;
 
 	case WM_NOTIFY:
 		if (((NMHDR*)lParam)->idFrom == IDC_CONFIG_TAB) {
-			HWND hwndTab = ::GetDlgItem(hDlg, IDC_CONFIG_TAB);
+			HWND hwndTab = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_TAB);
 			NMHDR* phdr = (NMHDR*)lParam;
 			int iItem;
 			TCITEM tcItem;
 			tcItem.mask = TCIF_PARAM;
+			tcItem.lParam = -1;
 			switch (phdr->code) {
 			case TCN_SELCHANGING:
 				iItem = TabCtrl_GetCurSel(hwndTab);
 				TabCtrl_GetItem(hwndTab, iItem, &tcItem);
-				::ShowWindow((HWND)tcItem.lParam, SW_HIDE);
+				assert((UINT)tcItem.lParam < CONFIG_DIALOG_PAGE_NUM);
+				assert(m_pConfigPages[tcItem.lParam]);
+				m_pConfigPages[tcItem.lParam]->show(FALSE);
 				break;
 			case TCN_SELCHANGE:
 				iItem = TabCtrl_GetCurSel(hwndTab);
 				TabCtrl_GetItem(hwndTab, iItem, &tcItem);
-				::ShowWindow((HWND)tcItem.lParam, SW_SHOW);
+				assert((UINT)tcItem.lParam < CONFIG_DIALOG_PAGE_NUM);
+				if (!m_pConfigPages[tcItem.lParam]) {
+					if (!createPage(tcItem.lParam)) {
+						::MessageBox(m_hwndDlg, "", NULL, MB_OK);
+						break;
+					}
+				}
+				assert(m_pConfigPages[tcItem.lParam]);
+				m_pConfigPages[tcItem.lParam]->show(TRUE);
 				break;
 			default:
 				break;
@@ -129,24 +241,27 @@ ConfigDlg::ConfigDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_CLOSE:
-		::SetForegroundWindow(::GetParent(hDlg));
-		::DestroyWindow(hDlg);
-		break;
-
-	case WM_DESTROY:
-		::EndDialog(hDlg, 0);
+		::SetForegroundWindow(m_hwndParent);
+		::DestroyWindow(m_hwndDlg);
 		break;
 
 	default:
 		return FALSE;
 	}
+
 	return TRUE;
 }
 
-bool
-ConfigDlg::initFontPage(HWND hDlg)
+FontConfigPage::FontConfigPage(HWND hwndParent, DrawInfo* pDrawInfo)
+	: ConfigPage(hwndParent, pDrawInfo, IDD_CONFIG_FONT)
+{
+}
+
+BOOL
+FontConfigPage::initDialog(HWND hDlg)
 {
 	HWND hwndList = ::GetDlgItem(hDlg, IDC_PART_LIST);
+
 	::SendMessage(hwndList, LB_INSERTSTRING, 0, (LPARAM)"ヘッダ");
 	::SendMessage(hwndList, LB_INSERTSTRING, 1, (LPARAM)"アドレス");
 	::SendMessage(hwndList, LB_INSERTSTRING, 2, (LPARAM)"データ");
@@ -155,22 +270,10 @@ ConfigDlg::initFontPage(HWND hDlg)
 	return true;
 }
 
-void
-ConfigDlg::selectFontPageList(HWND hDlg, int index)
-{
-	assert(index >= 0 && index < 4);
-
-	HWND hwndFontName = ::GetDlgItem(hDlg, IDC_CONFIG_FONT_NAME);
-	
-}
-
-BOOL CALLBACK
-ConfigDlg::FontPageProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+BOOL
+FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg) {
-	case WM_INITDIALOG:
-		initFontPage(hDlg);
-		break;
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case IDC_PART_LIST:
@@ -185,11 +288,75 @@ ConfigDlg::FontPageProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 		break;
+
 	case WM_NOTIFY:
 		break;
+
 	default:
 		return FALSE;
 	}
+
 	return TRUE;
+}
+
+void
+FontConfigPage::applyChanges()
+{
+}
+
+void
+FontConfigPage::selectFontPageList(int index)
+{
+	assert(index >= 0 && index < 4);
+
+	HWND hwndFontName = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_NAME);
+	
+}
+
+CursorConfigPage::CursorConfigPage(HWND hwndParent, DrawInfo* pDrawInfo)
+	: ConfigPage(hwndParent, pDrawInfo, IDD_CONFIG_CURSOR)
+{
+}
+
+BOOL
+CursorConfigPage::initDialog(HWND hDlg)
+{
+	return true;
+}
+
+BOOL
+CursorConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	switch (uMsg) {
+	case WM_COMMAND:
+#if 0
+		switch (LOWORD(wParam)) {
+		case IDC_PART_LIST:
+			break;
+		case IDC_CONFIG_FONT_BOLD:
+			break;
+		case IDC_CONFIG_FONT_FGCOLOR:
+			break;
+		case IDC_CONFIG_FONT_BGCOLOR:
+			break;
+		default:
+			break;
+		}
+#endif
+		break;
+
+	case WM_NOTIFY:
+		break;
+
+	default:
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+void
+CursorConfigPage::applyChanges()
+{
 }
 

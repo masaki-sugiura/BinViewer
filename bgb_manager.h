@@ -76,6 +76,15 @@ public:
 		return pbgb;
 	}
 
+	int getMinBufferIndex() const
+	{
+		return - ((BUFFER_NUM - 1) / 2);
+	}
+	int getMaxBufferIndex() const
+	{
+		return (BUFFER_NUM - 1) / 2;
+	}
+
 	BGBuffer* getBuffer(filesize_t offset)
 	{
 		if (!isLoaded()) return NULL;
