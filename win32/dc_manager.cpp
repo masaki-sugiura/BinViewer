@@ -222,7 +222,7 @@ bool
 DC_Manager::setDrawInfo(DrawInfo* pDrawInfo)
 {
 	for (int i = getMinBufferIndex(); i <= getMaxBufferIndex(); i++) {
-		DCBuffer* pBuf = static_cast<DCBuffer*>(m_rbBuffers.elementAt(i));
+		DCBuffer* pBuf = dynamic_cast<DCBuffer*>(m_rbBuffers.elementAt(i));
 		if (!pBuf) continue;
 		if (!pBuf->prepareDC(pDrawInfo)) {
 			return false;
@@ -343,7 +343,9 @@ DC_Manager::getPositionByViewCoordinate(const POINTS& pt)
 	DCBuffer* pCurBuf = getBuffer(qByteOffset);
 	if (!pCurBuf) return -1;
 
-	int offset = pCurBuf->getPositionByCoordinate(pt.x, (int)(qYCoord % m_nHeight));
+	int offset = pCurBuf->getPositionByCoordinate(pt.x,
+												  (int)(qYCoord % m_nHeight));
+	if (offset < 0) return -1;
 
 	return qByteOffset + offset;
 }

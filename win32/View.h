@@ -28,13 +28,6 @@
 #include "dc_manager.h"
 #include "DrawInfo.h"
 
-class BGB_Manager;
-
-struct Metrics {
-	DWORD width;
-	DWORD height;
-};
-
 class View : public LF_Acceptor {
 public:
 	View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
@@ -43,17 +36,13 @@ public:
 		 DrawInfo* pDrawInfo);
 	virtual ~View();
 
-	virtual void setPosition(filesize_t pos, bool bRedraw);
-
 	// ウィンドウを指定された短形に変形
-	virtual void setFrameRect(const RECT& rctFrame, bool bRedraw);
+	void setFrameRect(const RECT& rctFrame, bool bRedraw);
 	// ウィンドウ短形を取得
-	virtual void getFrameRect(RECT& rctFrame);
+	void getFrameRect(RECT& rctFrame);
 
 	// クライアント領域を指定サイズに変更
-	virtual void setViewSize(int width, int height);
-
-	virtual bool setDrawInfo(DrawInfo* pDrawInfo);
+	void setViewSize(int width, int height);
 
 	// ウィンドウサイズを行高・文字幅の整数倍に調整
 	void adjustWindowRect(RECT& rctFrame);
@@ -68,11 +57,13 @@ public:
 	void onUnloadFile();
 	void onSetCursorPos(filesize_t pos);
 
-	virtual void onMouseWheel(short nMouseMove);
-	virtual void onHScroll(WPARAM wParam, LPARAM lParam);
-	virtual void onVScroll(WPARAM wParam, LPARAM lParam);
-	virtual void onHorizontalMove(int nMove);
-	virtual void onVerticalMove(int nMove);
+	void onMouseWheel(short nMouseMove);
+	void onHScroll(WPARAM wParam, LPARAM lParam);
+	void onVScroll(WPARAM wParam, LPARAM lParam);
+	void onHorizontalMove(int nMove);
+	void onVerticalMove(int nMove);
+
+	virtual bool setDrawInfo(DrawInfo* pDrawInfo);
 
 	// View クラスが投げる例外の基底クラス
 	class ViewException {};
@@ -94,10 +85,10 @@ protected:
 
 	void initScrollInfo();
 
-	virtual void ensureVisible(filesize_t pos, bool bRedraw);
-	virtual void setCurrentLine(filesize_t newline, bool bRedraw);
+	void ensureVisible(filesize_t pos, bool bRedraw);
+	void setCurrentLine(filesize_t newline, bool bRedraw);
 
-	virtual void onLButtonDown(WPARAM wParam, LPARAM lParam);
+	void onLButtonDown(WPARAM wParam, LPARAM lParam);
 
 	virtual LRESULT viewWndProcMain(UINT, WPARAM, LPARAM);
 

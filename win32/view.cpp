@@ -170,23 +170,6 @@ View::setCurrentLine(filesize_t newline, bool bRedraw)
 }
 
 void
-View::setPosition(filesize_t pos, bool bRedraw)
-{
-	if (!m_pDCManager->isLoaded()) {
-		return;
-	}
-
-	filesize_t fsize = m_pDCManager->getFileSize();
-	if (fsize == 0) return;
-
-	if (pos >= fsize)
-		pos = fsize - 1;
-	if (pos < 0) pos = 0; // else ‚Å‚Í NG!! (filesize == 0 ‚Ìê‡)
-
-	setCurrentLine(pos / m_nBytesPerLine, bRedraw);
-}
-
-void
 View::adjustWindowRect(RECT& rctFrame)
 {
 	RECT rctWindow, rctClient;
