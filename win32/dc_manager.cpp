@@ -211,10 +211,15 @@ DC_Manager::setViewPosition(int nXOffset, filesize_t qYOffset)
 
 	m_bOverlapped = m_nYOffset + m_nViewHeight > m_nHeight;
 
+	filesize_t qCursorPos = m_qCursorPos;
+	setCursor(-1);
+
 	setPosition((qYOffset / m_nHeight) * m_nBufSize);
 
 	m_pCurBuf  = getCurrentBuffer(0);
 	m_pNextBuf = getCurrentBuffer(1);
+
+	setCursor(qCursorPos);
 }
 
 void
@@ -282,26 +287,22 @@ void
 DC_Manager::setCursorByViewCoordinate(const POINTS& pt)
 {
 	filesize_t qYCoord = m_qYOffset + pt.y;
-	DCBuffer* pCurBuf = getBuffer((qYCoord / m_nHeight) * m_nBufSize);
+	filesize_t qByteOffset = (qYCoord / m_nHeight) * m_nBufSize;
+	DCBuffer* pCurBuf = getBuffer(qByteOffset);
 	if (!pCurBuf) return;
 
-	for (int i = getMinBufferIndex(); i < getMaxBufferIndex(); i++) {
-		DCBuffer* pBuf = static_cast<DCBuffer*>(m_rbBuffers.elementAt(i));
-		if (!pBuf || pBuf->m_qAddress == -1) continue;
-		// 既にカーソルを持っていた場合、それを一度消去
-		if (pBuf->hasCursor()) {
-			pBuf->setCursor(-1);
-			break;
-		}
-	}
+	// 既にカーソルを持っていた場合、それを一度消去
+	setCursor(-1);
 
-	pCurBuf->setCursorByCoordinate(pt.x, (int)(qYCoord % m_nHeight));
+	int offset = pCurBuf->setCursorByCoordinate(pt.x, (int)(qYCoord % m_nHeight));
+
+	m_qCursorPos = qByteOffset + offset;
 }
 
 void
 DC_Manager::setCursor(filesize_t pos)
 {
-	if (pos < 0 || !isLoaded()) return;
+	if (!isLoaded()) return;
 
 	filesize_t fsize = getFileSize();
 	if (fsize <= pos) return;
@@ -316,9 +317,10 @@ DC_Manager::setCursor(filesize_t pos)
 		if (pBuf->m_qAddress <= pos &&
 			pos < pBuf->m_qAddress + pBuf->m_nDataSize) {
 			pBuf->setCursor((int)(pos - pBuf->m_qAddress));
-			return;
+			break;
 		}
 	}
+	m_qCursorPos = pos;
 }
 
 void
@@ -350,5 +352,8 @@ DC_Manager::select(filesize_t pos, filesize_t size)
 				   qTail = min(pBuf->m_qAddress + pBuf->m_nDataSize, pos + size);
 		pBuf->select((int)(qHead - pBuf->m_qAddress), (int)(qTail - qHead));
 	}
+
+	m_qStartSelected = pos;
+	m_qSelectedSize = size;
 }
 

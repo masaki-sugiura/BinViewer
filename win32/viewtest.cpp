@@ -54,15 +54,16 @@ public:
 		return m_nBufSize;
 	}
 
-	void setCursorByCoordinate(int x, int y)
+	int setCursorByCoordinate(int x, int y)
 	{
-		m_nCursorPos = getOffsetByCoordinate(x, y);
 		RECT rect;
 		rect.left = x;
 		rect.right = rect.left + 1;
 		rect.top = y;
 		rect.bottom = rect.top + 1;
 		::InvertRect(m_hDC, &rect);
+		m_nCursorPos = getOffsetByCoordinate(x, y);
+		return m_nCursorPos;
 	}
 
 protected:
@@ -86,8 +87,8 @@ protected:
 
 class TestDCManager : public DC_Manager {
 public:
-	TestDCManager()
-		: DC_Manager(800 * 1024, 3)
+	TestDCManager(int width, int height)
+		: DC_Manager(width * height, 3)
 	{
 	}
 
@@ -118,9 +119,9 @@ public:
 			   WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL,
 			   WS_EX_CLIENTEDGE,
 			   rctClient,
-			   new TestDCManager(),
+			   new TestDCManager(pDrawInfo->getWidth(), pDrawInfo->getHeight()),
 			   pDrawInfo)
-//			   new DrawInfo(NULL, 800, 1024, RGB(255, 255, 255)),
+//			   new DrawInfo(NULL, 1024, 1024, RGB(255, 255, 255)),
 //			   1)
 	{
 	}

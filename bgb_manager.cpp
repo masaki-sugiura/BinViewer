@@ -119,8 +119,8 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 	if (!bRet) return -1;
 
 	// offset ‚ğ nBufSize ‚ÅƒAƒ‰ƒCƒƒ“ƒg
-//	offset = (offset / nBufSize) * nBufSize;
-	offset &= ~(m_nBufSize - 1); // nBufSize == 2^n ‚ğ‰¼’è
+	offset = (offset / m_nBufSize) * m_nBufSize;
+//	offset &= ~(m_nBufSize - 1); // nBufSize == 2^n ‚ğ‰¼’è
 
 	int radius = (m_nBufCount / 2) * m_nBufSize;
 
