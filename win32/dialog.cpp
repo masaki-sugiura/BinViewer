@@ -9,8 +9,14 @@
 Lock Dialog::m_lckActiveDialogs;
 int  Dialog::m_nActiveDialogNum;
 DialogMap Dialog::m_activeDialogs;
-HMODULE  Dialog::m_hmUxTheme;
-PFN_ETDT Dialog::m_pfnEnableThemeDialogTexture;
+HMODULE   Dialog::m_hmUxTheme;
+PFN_ITA   Dialog::m_pfnIsThemeActive;
+PFN_ETDT  Dialog::m_pfnEnableThemeDialogTexture;
+PFN_OTD   Dialog::m_pfnOpenThemeData;
+PFN_CTD   Dialog::m_pfnCloseThemeData;
+PFN_DTB   Dialog::m_pfnDrawThemeBackground;
+PFN_DTPB  Dialog::m_pfnDrawThemeParentBackground;
+PFN_GTBCR Dialog::m_pfnGetThemeBackgroundContentRect;
 
 Dialog::Dialog(int idd)
 	: m_nDialogID(idd),
@@ -90,10 +96,28 @@ Dialog::initializeTheme()
 	m_hmUxTheme = ::LoadLibrary("UxTheme.dll");
 	if (!m_hmUxTheme) return FALSE;
 
+	m_pfnIsThemeActive
+		= (PFN_ITA)::GetProcAddress(m_hmUxTheme, "IsThemeActive");
 	m_pfnEnableThemeDialogTexture
 		= (PFN_ETDT)::GetProcAddress(m_hmUxTheme, "EnableThemeDialogTexture");
+	m_pfnOpenThemeData
+		= (PFN_OTD)::GetProcAddress(m_hmUxTheme, "OpenThemeData");
+	m_pfnCloseThemeData
+		= (PFN_CTD)::GetProcAddress(m_hmUxTheme, "CloseThemeData");
+	m_pfnDrawThemeBackground
+		= (PFN_DTB)::GetProcAddress(m_hmUxTheme, "DrawThemeBackground");
+	m_pfnDrawThemeParentBackground
+		= (PFN_DTPB)::GetProcAddress(m_hmUxTheme, "DrawThemeParentBackground");
+	m_pfnGetThemeBackgroundContentRect
+		= (PFN_GTBCR)::GetProcAddress(m_hmUxTheme, "GetThemeBackgroundContentRect");
 
-	return m_pfnEnableThemeDialogTexture != NULL;
+	return m_pfnIsThemeActive != NULL &&
+		   m_pfnEnableThemeDialogTexture != NULL &&
+		   m_pfnOpenThemeData != NULL &&
+		   m_pfnCloseThemeData != NULL &&
+		   m_pfnDrawThemeBackground != NULL &&
+		   m_pfnDrawThemeParentBackground != NULL &&
+		   m_pfnGetThemeBackgroundContentRect != NULL;
 }
 
 void

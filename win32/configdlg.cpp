@@ -5,7 +5,9 @@
 #include "configdlg.h"
 #include "resource.h"
 #include <commctrl.h>
+#include <Tmschema.h>
 #include <assert.h>
+
 
 ConfigDialog::ConfigDialog(int nDialogID, Auto_Ptr<DrawInfo>& pDrawInfo)
 	: Dialog(nDialogID),
@@ -454,6 +456,34 @@ FontConfigPage::initDialog(HWND hDlg)
 	m_pSampleView = new SampleView(::GetDlgItem(hDlg, IDC_CONFIG_FONT_SAMPLE),
 								   m_FontConfig, m_ColorConfig);
 
+	if (m_hmUxTheme && (*m_pfnIsThemeActive)()) {
+		// テーマが有効 -> カラー選択ボタンを自分で描画するために
+		//                 ボタンウィンドウをサブクラス化
+		HWND hCtrl = ::GetDlgItem(hDlg, IDC_CONFIG_FONT_FGCOLOR);
+		ColorSelButtonInfo* pInfo = new ColorSelButtonInfo;
+		pInfo->m_pFCPage = this;
+		pInfo->m_hDC = NULL;
+		pInfo->m_hBitmap = NULL;
+		pInfo->m_hbrColor = NULL;
+		pInfo->m_iState = PBS_NORMAL;
+		pInfo->m_bPressed = FALSE;
+		pInfo->m_pfnOrgWndProc = (WNDPROC)::SetWindowLong(hCtrl, GWL_WNDPROC,
+														  (LONG)colorSelBtnProc);
+		::SendMessage(hCtrl, WM_USER_INIT_COLORSELBUTTON, 0, (LPARAM)pInfo);
+
+		hCtrl = ::GetDlgItem(hDlg, IDC_CONFIG_FONT_BKCOLOR);
+		pInfo = new ColorSelButtonInfo;
+		pInfo->m_pFCPage = this;
+		pInfo->m_hDC = NULL;
+		pInfo->m_hBitmap = NULL;
+		pInfo->m_hbrColor = NULL;
+		pInfo->m_iState = PBS_NORMAL;
+		pInfo->m_bPressed = FALSE;
+		pInfo->m_pfnOrgWndProc = (WNDPROC)::SetWindowLong(hCtrl, GWL_WNDPROC,
+														  (LONG)colorSelBtnProc);
+		::SendMessage(hCtrl, WM_USER_INIT_COLORSELBUTTON, 0, (LPARAM)pInfo);
+	}
+
 	return TRUE;
 }
 
@@ -825,6 +855,222 @@ FontConfigPage::chooseColor(COLORREF& cref)
 		return true;
 	}
 	return false;
+}
+
+BOOL
+FontConfigPage::onSetImage(HWND hCtrl,
+						   ColorSelButtonInfo* pInfo,
+						   int iNewState,
+						   HBITMAP hbmColor)
+{
+	if (!(*m_pfnIsThemeActive)()) return FALSE;
+
+	RECT rctCtrl;
+	::GetWindowRect(hCtrl, &rctCtrl);
+	rctCtrl.right -= rctCtrl.left;
+	rctCtrl.bottom -= rctCtrl.top;
+	rctCtrl.left = rctCtrl.top = 0;
+
+	HDC hDC = ::GetDC(hCtrl);
+
+	if (!pInfo->m_hDC) {
+		pInfo->m_hDC = ::CreateCompatibleDC(hDC);
+		if (!pInfo->m_hDC) {
+			::ReleaseDC(hCtrl, hDC);
+			return FALSE;
+		}
+		pInfo->m_hBitmap = ::CreateCompatibleBitmap(hDC, rctCtrl.right, rctCtrl.bottom);
+		if (!pInfo->m_hBitmap) {
+			::DeleteDC(pInfo->m_hDC);
+			::ReleaseDC(hCtrl, hDC);
+			return FALSE;
+		}
+		::SelectObject(pInfo->m_hDC, pInfo->m_hBitmap);
+	}
+
+	::ReleaseDC(hCtrl, hDC);
+
+	if (hbmColor) {
+		if (pInfo->m_hbrColor) ::DeleteObject(pInfo->m_hbrColor);
+		HGDIOBJ hOrgBitmap = ::SelectObject(pInfo->m_hDC, hbmColor);
+		pInfo->m_hbrColor = ::CreateSolidBrush(::GetPixel(pInfo->m_hDC, 0, 0));
+		::SelectObject(pInfo->m_hDC, hOrgBitmap);
+	} else {
+		if (iNewState == pInfo->m_iState) return TRUE;
+		pInfo->m_iState = iNewState;
+	}
+
+	HRESULT hr = (*m_pfnDrawThemeParentBackground)(hCtrl, pInfo->m_hDC, &rctCtrl);
+	if (hr != S_OK) return FALSE;
+
+	HTHEME hTheme = (*m_pfnOpenThemeData)(hCtrl, L"Button");
+	if (!hTheme) return FALSE;
+
+	hr = (*m_pfnDrawThemeBackground)(hTheme, pInfo->m_hDC,
+									 BP_PUSHBUTTON, pInfo->m_iState,
+									 &rctCtrl, NULL);
+	if (hr != S_OK) {
+		(*m_pfnCloseThemeData)(hTheme);
+		return FALSE;
+	}
+
+	RECT rctContent;
+	hr = (*m_pfnGetThemeBackgroundContentRect)(hTheme, pInfo->m_hDC,
+											   BP_PUSHBUTTON, pInfo->m_iState,
+											   &rctCtrl, &rctContent);
+	if (hr != S_OK) {
+		(*m_pfnCloseThemeData)(hTheme);
+		return FALSE;
+	}
+
+	// content 領域の 70% を描画
+	int w = (rctContent.right - rctContent.left) * 7 / 10,
+		h = (rctContent.bottom - rctContent.top) * 7 / 10;
+	rctContent.left   = (rctContent.left + rctContent.right - w) / 2;
+	rctContent.right  = rctContent.left + w;
+	rctContent.top    = (rctContent.top + rctContent.bottom - h) / 2;
+	rctContent.bottom = rctContent.top + h;
+
+	::FillRect(pInfo->m_hDC, &rctContent, pInfo->m_hbrColor);
+
+	(*m_pfnCloseThemeData)(hTheme);
+
+	return TRUE;
+}
+
+LRESULT CALLBACK
+FontConfigPage::colorSelBtnProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	if (uMsg == WM_USER_INIT_COLORSELBUTTON) {
+		::SetWindowLong(hWnd, GWL_USERDATA, lParam);
+		return 0;
+	}
+
+	ColorSelButtonInfo*
+		pInfo = (ColorSelButtonInfo*)::GetWindowLong(hWnd, GWL_USERDATA);
+	if (!pInfo) return ::DefWindowProc(hWnd, uMsg, wParam, lParam);
+
+	switch (uMsg) {
+	case WM_PAINT:
+		if (pInfo->m_hDC) {
+			PAINTSTRUCT ps;
+			::BeginPaint(hWnd, &ps);
+			::BitBlt(ps.hdc,
+					 ps.rcPaint.left, ps.rcPaint.top,
+					 ps.rcPaint.right - ps.rcPaint.left,
+					 ps.rcPaint.bottom - ps.rcPaint.top,
+					 pInfo->m_hDC,
+					 ps.rcPaint.left, ps.rcPaint.top,
+					 SRCCOPY);
+			::EndPaint(hWnd, &ps);
+			return 0;
+		}
+		break;
+
+	case WM_LBUTTONDOWN:
+		if (pInfo->m_hDC) {
+			pInfo->m_bPressed = TRUE;
+			pInfo->m_pFCPage->onSetImage(hWnd, pInfo, PBS_PRESSED);
+			::InvalidateRect(hWnd, NULL, FALSE);
+			::UpdateWindow(hWnd);
+			if (::GetCapture() != hWnd) ::SetCapture(hWnd);
+			return 0;
+		}
+		break;
+
+	case WM_LBUTTONUP:
+		if (pInfo->m_hDC) {
+			pInfo->m_bPressed = FALSE;
+			if (::GetCapture() == hWnd) ::ReleaseCapture();
+			RECT rctWnd;
+			::GetWindowRect(hWnd, &rctWnd);
+			rctWnd.right -= rctWnd.left;
+			rctWnd.bottom -= rctWnd.top;
+			rctWnd.left = rctWnd.top = 0;
+			POINT pt;
+			pt.x = LOWORD(lParam);
+			pt.y = HIWORD(lParam);
+			if (::PtInRect(&rctWnd, pt)) {
+				HWND hwndParent = ::GetParent(hWnd);
+				::SendMessage(hwndParent, WM_COMMAND,
+							  (BN_CLICKED << 16) | ::GetDlgCtrlID(hWnd),
+							  0);
+			}
+		}
+		break;
+
+	case WM_CAPTURECHANGED:
+		if (::GetCapture() != hWnd) {
+			if (pInfo->m_hDC) {
+				pInfo->m_pFCPage->onSetImage(hWnd, pInfo, PBS_NORMAL);
+				::InvalidateRect(hWnd, NULL, FALSE);
+				::UpdateWindow(hWnd);
+				return 0;
+			}
+		}
+		break;
+
+	case WM_MOUSEMOVE:
+		if (pInfo->m_hDC) {
+			RECT rctWnd;
+			::GetWindowRect(hWnd, &rctWnd);
+			rctWnd.right -= rctWnd.left;
+			rctWnd.bottom -= rctWnd.top;
+			rctWnd.left = rctWnd.top = 0;
+			POINT pt;
+			pt.x = LOWORD(lParam);
+			pt.y = HIWORD(lParam);
+			int iState;
+			if (::PtInRect(&rctWnd, pt)) {
+				if (pInfo->m_bPressed) {
+					iState = PBS_PRESSED;
+				} else {
+					if (::GetCapture() != hWnd) ::SetCapture(hWnd);
+					iState = PBS_HOT;
+				}
+			} else {
+				if (pInfo->m_bPressed) {
+					iState = PBS_HOT;
+				} else {
+					if (::GetCapture() == hWnd) {
+						::ReleaseCapture();
+						return 0;
+					} else {
+						break;
+					}
+				}
+			}
+			pInfo->m_pFCPage->onSetImage(hWnd, pInfo, iState);
+			::InvalidateRect(hWnd, NULL, FALSE);
+			::UpdateWindow(hWnd);
+			return 0;
+		}
+		break;
+
+	case BM_SETIMAGE:
+		pInfo->m_pFCPage->onSetImage(hWnd, pInfo, PBS_NORMAL, (HBITMAP)lParam);
+		::InvalidateRect(hWnd, NULL, FALSE);
+		::UpdateWindow(hWnd);
+		return 0;
+
+	case WM_DESTROY:
+		{
+			WNDPROC pfnOrgWndProc = pInfo->m_pfnOrgWndProc;
+			if (pInfo->m_hDC) {
+				::DeleteObject(pInfo->m_hbrColor);
+				::DeleteObject(pInfo->m_hBitmap);
+				::DeleteDC(pInfo->m_hDC);
+			}
+			delete pInfo;
+			::SetWindowLong(hWnd, GWL_WNDPROC, (LONG)pfnOrgWndProc);
+			return ::CallWindowProc(pfnOrgWndProc, hWnd, uMsg, wParam, lParam);
+		}
+
+	default:
+		break;
+	}
+
+	return ::CallWindowProc(pInfo->m_pfnOrgWndProc, hWnd, uMsg, wParam, lParam);
 }
 
 CursorConfigPage::CursorConfigPage(Auto_Ptr<DrawInfo>& pDrawInfo)

@@ -140,6 +140,20 @@ protected:
 
 	bool chooseColor(COLORREF& cref);
 
+	struct ColorSelButtonInfo {
+		FontConfigPage* m_pFCPage;
+		WNDPROC m_pfnOrgWndProc;
+		HDC     m_hDC;
+		HBITMAP m_hBitmap;
+		HBRUSH  m_hbrColor;
+		int m_iState;
+		BOOL m_bPressed;
+	};
+
+	BOOL onSetImage(HWND hWnd, ColorSelButtonInfo* pInfo, int iNewState, HBITMAP hbmColor = NULL);
+
+	static LRESULT CALLBACK colorSelBtnProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
 	static int CALLBACK enumFontProc(ENUMLOGFONTEX *lpelfe,
 									 NEWTEXTMETRICEX *lpntme,
 									 DWORD FontType,
