@@ -7,16 +7,16 @@
 #include <process.h>
 #include <assert.h>
 
-Thread::Thread(void* arg, ThreadAttribute* pAttr)
-	: m_arg(arg), m_pAttr(pAttr),
+Thread::Thread(thread_arg_t arg, thread_attr_t attr)
+	: m_arg(arg), m_attr(attr),
 	  m_result(-1), m_state(TS_READY)
 {
-	assert(m_pAttr);
+	assert(m_attr);
 
 	GetLock lock(m_lockAttr);
 
-	m_pAttr->m_dwThreadID = (DWORD)-1;
-	m_pAttr->m_hThread = NULL;
+	m_attr->m_dwThreadID = (DWORD)-1;
+	m_attr->m_hThread = NULL;
 }
 
 Thread::~Thread()
@@ -35,12 +35,12 @@ Thread::run()
 
 	if (m_state != TS_READY) return false;
 
-	m_pAttr->m_hThread = (HANDLE)_beginthreadex(NULL, 0,
+	m_attr->m_hThread = (HANDLE)_beginthreadex(NULL, 0,
 										Thread::threadProcedure,
 										(void*)this, 0,
-										(UINT*)&m_pAttr->m_dwThreadID);
+										(UINT*)&m_attr->m_dwThreadID);
 
-	if (!m_pAttr->m_hThread) return false;
+	if (!m_attr->m_hThread) return false;
 
 	m_state = TS_RUNNING;
 
@@ -57,7 +57,7 @@ Thread::stop()
 		if (!resume()) return false;
 		// through down
 	case TS_RUNNING:
-		::PostThreadMessage(m_pAttr->m_dwThreadID, WM_QUIT, 0, 0);
+		::PostThreadMessage(m_attr->m_dwThreadID, WM_QUIT, 0, 0);
 		// through down
 	case TS_STOPPED:
 		return true;
@@ -73,7 +73,7 @@ Thread::resume()
 	GetLock lock(m_lockAttr);
 
 	if (m_state != TS_SUSPENDING) return false;
-	return ::ResumeThread(m_pAttr->m_hThread) != 0xFFFFFFFF;
+	return ::ResumeThread(m_attr->m_hThread) != 0xFFFFFFFF;
 }
 
 bool
@@ -82,7 +82,7 @@ Thread::suspend()
 	GetLock lock(m_lockAttr);
 
 	if (m_state != TS_RUNNING) return false;
-	return ::SuspendThread(m_pAttr->m_hThread) != 0xFFFFFFFF;
+	return ::SuspendThread(m_attr->m_hThread) != 0xFFFFFFFF;
 }
 
 bool
@@ -96,7 +96,7 @@ Thread::join()
 
 	BOOL bStop = FALSE;
 	while (!bStop) {
-		switch (::WaitForSingleObject(m_pAttr->m_hThread, 1000)) {
+		switch (::WaitForSingleObject(m_attr->m_hThread, 1000)) {
 		case WAIT_OBJECT_0:
 			bStop = TRUE;
 		case WAIT_TIMEOUT:
@@ -106,12 +106,12 @@ Thread::join()
 		}
 	}
 
-	::GetExitCodeThread(m_pAttr->m_hThread, (DWORD*)&m_result);
+	::GetExitCodeThread(m_attr->m_hThread, (DWORD*)&m_result);
 
-	::CloseHandle(m_pAttr->m_hThread);
+	::CloseHandle(m_attr->m_hThread);
 
-	m_pAttr->m_hThread = NULL;
-	m_pAttr->m_dwThreadID = (DWORD)-1;
+	m_attr->m_hThread = NULL;
+	m_attr->m_dwThreadID = (DWORD)-1;
 
 	m_state = TS_READY;
 
@@ -126,7 +126,7 @@ Thread::isTerminated() const
 		   msg.message == WM_QUIT;
 }
 
-DWORD
+thread_result_t
 Thread::getResult()
 {
 	GetLock lock(m_lockAttr);
