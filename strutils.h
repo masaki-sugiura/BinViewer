@@ -109,4 +109,14 @@ void QuadToStr(UINT lo, UINT hi, LPSTR buf);
 
 extern const char* const hex;
 
+inline void
+DoubleToStr(UINT val, LPSTR buf)
+{
+	LPSTR ptr = buf + 8;
+	while (ptr-- != buf) {
+		*ptr = hex[0x0F & val];
+		val >>= 4;
+	}
+}
+
 #endif

@@ -144,19 +144,19 @@ DCBuffer::render()
 
 	int i, linenum = m_nDataSize >> 4, xoffset, yoffset;
 	TCHAR linebuf[WIDTH_PER_XPITCH + 1], strbuf[17];
-	filesize_t qCurAddress;
 
 	// ƒAƒhƒŒƒX
 	m_pDrawInfo->m_tciAddress.setColorToDC(m_hDC);
+	DoubleToStr((UINT)(m_qAddress >> 32), linebuf);
+	UINT addr = (UINT)m_qAddress;
 	for (i = 0; i < linenum; i++) {
-		qCurAddress = m_qAddress + (i << 4);
-		QuadToStr((UINT)qCurAddress, (UINT)(qCurAddress >> 32), linebuf);
+		DoubleToStr(addr, linebuf + 8);
 		::ExtTextOut(m_hDC, nXPitch, i * nYPitch, 0, NULL,
 					 linebuf, 16, m_anXPitch);
+		addr += 16;
 	}
 	if (m_nDataSize & 15) {
-		qCurAddress = m_qAddress + (linenum << 4);
-		QuadToStr((UINT)qCurAddress, (UINT)(qCurAddress >> 32), linebuf);
+		DoubleToStr(addr, linebuf + 8);
 		::ExtTextOut(m_hDC, nXPitch, linenum * nYPitch, 0, NULL,
 					 linebuf, 16, m_anXPitch);
 	}
@@ -264,7 +264,7 @@ DCBuffer::invertOneLineRegion(int column, int lineno, int n_char)
 void
 DCBuffer::invertRegion(filesize_t pos, int size, bool bSelected)
 {
-	if (m_bHasSelectedRegion == bSelected) return;
+//	if (m_bHasSelectedRegion == bSelected) return;
 
 	if (m_qAddress >= pos + size ||
 		m_qAddress + MAX_DATASIZE_PER_BUFFER <= pos)

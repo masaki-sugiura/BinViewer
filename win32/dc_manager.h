@@ -61,6 +61,8 @@ struct DCBuffer : public BGBuffer, public Renderer {
 	void bitBlt(HDC hDC, int x, int y, int cx, int cy,
 				int sx, int sy) const;
 
+	bool hasSelectedRegion() const { return m_bHasSelectedRegion; }
+
 protected:
 	bool m_bHasSelectedRegion;
 

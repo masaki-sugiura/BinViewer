@@ -443,6 +443,9 @@ ParseNumber(LPCSTR str)
 void
 QuadToStr(UINT lo, UINT hi, LPSTR buf)
 {
+	DoubleToStr(hi, buf);
+	DoubleToStr(lo, buf + 8);
+#if 0
 	buf[0]  = hex[0x0F & (hi >> 28)];
 	buf[1]  = hex[0x0F & (hi >> 24)];
 	buf[2]  = hex[0x0F & (hi >> 20)];
@@ -459,5 +462,6 @@ QuadToStr(UINT lo, UINT hi, LPSTR buf)
 	buf[13] = hex[0x0F & (lo >>  8)];
 	buf[14] = hex[0x0F & (lo >>  4)];
 	buf[15] = hex[0x0F & (lo >>  0)];
+#endif
 }
 

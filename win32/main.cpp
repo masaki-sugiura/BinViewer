@@ -179,10 +179,10 @@ static void
 OnSetPosition(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	static int hlen = lstrlen(STATUS_POS_HEADER);
-	char msgbuf[40];
-	::CopyMemory(msgbuf, STATUS_POS_HEADER, hlen);
+	static char msgbuf[40] = STATUS_POS_HEADER;
+
 	QuadToStr((UINT)lParam, (UINT)wParam, msgbuf + hlen);
-	msgbuf[hlen + 16] = '\0';
+//	msgbuf[hlen + 16] = '\0';
 //	::SetWindowText(g_hwndStatusBar, msgbuf);
 	::SendMessage(g_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)msgbuf);
 }

@@ -17,7 +17,8 @@ ViewFrame::ViewFrame(HWND hwndParent, const RECT& rct,
 					 DrawInfo* pDrawInfo,
 					 LargeFileReader* pLFReader)
 	: m_pDC_Manager(NULL), m_pDrawInfo(pDrawInfo),
-	  m_smHorz(NULL, SB_HORZ), m_smVert(NULL, SB_VERT)
+	  m_smHorz(NULL, SB_HORZ), m_smVert(NULL, SB_VERT),
+	  m_hwndParent(hwndParent)
 {
 	if (!m_bRegisterClass) {
 		WNDCLASS wc;
@@ -109,8 +110,9 @@ ViewFrame::adjustWindowRect(RECT& rctFrame)
 void
 ViewFrame::recalcPageInfo()
 {
-	int nPageLineNum = (m_rctClient.bottom - m_rctClient.top + m_nLineHeight - 1)
-						/ m_nLineHeight - 1 /* ヘッダの分は除く */;
+	// -1 はヘッダの分
+	int nPageLineNum = (m_rctClient.bottom - m_rctClient.top) / m_nLineHeight - 1;
+
 	// ウィンドウを広げた結果次のバッファとオーバーラップした場合に必要
 	m_bOverlapped = is_overlapped(m_nTopOffset / m_nLineHeight, nPageLineNum);
 	m_smHorz.setInfo(WIDTH_PER_XPITCH * m_nCharWidth,
@@ -120,7 +122,7 @@ ViewFrame::recalcPageInfo()
 	if (size < 0)
 		m_smVert.disable();
 	else
-		m_smVert.setInfo(size / 16, nPageLineNum - 1, m_smVert.getCurrentPos());
+		m_smVert.setInfo(size / 16, nPageLineNum, m_smVert.getCurrentPos());
 	::InvalidateRect(m_hwndView, NULL, FALSE);
 	::UpdateWindow(m_hwndView);
 }
@@ -130,33 +132,15 @@ ViewFrame::ensureVisible(filesize_t pos, bool bRedraw)
 {
 	filesize_t newline = pos / 16;
 	filesize_t line_diff = newline - m_smVert.getCurrentPos();
-	filesize_t page_line_num = m_smVert.getGripWidth();
+	filesize_t valid_page_line_num = m_smVert.getGripWidth() - 1;
 	if (line_diff < 0) {
 		m_smVert.setPosition(newline);
 		setCurrentLine(newline, bRedraw);
-	} else if (line_diff >= page_line_num) {
-		newline -= page_line_num;
+	} else if (line_diff >= valid_page_line_num) {
+		newline -= valid_page_line_num;
 		m_smVert.setPosition(newline);
 		setCurrentLine(newline, bRedraw);
 	}
-#if 0
-	int top_offset_by_size = m_nTopOffset / m_nLineHeight * 16,
-		page_line_num_by_size
-		 = ((m_rctClient.bottom - m_rctClient.top) / m_nLineHeight - 1) * 16;
-	if (!m_pCurBuf ||
-		pos < m_pCurBuf->m_qAddress + top_offset_by_size ||
-		pos >= m_pCurBuf->m_qAddress + top_offset_by_size
-				+ page_line_num_by_size) {
-		// 最初の描画またはカーソルが表示領域をはみ出る
-		filesize_t newline = pos / 16;
-		int line_diff = pos / 16 - m_smVert.getCurrentPos();
-		if (line_diff >= page_line_num_by_size / 16) {
-			// 下にジャンプ/スクロール
-			newline -= page_line_num_by_size / 16 - 1;
-		}
-		setCurrentLine(newline, bRedraw);
-	}
-#endif
 }
 
 void
@@ -169,6 +153,10 @@ ViewFrame::setCurrentLine(filesize_t newline, bool bRedraw)
 		newline = qMaxLine;
 	else if (newline < 0) newline = 0;
 
+	filesize_t qSelectedPos = m_qPrevSelectedPos;
+	int nSelectedSize = m_nPrevSelectedSize;
+	unselect(false);
+
 	// DCBuffer の内容を表示領域に変更する
 	filesize_t buffer_top = m_pDC_Manager->setPosition(newline * 16);
 
@@ -176,11 +164,14 @@ ViewFrame::setCurrentLine(filesize_t newline, bool bRedraw)
 	assert(m_nTopOffset < HEIGHT_PER_YPITCH * m_nLineHeight);
 
 	// 次のバッファとオーバーラップしているかどうか
-	m_bOverlapped = is_overlapped(m_nTopOffset / m_nLineHeight,
-								  m_smVert.getGripWidth() + 1);
+	int actual_linenum = (m_rctClient.bottom - m_rctClient.top + m_nLineHeight - 1)
+							/ m_nLineHeight - 1;
+	m_bOverlapped = is_overlapped(m_nTopOffset / m_nLineHeight, actual_linenum);
 
 	m_pCurBuf  = m_pDC_Manager->getCurrentBuffer(0);
 	m_pNextBuf = m_pDC_Manager->getCurrentBuffer(1);
+
+	select(qSelectedPos, nSelectedSize, false);
 
 	if (bRedraw) updateWithoutHeader();
 }
@@ -204,7 +195,7 @@ ViewFrame::setPosition(filesize_t pos, bool bRedraw)
 	select(pos, 1, bRedraw);
 
 	// ステータスバーへのフィードバック
-	::SendMessage(::GetParent(m_hwndView), WM_USER_SETPOSITION,
+	::SendMessage(m_hwndParent, WM_USER_SETPOSITION,
 				  (WPARAM)(pos >> 32), (LPARAM)pos);
 }
 
@@ -316,7 +307,7 @@ ViewFrame::invertRegion(filesize_t pos, int size, bool bSelected)
 		max = m_pDC_Manager->getMaxBufferIndex();
 	for (int i = min; i <= max; i++) {
 		DCBuffer* pDCBuffer = m_pDC_Manager->getCurrentBuffer(i);
-		if (pDCBuffer) {
+		if (pDCBuffer && pDCBuffer->hasSelectedRegion() != bSelected) {
 			pDCBuffer->invertRegion(pos, size, bSelected);
 		}
 	}

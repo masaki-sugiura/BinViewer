@@ -158,7 +158,7 @@ private:
 	filesize_t m_qPrevSelectedPos;
 	int m_nPrevSelectedSize;
 
-	HWND m_hwndView;
+	HWND m_hwndView, m_hwndParent;
 	HDC  m_hDC;
 	bool m_bMapScrollBarLinearly;
 
