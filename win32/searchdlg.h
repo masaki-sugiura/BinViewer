@@ -11,6 +11,7 @@ public:
 	static void close();
 
 	static bool search(int dir);
+	static bool grep();
 	static void enableControls(int dir, bool);
 
 	static BOOL isDialogMessage(MSG* pmsg)
@@ -24,12 +25,15 @@ private:
 	static HWND m_hwndDlg, m_hwndSearch, m_hwndGrep, m_hwndParent;
 	static ViewFrame* m_pViewFrame;
 
+	static bool prepareFindCallbackArg(FindCallbackArg*& pFindCallbackArg);
+
 	static void adjustClientRect(HWND hDlg, const RECT& rctClient);
 
 	static BOOL CALLBACK SearchMainDlgProc(HWND, UINT, WPARAM, LPARAM);
 	static BOOL CALLBACK SearchDlgProc(HWND, UINT, WPARAM, LPARAM);
 	static BOOL CALLBACK SearchGrepDlgProc(HWND, UINT, WPARAM, LPARAM);
 	static void FindCallbackProc(void* arg);
+	static void GrepCallbackProc(void* arg);
 };
 
 #endif
