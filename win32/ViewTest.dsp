@@ -130,6 +130,10 @@ SOURCE=.\MainWindow.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\StatusBar.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\strutils.cpp
 # End Source File
 # Begin Source File
@@ -195,6 +199,10 @@ SOURCE=..\ringbuf.h
 # Begin Source File
 
 SOURCE=.\scroll.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\StatusBar.h
 # End Source File
 # Begin Source File
 

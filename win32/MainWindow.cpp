@@ -21,8 +21,8 @@ MainWindow::MainWindow(HINSTANCE hInstance, LPCSTR lpszFileName)
 	  m_pLFReader(NULL),
 	  m_pHVDrawInfo(NULL),
 	  m_pBitmapViewWindow(NULL),
-	  m_hWnd(NULL),
-	  m_hwndStatusBar(NULL)
+	  m_pStatusBar(NULL),
+	  m_hWnd(NULL)
 {
 	// window class ‚Ì“o˜^
 	static int bRegWndClass = registerWndClass(hInstance);
@@ -72,10 +72,75 @@ MainWindow::doModal()
 void
 MainWindow::onCreate(HWND hWnd)
 {
+	m_pHVDrawInfo = loadDrawInfo(hWnd);
+
 	RECT rctClient;
 	::GetClientRect(hWnd, &rctClient);
 	rctClient.bottom -= STATUSBAR_HEIGHT;
 
+	m_pHexView = new HexView(m_lfNotifier, hWnd, rctClient, m_pHVDrawInfo.ptr());
+
+	adjustWindowSize(hWnd, rctClient);
+
+	::GetClientRect(hWnd, &rctClient);
+	rctClient.top = rctClient.bottom - STATUSBAR_HEIGHT;
+
+	m_pStatusBar = new StatusBar(m_lfNotifier, hWnd, rctClient);
+
+	// BitmapView
+	m_pBitmapViewWindow = new BitmapViewWindow(m_lfNotifier, hWnd);
+}
+
+void
+MainWindow::onResize()
+{
+	RECT rctClient;
+	::GetClientRect(m_hWnd, &rctClient);
+
+	rctClient.top = rctClient.bottom - STATUSBAR_HEIGHT;
+	m_pStatusBar->setWindowPos(rctClient);
+
+	rctClient.bottom -= STATUSBAR_HEIGHT;
+	rctClient.top = 0;
+	m_pHexView->setFrameRect(rctClient, true);
+}
+
+void
+MainWindow::onResizing(RECT* prctNew)
+{
+	RECT rctWnd, rctClient;
+
+	::GetWindowRect(m_hWnd, &rctWnd);
+	::GetClientRect(m_hWnd, &rctClient);
+
+	rctClient.right += (prctNew->right - prctNew->left)
+					 - (rctWnd.right - rctWnd.left);
+	rctClient.bottom += (prctNew->bottom - prctNew->top)
+					  - (rctWnd.bottom - rctWnd.top);
+//					  - STATUSBAR_HEIGHT;
+
+	rctClient.top = rctClient.bottom - STATUSBAR_HEIGHT;
+	m_pStatusBar->setWindowPos(rctClient);
+
+	rctClient.bottom -= STATUSBAR_HEIGHT;
+	rctClient.top = 0;
+	m_pHexView->setFrameRect(rctClient, true);
+}
+
+void
+MainWindow::onQuit()
+{
+	m_lfNotifier.unloadFile();
+	m_pLFReader = NULL;
+	m_pBitmapViewWindow = NULL;
+	m_pStatusBar = NULL;
+	m_pHexView = NULL;
+	m_pHVDrawInfo = NULL;
+}
+
+HV_DrawInfo*
+MainWindow::loadDrawInfo(HWND hWnd)
+{
 #define COLOR_BLACK      RGB(0, 0, 0)
 #define COLOR_GRAY       RGB(128, 128, 128)
 #define COLOR_LIGHTGRAY  RGB(192, 192, 192)
@@ -102,93 +167,7 @@ MainWindow::onCreate(HWND hWnd)
 											 CARET_STATIC, WHEEL_AS_ARROW_KEYS);
 	::ReleaseDC(hWnd, hDC);
 
-	m_pHVDrawInfo = pDrawInfo;
-
-	m_pHexView = new HexView(m_lfNotifier, hWnd, rctClient, pDrawInfo);
-
-	adjustWindowSize(hWnd, rctClient);
-
-	m_hwndStatusBar = ::CreateWindow(STATUSCLASSNAME,
-									 "",
-									 WS_CHILD | WS_VISIBLE |
-									  SBARS_SIZEGRIP,
-									 rctClient.left,
-									 rctClient.bottom,
-									 rctClient.right - rctClient.left,
-									 STATUSBAR_HEIGHT,
-									 hWnd,
-									 (HMENU)IDC_STATUSBAR,
-									 (HINSTANCE)::GetWindowLong(hWnd, GWL_HINSTANCE),
-									 NULL);
-	if (!m_hwndStatusBar) {
-		::SendMessage(hWnd, WM_CLOSE, 0, 0);
-		return;
-	}
-
-	hDC = ::GetDC(m_hwndStatusBar);
-	char status[80];
-	lstrcpy(status, STATUS_POS_HEADER);
-	lstrcat(status, "0000000000000000");
-	SIZE tsize;
-	::GetTextExtentPoint32(hDC, status, lstrlen(status), &tsize);
-	::SendMessage(m_hwndStatusBar, SB_SETPARTS, 1, (LPARAM)&tsize.cx);
-	::ReleaseDC(m_hwndStatusBar, hDC);
-
-	// BitmapView
-	m_pBitmapViewWindow = new BitmapViewWindow(m_lfNotifier, hWnd);
-}
-
-void
-MainWindow::onResize()
-{
-	RECT rctClient;
-	::GetClientRect(m_hWnd, &rctClient);
-	rctClient.bottom -= STATUSBAR_HEIGHT;
-
-	m_pHexView->setFrameRect(rctClient, false);
-
-	::SetWindowPos(m_hwndStatusBar, 0,
-				   0, rctClient.bottom,
-				   rctClient.right - rctClient.left,
-				   STATUSBAR_HEIGHT,
-				   SWP_NOZORDER);
-
-	m_pHexView->redrawView();
-}
-
-void
-MainWindow::onResizing(RECT* prctNew)
-{
-	RECT rctWnd, rctClient;
-
-	::GetWindowRect(m_hWnd, &rctWnd);
-	::GetClientRect(m_hWnd, &rctClient);
-
-	rctClient.right += (prctNew->right - prctNew->left)
-					 - (rctWnd.right - rctWnd.left);
-	rctClient.bottom += (prctNew->bottom - prctNew->top)
-					  - (rctWnd.bottom - rctWnd.top)
-					  - STATUSBAR_HEIGHT;
-
-	m_pHexView->setFrameRect(rctClient, false);
-
-	::SetWindowPos(m_hwndStatusBar, 0,
-				   0, rctClient.bottom,
-				   rctClient.right - rctClient.left,
-				   STATUSBAR_HEIGHT,
-				   SWP_NOZORDER);
-
-	m_pHexView->redrawView();
-}
-
-void
-MainWindow::onQuit()
-{
-	m_lfNotifier.unloadFile();
-	m_pLFReader = NULL;
-	m_pBitmapViewWindow = NULL;
-	m_pHexView = NULL;
-	m_pHVDrawInfo = NULL;
+	return pDrawInfo;
 }
 
 void

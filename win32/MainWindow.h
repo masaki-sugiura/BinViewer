@@ -5,6 +5,7 @@
 
 #include "HexView.h"
 #include "BitmapView.h"
+#include "StatusBar.h"
 #include "auto_ptr.h"
 
 class MainWindow {
@@ -22,12 +23,15 @@ private:
 	Auto_Ptr<LargeFileReader> m_pLFReader;
 	Auto_Ptr<HV_DrawInfo> m_pHVDrawInfo;
 	Auto_Ptr<BitmapViewWindow> m_pBitmapViewWindow;
-	HWND m_hWnd, m_hwndStatusBar;
+	Auto_Ptr<StatusBar> m_pStatusBar;
+	HWND m_hWnd;
 
 	void onCreate(HWND hWnd);
 	void onResize();
 	void onResizing(RECT* pRect);
 	void onQuit();
+
+	HV_DrawInfo* loadDrawInfo(HWND hWnd);
 
 	void adjustWindowSize(HWND hWnd, const RECT& rctClient);
 
