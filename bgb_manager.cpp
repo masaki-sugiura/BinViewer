@@ -137,7 +137,7 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 		end = start + m_nBufCount * m_nBufSize;
 		while (start < end) {
 			if (start >= 0) { // 終端を越えて描画するためファイル終端を判定してはいけない！！
-				m_rbBuffers.elementAt(i)->init(*getReader(), start);
+				m_rbBuffers.elementAt(i)->init(*m_pLFReader, start);
 			}
 			i++;
 			start += m_nBufSize;
@@ -159,7 +159,7 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 		}
 		while (start < end) {
 			if (start >= 0) {
-				m_rbBuffers.elementAt(i)->init(*getReader(), start);
+				m_rbBuffers.elementAt(i)->init(*m_pLFReader, start);
 			}
 			i++;
 			start += m_nBufSize;

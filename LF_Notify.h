@@ -42,7 +42,7 @@ public:
 	LF_Notifier();
 	~LF_Notifier();
 
-	LargeFileReader* getReader() const { return m_pLFReader.ptr(); }
+	LargeFileReader* getReader() const { return m_pLFReader; }
 
 	bool loadFile(LargeFileReader* pLFReader);
 	void unloadFile();
@@ -51,7 +51,7 @@ public:
 	void unregisterAcceptor(LF_Acceptor* pLFAcceptor);
 
 private:
-	Auto_Ptr<LargeFileReader> m_pLFReader;
+	LargeFileReader* m_pLFReader;
 	typedef list<LF_Acceptor*> LFAList;
 	LFAList m_lstLFAcceptor;
 };

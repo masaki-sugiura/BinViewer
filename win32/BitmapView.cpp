@@ -9,14 +9,12 @@
 BitmapView::BitmapView(HWND hwndOwner, ViewFrame* pViewFrame)
 	: m_hwndOwner(hwndOwner),
 	  m_pViewFrame(pViewFrame),
-	  m_pLFReader(NULL),
 	  m_qCurrentPos(-1),
 	  m_qHeadPos(-1),
-	  m_pScrollManager(NULL)
+	  m_pScrollManager(NULL),
+	  m_bLoaded(false)
 {
 	if (!pViewFrame) throw CreateBitmapViewError();
-
-	m_pLFReader = pViewFrame->getReader();
 
 	HINSTANCE hInstance = (HINSTANCE)::GetWindowLong(hwndOwner, GWL_HINSTANCE);
 
@@ -74,13 +72,12 @@ BitmapView::registerWndClass(HINSTANCE hInst)
 }
 
 bool
-BitmapView::loadFile(LargeFileReader* pLFReader)
+BitmapView::onLoadFile()
 {
-	if (!pLFReader) return false;
-	m_pLFReader = pLFReader;
+	m_bLoaded = true;
 	m_qCurrentPos = 0;
 	m_qHeadPos = 0;
-	m_pScrollManager->setInfo(pLFReader->size() / 128,
+	m_pScrollManager->setInfo(getReader()->size() / 128,
 							  m_rctClient.bottom,
 							  0);
 	drawDC(m_rctClient);
@@ -91,19 +88,25 @@ BitmapView::loadFile(LargeFileReader* pLFReader)
 }
 
 void
-BitmapView::unloadFile()
+BitmapView::onUnloadFile()
 {
+	m_bLoaded = false;
 	m_pScrollManager->disable();
-	m_pLFReader = NULL;
 	m_qHeadPos = -1;
 	m_qCurrentPos = -1;
 	drawDC(m_rctClient);
+	::InvalidateRect(m_hwndView, NULL, FALSE);
+	::UpdateWindow(m_hwndView);
 }
 
 bool
 BitmapView::show()
 {
 	::ShowWindow(m_hwndView, SW_SHOW);
+	drawDC(m_rctClient);
+	invertPos();
+	::InvalidateRect(m_hwndView, NULL, FALSE);
+	::UpdateWindow(m_hwndView);
 	return true;
 }
 
@@ -134,12 +137,13 @@ BitmapView::setPosition(filesize_t pos)
 void
 BitmapView::drawDC(const RECT& rctPaint)
 {
-	if (m_pLFReader) {
+	if (m_bLoaded) {
+		if (!::IsWindowVisible(m_hwndView)) return;
 		filesize_t qOffset = m_qHeadPos + rctPaint.top * 128;
 		static BYTE databuf[128 * 2048]; // max size
 		int size = 128 * (rctPaint.bottom - rctPaint.top);
 		if (!size) return;
-		size = m_pLFReader->readFrom(qOffset, FILE_BEGIN,
+		size = getReader()->readFrom(qOffset, FILE_BEGIN,
 									 databuf, size);
 		// render with SetDIBits()
 #if 1
@@ -173,6 +177,7 @@ inline void invertPixel(HDC hDC, int x, int y)
 void
 BitmapView::invertPos()
 {
+	if (!::IsWindowVisible(m_hwndView)) return;
 	int offset = m_qCurrentPos - m_qHeadPos;
 	int x = offset % 128, y = offset / 128;
 	invertPixel(m_hdcView, x - 1, y - 1);
@@ -261,8 +266,8 @@ BitmapView::onResize(HWND hWnd)
 		drawDC(rctPaint);
 	}
 	m_rctClient = rctNew;
-	if (m_pLFReader) {
-		m_pScrollManager->setInfo(m_pLFReader->size() / 128,
+	if (m_bLoaded) {
+		m_pScrollManager->setInfo(getReader()->size() / 128,
 								  m_rctClient.bottom,
 								  m_qHeadPos / 128);
 	}
@@ -272,7 +277,7 @@ BitmapView::onResize(HWND hWnd)
 void
 BitmapView::onScroll(WPARAM wParam, LPARAM lParam)
 {
-	if (!m_pLFReader) return;
+	if (!m_bLoaded) return;
 	filesize_t qNewPos = m_pScrollManager->onScroll(LOWORD(wParam)) * 128;
 	setPosition(qNewPos);
 }
@@ -280,12 +285,12 @@ BitmapView::onScroll(WPARAM wParam, LPARAM lParam)
 void
 BitmapView::onLButtonDown(WPARAM wParam, LPARAM lParam)
 {
-	if (!m_pLFReader) return;
+	if (!m_bLoaded) return;
 
 	const POINTS& pt = MAKEPOINTS(lParam);
 
 	filesize_t pos = m_qHeadPos + 128 * pt.y + pt.x;
-	if (pos > m_pLFReader->size()) return;
+	if (pos > getReader()->size()) return;
 
 	invertPos();
 	m_qCurrentPos = pos;

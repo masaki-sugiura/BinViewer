@@ -16,6 +16,7 @@
 #include "configdlg.h"
 #include "messages.h"
 #include "bitmapview.h"
+#include "LF_Notify.h"
 
 #define ADDR_WIDTH   100
 #define BYTE_WIDTH    32
@@ -46,6 +47,7 @@ static Auto_Ptr<BitmapView> g_pBitmapView(NULL);
 
 static string g_strImageFile;
 static Auto_Ptr<LargeFileReader> g_pLFReader(NULL);
+static LF_Notifier g_lfNotifier;
 
 static Auto_Ptr<SearchMainDlg> g_pSearchDlg(NULL);
 
@@ -171,8 +173,9 @@ LoadFile(const string& filename)
 	try {
 		g_strImageFile = filename;
 		g_pLFReader = new LargeFileReader(filename);
-		g_pViewFrame->loadFile(g_pLFReader.ptr());
-		g_pBitmapView->loadFile(g_pLFReader.ptr());
+//		g_pViewFrame->loadFile(g_pLFReader.ptr());
+//		g_pBitmapView->loadFile(g_pLFReader.ptr());
+		g_lfNotifier.loadFile(g_pLFReader.ptr());
 
 		char buf[1024];
 		wsprintf(buf, "BinViewer - %s", g_strImageFile.c_str());
@@ -197,8 +200,9 @@ static void OnSetPosition(HWND, WPARAM, LPARAM);
 static void
 UnloadFile()
 {
-	g_pBitmapView->unloadFile();
-	g_pViewFrame->unloadFile();
+//	g_pBitmapView->unloadFile();
+//	g_pViewFrame->unloadFile();
+	g_lfNotifier.unloadFile();
 	g_pLFReader = NULL;
 
 	g_strImageFile = "";
@@ -274,12 +278,15 @@ OnCreate(HWND hWnd)
 	LoadConfig(g_pDrawInfo);
 	assert(g_pDrawInfo.ptr());
 
-	g_pViewFrame = new ViewFrame(hWnd, rctClient, g_pDrawInfo.ptr(), NULL);
+	g_pViewFrame = new ViewFrame(hWnd, rctClient, g_pDrawInfo.ptr());
 	assert(g_pViewFrame.ptr());
 
 	g_pSearchDlg = new SearchMainDlg(*g_pViewFrame);
 
 	g_pBitmapView = new BitmapView(hWnd, g_pViewFrame.ptr());
+
+	g_lfNotifier.registerAcceptor(g_pViewFrame.ptr());
+	g_lfNotifier.registerAcceptor(g_pBitmapView.ptr());
 
 	AdjustWindowSize(hWnd, rctClient);
 
@@ -323,6 +330,8 @@ OnCreate(HWND hWnd)
 static void
 OnQuit(HWND)
 {
+	g_lfNotifier.unregisterAcceptor(g_pBitmapView.ptr());
+	g_lfNotifier.unregisterAcceptor(g_pViewFrame.ptr());
 	g_pBitmapView = NULL;
 	g_pSearchDlg = NULL;
 	g_pLFReader = NULL;

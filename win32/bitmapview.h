@@ -4,6 +4,7 @@
 #define BITMAPVIEW_H_INC
 
 #include "LargeFileReader.h"
+#include "LF_Notify.h"
 #include "scroll.h"
 
 #include <exception>
@@ -11,13 +12,13 @@ using std::exception;
 
 class ViewFrame;
 
-class BitmapView {
+class BitmapView : public LF_Acceptor {
 public:
 	BitmapView(HWND hwndOwner, ViewFrame* pViewFrame);
 	~BitmapView();
 
-	bool loadFile(LargeFileReader* pLFReader);
-	void unloadFile();
+	bool onLoadFile();
+	void onUnloadFile();
 
 	bool show();
 	bool hide();
@@ -27,7 +28,6 @@ public:
 private:
 	HWND m_hwndOwner, m_hwndView;
 	ViewFrame* m_pViewFrame;
-	LargeFileReader* m_pLFReader;
 	UINT m_uWindowWidth;
 	RECT m_rctClient;
 	HDC  m_hdcView;
@@ -35,6 +35,7 @@ private:
 	BITMAPINFO* m_pbmInfo;
 	filesize_t m_qCurrentPos, m_qHeadPos;
 	ScrollManager<filesize_t>* m_pScrollManager;
+	bool m_bLoaded;
 
 	int registerWndClass(HINSTANCE hInst);
 

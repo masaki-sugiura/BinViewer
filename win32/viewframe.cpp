@@ -14,8 +14,7 @@ WORD ViewFrame::m_wNextID;
 HINSTANCE ViewFrame::m_hInstance;
 
 ViewFrame::ViewFrame(HWND hwndParent, const RECT& rct,
-					 DrawInfo* pDrawInfo,
-					 LargeFileReader* pLFReader)
+					 DrawInfo* pDrawInfo)
 	: m_pDC_Manager(NULL), m_pDrawInfo(pDrawInfo),
 	  m_smHorz(NULL, SB_HORZ), m_smVert(NULL, SB_VERT),
 	  m_hwndParent(hwndParent)

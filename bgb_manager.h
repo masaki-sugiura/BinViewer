@@ -36,12 +36,13 @@ private:
 	BGBuffer& operator=(const BGBuffer&);
 };
 
-class BGB_Manager : public LF_Acceptor {
+class BGB_Manager {
 public:
 	BGB_Manager(int bufsize, int bufcount)
 		: m_nBufSize(bufsize),
 		  m_nBufCount(bufcount),
 		  m_qCurrentPos(-1),
+		  m_pLFReader(NULL),
 		  m_bRBInit(false)
 	{
 		assert(m_nBufCount > 2);
@@ -49,12 +50,13 @@ public:
 	}
 	virtual ~BGB_Manager() {}
 
-	bool onLoadFile()
+	virtual bool onLoadFile(LargeFileReader* pLFReader)
 	{
+		m_pLFReader = pLFReader;
 		m_qCurrentPos = -1; // Å‰‚ÌŒÄ‚Ño‚µ‚Å fillBGBuffer() ‚Å init() ‚ðŒÄ‚Ô‚Ì‚É•K—v
 		return isLoaded();
 	}
-	void onUnloadFile()
+	virtual void onUnloadFile()
 	{
 		m_qCurrentPos = -1;
 
@@ -65,14 +67,15 @@ public:
 				m_rbBuffers.elementAt(i)->uninit();
 			}
 		}
+		m_pLFReader = NULL;
 	}
 
-	bool isLoaded() const { return getReader() != NULL; }
+	bool isLoaded() const { return m_pLFReader != NULL; }
 
 	filesize_t getFileSize() const
 	{
 		if (!isLoaded()) return -1;
-		return getReader()->size();
+		return m_pLFReader->size();
 	}
 
 	filesize_t getCurrentPosition() const
@@ -117,6 +120,7 @@ public:
 protected:
 	int m_nBufSize, m_nBufCount;
 	filesize_t m_qCurrentPos;
+	LargeFileReader* m_pLFReader;
 	RingBuffer<BGBuffer> m_rbBuffers;
 	bool m_bRBInit;
 

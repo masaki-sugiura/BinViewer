@@ -16,31 +16,27 @@ is_overlapped(int y_offset_line_num, int page_line_num)
 	return (y_offset_line_num + page_line_num >= MAX_DATASIZE_PER_BUFFER / 16);
 }
 
-class ViewFrame {
+class ViewFrame : public LF_Acceptor {
 public:
-	ViewFrame(HWND hWnd, const RECT& rct,
-			  DrawInfo* pDrawInfo,
-			  LargeFileReader* pLFReader = NULL);
+	ViewFrame(HWND hWnd, const RECT& rct, DrawInfo* pDrawInfo);
 	~ViewFrame();
 
-	bool loadFile(LargeFileReader* pLFReader)
+	bool onLoadFile()
 	{
 		initParams();
-		if (!m_pDC_Manager->loadFile(pLFReader)) return false;
+		if (!m_pDC_Manager->onLoadFile(getReader())) return false;
 		recalcPageInfo();
 		setCurrentLine(0, false);
 		setPosition(0);
 		return true;
 	}
 
-	void unloadFile()
+	void onUnloadFile()
 	{
-		m_pDC_Manager->unloadFile();
+		m_pDC_Manager->onUnloadFile();
 		initParams();
 		recalcPageInfo();
 	}
-
-	LargeFileReader* getReader() { return m_pDC_Manager->getReader(); }
 
 	bool isLoaded() const { return m_pDC_Manager->isLoaded(); }
 
