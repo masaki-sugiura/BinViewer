@@ -27,6 +27,7 @@ Dialog::create(HWND hwndParent)
 	HINSTANCE hInst = (HINSTANCE)::GetWindowLong(hwndParent, GWL_HINSTANCE);
 	assert(hInst);
 	m_bModal = FALSE;
+	m_hwndParent = hwndParent;
 	m_hwndDlg = ::CreateDialogParam(hInst,
 									MAKEINTRESOURCE(m_nDialogID),
 									hwndParent,
@@ -59,13 +60,34 @@ Dialog::doModal(HWND hwndParent)
 }
 
 BOOL
+Dialog::addToMessageLoop(Dialog* that)
+{
+	if (!that->m_hwndDlg) return FALSE;
+	GetLock lock(m_lckActiveDialogs);
+	m_activeDialogs[that->m_hwndDlg] = that;
+	m_nActiveDialogNum++;
+	return TRUE;
+}
+
+BOOL
+Dialog::removeFromMessageLoop(Dialog* that)
+{
+	GetLock lock(m_lckActiveDialogs);
+	if (m_activeDialogs.find(that->m_hwndDlg) == m_activeDialogs.end())
+		return FALSE;
+	m_activeDialogs.erase(that->m_hwndDlg);
+	m_nActiveDialogNum--;
+	return TRUE;
+}
+
+BOOL
 Dialog::isDialogMessage(MSG* msg)
 {
 	GetLock lock(m_lckActiveDialogs);
 
 	if (!m_nActiveDialogNum) return FALSE;
 
-	for (map<HWND, Dialog*>::iterator itr = m_activeDialogs.begin();
+	for (DialogMap::iterator itr = m_activeDialogs.begin();
 		 itr != m_activeDialogs.end();
 		 ++itr) {
 		 if (::IsDialogMessage(itr->first, msg)) return TRUE;
@@ -83,16 +105,13 @@ Dialog::dialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		This->m_hwndDlg = hDlg;
 
 		if (!This->initDialog(hDlg)) {
-			if (This->m_bModal) ::EndDialog(-1);
+			if (This->m_bModal) ::EndDialog(hDlg, -1);
 			else This->close();
 			return TRUE;
 		}
 
 		::SetWindowLong(hDlg, DWL_USER, lParam);
 
-		GetLock lock(m_lckActiveDialogs);
-		m_activeDialogs[hDlg] = (Dialog*)lParam;
-		m_nActiveDialogNum++;
 		return FALSE;
 	}
 
@@ -101,11 +120,6 @@ Dialog::dialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	if (uMsg == WM_DESTROY) {
 		This->destroyDialog();
-		if (!This->m_bModal) {
-			GetLock lock(m_lckActiveDialogs);
-			m_activeDialogs.erase(hDlg);
-			m_nActiveDialogNum--;
-		}
 		This->m_hwndDlg = This->m_hwndParent = NULL;
 		return TRUE;
 	}

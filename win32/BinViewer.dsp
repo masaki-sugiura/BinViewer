@@ -110,6 +110,10 @@ SOURCE=.\dc_manager.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\dialog.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\drawinfo.cpp
 # End Source File
 # Begin Source File
@@ -163,6 +167,10 @@ SOURCE=.\configdlg.h
 # Begin Source File
 
 SOURCE=.\dc_manager.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\dialog.h
 # End Source File
 # Begin Source File
 

@@ -4,6 +4,7 @@
 #define CONFIGDLG_H_INC
 
 #include "drawinfo.h"
+#include "dialog.h"
 #include "messages.h"
 #include "auto_ptr.h"
 #include <string>
@@ -49,46 +50,27 @@ using std::make_pair;
 
 class CreateDialogError : public exception {};
 
-class ConfigDialog {
+class ConfigDialog : public Dialog {
 public:
-	ConfigDialog(DrawInfo* pDrawInfo);
-	virtual ~ConfigDialog();
-
-	HWND getHWND() const { return m_hwndDlg; }
-	HWND getParentHWND() const { return m_hwndParent; }
+	ConfigDialog(int nDialogID, DrawInfo* pDrawInfo);
+	~ConfigDialog();
 
 	virtual bool applyChanges() = 0;
 
 protected:
-	HWND m_hwndParent, m_hwndDlg;
 	DrawInfo* m_pDrawInfo;
-
-	ConfigDialog(const ConfigDialog&);
-	ConfigDialog& operator=(const ConfigDialog&);
-
-	virtual BOOL initDialog(HWND hDlg) = 0;
-	virtual void destroyDialog() = 0;
-
-	virtual BOOL dialogProcMain(UINT, WPARAM, LPARAM) = 0;
-
-	static BOOL CALLBACK configDialogProc(HWND, UINT, WPARAM, LPARAM);
 };
 
 class ConfigPage : public ConfigDialog {
 public:
-	ConfigPage(DrawInfo* pDrawInfo,
-			   int nPageTemplateID, const char* pszTabText);
+	ConfigPage(int nDialogID, DrawInfo* pDrawInfo,
+			   const char* pszTabText);
 
 	const char* getTabText() const { return m_strTabText.c_str(); }
 
-	bool create(HWND hwndParent, const RECT& rctPage);
-	void close()
-	{
-		::SendMessage(m_hwndDlg, WM_CLOSE, 0, 0);
-		m_bShown = false;
-	}
 	void show(BOOL bShow)
 	{
+		m_bShown = (bShow != 0);
 		::ShowWindow(m_hwndDlg, bShow ? SW_SHOW : SW_HIDE);
 	}
 
@@ -98,7 +80,6 @@ public:
 	}
 
 protected:
-	int m_nPageTemplateID;
 	string m_strTabText;
 	bool m_bShown;
 
@@ -185,8 +166,6 @@ class ConfigMainDlg : public ConfigDialog {
 public:
 	ConfigMainDlg(DrawInfo* pDrawInfo);
 	~ConfigMainDlg();
-
-	bool doModal(HWND hwndParent);
 
 	bool applyChanges();
 

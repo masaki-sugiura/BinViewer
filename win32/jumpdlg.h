@@ -4,16 +4,19 @@
 #define JUMPDLG_H_INC
 
 #include "viewframe.h"
+#include "dialog.h"
 
-class JumpDlg {
+class JumpDlg : public Dialog {
 public:
-	static void doModal(HWND hwndParent, ViewFrame* pViewFrame);
+	JumpDlg(ViewFrame* pViewFrame);
+
+protected:
+	BOOL initDialog(HWND hDlg);
+	void destroyDialog();
+	BOOL dialogProcMain(UINT, WPARAM, LPARAM);
 
 private:
-	static HWND m_hwndParent;
-	static ViewFrame* m_pViewFrame;
-
-	static BOOL CALLBACK JumpDlgProc(HWND, UINT, WPARAM, LPARAM);
+	ViewFrame* m_pViewFrame;
 };
 
 #endif

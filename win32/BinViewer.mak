@@ -45,6 +45,7 @@ CLEAN :
 	-@erase "$(INTDIR)\bgb_manager.obj"
 	-@erase "$(INTDIR)\configdlg.obj"
 	-@erase "$(INTDIR)\dc_manager.obj"
+	-@erase "$(INTDIR)\dialog.obj"
 	-@erase "$(INTDIR)\drawinfo.obj"
 	-@erase "$(INTDIR)\jumpdlg.obj"
 	-@erase "$(INTDIR)\LargeFileReader.obj"
@@ -79,6 +80,7 @@ LINK32_OBJS= \
 	"$(INTDIR)\configdlg.obj" \
 	"$(INTDIR)\dc_manager.obj" \
 	"$(INTDIR)\drawinfo.obj" \
+	"$(INTDIR)\jumpdlg.obj" \
 	"$(INTDIR)\LargeFileReader.obj" \
 	"$(INTDIR)\lock.obj" \
 	"$(INTDIR)\main.obj" \
@@ -87,7 +89,7 @@ LINK32_OBJS= \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
 	"$(INTDIR)\mainwnd.res" \
-	"$(INTDIR)\jumpdlg.obj"
+	"$(INTDIR)\dialog.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -112,6 +114,8 @@ CLEAN :
 	-@erase "$(INTDIR)\configdlg.sbr"
 	-@erase "$(INTDIR)\dc_manager.obj"
 	-@erase "$(INTDIR)\dc_manager.sbr"
+	-@erase "$(INTDIR)\dialog.obj"
+	-@erase "$(INTDIR)\dialog.sbr"
 	-@erase "$(INTDIR)\drawinfo.obj"
 	-@erase "$(INTDIR)\drawinfo.sbr"
 	-@erase "$(INTDIR)\jumpdlg.obj"
@@ -153,6 +157,7 @@ BSC32_SBRS= \
 	"$(INTDIR)\configdlg.sbr" \
 	"$(INTDIR)\dc_manager.sbr" \
 	"$(INTDIR)\drawinfo.sbr" \
+	"$(INTDIR)\jumpdlg.sbr" \
 	"$(INTDIR)\LargeFileReader.sbr" \
 	"$(INTDIR)\lock.sbr" \
 	"$(INTDIR)\main.sbr" \
@@ -160,7 +165,7 @@ BSC32_SBRS= \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
 	"$(INTDIR)\viewframe.sbr" \
-	"$(INTDIR)\jumpdlg.sbr"
+	"$(INTDIR)\dialog.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -174,6 +179,7 @@ LINK32_OBJS= \
 	"$(INTDIR)\configdlg.obj" \
 	"$(INTDIR)\dc_manager.obj" \
 	"$(INTDIR)\drawinfo.obj" \
+	"$(INTDIR)\jumpdlg.obj" \
 	"$(INTDIR)\LargeFileReader.obj" \
 	"$(INTDIR)\lock.obj" \
 	"$(INTDIR)\main.obj" \
@@ -182,7 +188,7 @@ LINK32_OBJS= \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
 	"$(INTDIR)\mainwnd.res" \
-	"$(INTDIR)\jumpdlg.obj"
+	"$(INTDIR)\dialog.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -292,6 +298,22 @@ SOURCE=.\dc_manager.cpp
 
 
 "$(INTDIR)\dc_manager.obj"	"$(INTDIR)\dc_manager.sbr" : $(SOURCE) "$(INTDIR)"
+
+
+!ENDIF 
+
+SOURCE=.\dialog.cpp
+
+!IF  "$(CFG)" == "BinViewer - Win32 Release"
+
+
+"$(INTDIR)\dialog.obj" : $(SOURCE) "$(INTDIR)"
+
+
+!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
+
+
+"$(INTDIR)\dialog.obj"	"$(INTDIR)\dialog.sbr" : $(SOURCE) "$(INTDIR)"
 
 
 !ENDIF 

@@ -44,7 +44,7 @@ static Auto_Ptr<ViewFrame> g_pViewFrame(NULL);
 static string g_strImageFile;
 static Auto_Ptr<LargeFileReader> g_pLFReader(NULL);
 
-static bool g_bMapScrollBarLinearly;
+static Auto_Ptr<SearchMainDlg> g_pSearchDlg(NULL);
 
 static void
 GetParameters()
@@ -232,6 +232,8 @@ OnCreate(HWND hWnd)
 	g_pViewFrame = new ViewFrame(hWnd, rctClient, g_pDrawInfo.ptr(), NULL);
 	assert(g_pViewFrame.ptr());
 
+	g_pSearchDlg = new SearchMainDlg(g_pViewFrame.ptr());
+
 	AdjustWindowSize(hWnd, rctClient);
 
 	g_hwndStatusBar = ::CreateWindow(STATUSCLASSNAME,
@@ -274,7 +276,7 @@ OnCreate(HWND hWnd)
 static void
 OnQuit(HWND)
 {
-	SearchDlg::close();
+	g_pSearchDlg = NULL;
 	g_pLFReader = NULL;
 	g_pViewFrame = NULL;
 }
@@ -382,13 +384,14 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case IDM_SEARCH:
-			if (!SearchDlg::create(hWnd, g_pViewFrame.ptr())) {
+			assert(g_pSearchDlg.ptr());
+			if (!g_pSearchDlg->create(hWnd)) {
 				::MessageBox(hWnd, "検索ダイアログの表示に失敗しました", NULL, MB_OK);
 			}
 			break;
 
 		case IDM_JUMP:
-			JumpDlg::doModal(hWnd, g_pViewFrame.ptr());
+			JumpDlg(g_pViewFrame.ptr()).doModal(hWnd);
 			break;
 
 		case IDK_LINEDOWN:
@@ -510,7 +513,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	MSG msg;
 	while (::GetMessage(&msg, NULL, 0, 0)) {
-		if (!SearchDlg::isDialogMessage(&msg) &&
+		if (!Dialog::isDialogMessage(&msg) &&
 			!::TranslateAccelerator(g_hwndMain, hAccel, &msg)) {
 			::TranslateMessage(&msg);
 			::DispatchMessage(&msg);

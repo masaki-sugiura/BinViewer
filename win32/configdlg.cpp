@@ -7,8 +7,8 @@
 #include <commctrl.h>
 #include <assert.h>
 
-ConfigDialog::ConfigDialog(DrawInfo* pDrawInfo)
-	: m_hwndParent(NULL), m_hwndDlg(NULL),
+ConfigDialog::ConfigDialog(int nDialogID, DrawInfo* pDrawInfo)
+	: Dialog(nDialogID),
 	  m_pDrawInfo(pDrawInfo)
 {
 	if (!pDrawInfo) {
@@ -20,84 +20,23 @@ ConfigDialog::~ConfigDialog()
 {
 }
 
-BOOL CALLBACK
-ConfigDialog::configDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	ConfigDialog* pCD = NULL;
-
-	if (uMsg == WM_INITDIALOG) {
-		pCD = (ConfigDialog*)lParam;
-		assert(pCD);
-		::SetWindowLong(hDlg, DWL_USER, (LONG)lParam);
-		pCD->m_hwndDlg = hDlg;
-		if (!pCD->initDialog(hDlg)) {
-			::SendMessage(hDlg, WM_CLOSE, 0, 0);
-			pCD->m_hwndDlg = NULL;
-		}
-		return FALSE;
-	}
-
-	pCD = (ConfigDialog*)::GetWindowLong(hDlg, DWL_USER);
-	if (!pCD) return FALSE;
-
-	if (uMsg == WM_DESTROY) {
-		pCD->destroyDialog();
-		pCD->m_hwndDlg = NULL;
-		return TRUE;
-	}
-
-	return pCD->dialogProcMain(uMsg, wParam, lParam);
-}
-
-BOOL
-ConfigDialog::initDialog(HWND hDlg)
-{
-	m_hwndDlg = hDlg;
-	return TRUE;
-}
-
-ConfigPage::ConfigPage(DrawInfo* pDrawInfo,
-					   int nPageTemplateID, const char* pszTabText)
-	: ConfigDialog(pDrawInfo),
-	  m_nPageTemplateID(nPageTemplateID),
+ConfigPage::ConfigPage(int nDialogID, DrawInfo* pDrawInfo,
+					   const char* pszTabText)
+	: ConfigDialog(nDialogID, pDrawInfo),
 	  m_strTabText(pszTabText),
 	  m_bShown(false)
 {
 }
 
-bool
-ConfigPage::create(HWND hwndParent, const RECT& rctPage)
-{
-	if (m_hwndDlg) return true;
-
-	m_hwndParent = hwndParent;
-
-	m_hwndDlg = ::CreateDialogParam((HINSTANCE)::GetWindowLong(hwndParent,
-															   GWL_HINSTANCE),
-									MAKEINTRESOURCE(m_nPageTemplateID),
-									hwndParent,
-									(DLGPROC)ConfigDialog::configDialogProc,
-									(LPARAM)this);
-	if (!m_hwndDlg) return false;
-
-	::SetWindowPos(m_hwndDlg, HWND_TOP,
-				   rctPage.left, rctPage.top,
-				   0, 0,
-				   SWP_NOSIZE | SWP_NOOWNERZORDER | SWP_SHOWWINDOW);
-
-	m_bShown = true;
-
-	return true;
-}
-
 void
 ConfigPage::destroyDialog()
 {
+	m_bShown = false;
 //	::MessageBox(NULL, "ConfigPage::destroyDialog()", NULL, MB_OK);
 }
 
 ConfigMainDlg::ConfigMainDlg(DrawInfo* pDrawInfo)
-	: ConfigDialog(pDrawInfo)
+	: ConfigDialog(IDD_CONFIG_MAIN, pDrawInfo)
 {
 	m_pConfigPages[0] = new FontConfigPage(pDrawInfo);
 	m_pConfigPages[1] = new CursorConfigPage(pDrawInfo);
@@ -107,36 +46,6 @@ ConfigMainDlg::~ConfigMainDlg()
 {
 	for (int i = 0; i < CONFIG_DIALOG_PAGE_NUM; i++)
 		delete m_pConfigPages[i];
-}
-
-bool
-ConfigMainDlg::doModal(HWND hwndParent)
-{
-	m_hwndParent = hwndParent;
-	return !::DialogBoxParam((HINSTANCE)::GetWindowLong(hwndParent,
-														GWL_HINSTANCE),
-							 MAKEINTRESOURCE(IDD_CONFIG_MAIN),
-							 hwndParent,
-							 (DLGPROC)ConfigDialog::configDialogProc,
-							 (LPARAM)this);
-}
-
-int
-ConfigMainDlg::getCurrentPage() const
-{
-	if (!m_hwndDlg) return -1;
-
-	HWND hwndTab = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_TAB);
-	int iItem = TabCtrl_GetCurSel(hwndTab);
-	TCITEM tcItem;
-	tcItem.mask = TCIF_PARAM;
-	tcItem.lParam = -1;
-	TabCtrl_GetItem(hwndTab, iItem, &tcItem);
-
-	assert((UINT)tcItem.lParam < CONFIG_DIALOG_PAGE_NUM);
-	assert(m_pConfigPages[tcItem.lParam]);
-
-	return tcItem.lParam;
 }
 
 bool
@@ -158,11 +67,27 @@ ConfigMainDlg::applyChanges()
 	return true;
 }
 
+int
+ConfigMainDlg::getCurrentPage() const
+{
+	if (!m_hwndDlg) return -1;
+
+	HWND hwndTab = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_TAB);
+	int iItem = TabCtrl_GetCurSel(hwndTab);
+	TCITEM tcItem;
+	tcItem.mask = TCIF_PARAM;
+	tcItem.lParam = -1;
+	TabCtrl_GetItem(hwndTab, iItem, &tcItem);
+
+	assert((UINT)tcItem.lParam < CONFIG_DIALOG_PAGE_NUM);
+	assert(m_pConfigPages[tcItem.lParam]);
+
+	return tcItem.lParam;
+}
+
 BOOL
 ConfigMainDlg::initDialog(HWND hDlg)
 {
-	if (!ConfigDialog::initDialog(hDlg)) return FALSE;
-
 	m_bDirty = FALSE;
 
 	HWND hwndTab = ::GetDlgItem(hDlg, IDC_CONFIG_TAB);
@@ -201,7 +126,7 @@ ConfigMainDlg::destroyDialog()
 			m_pConfigPages[i]->close();
 		}
 	}
-	::EndDialog(m_hwndDlg, 0);
+//	::EndDialog(m_hwndDlg, 0);
 }
 
 bool
@@ -209,7 +134,17 @@ ConfigMainDlg::createPage(int i)
 {
 	assert(i >= 0 && i < CONFIG_DIALOG_PAGE_NUM);
 
-	return m_pConfigPages[i]->create(m_hwndDlg, m_rctPage);
+	HWND hDlg = m_pConfigPages[i]->create(m_hwndDlg);
+	if (!hDlg) return false;
+
+	::SetWindowPos(hDlg, HWND_TOP,
+				   m_rctPage.left, m_rctPage.top,
+				   0, 0,
+				   SWP_NOSIZE | SWP_NOOWNERZORDER);
+
+	m_pConfigPages[i]->show(TRUE);
+
+	return true;
 }
 
 BOOL
@@ -265,7 +200,7 @@ ConfigMainDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_CLOSE:
 		::SetForegroundWindow(m_hwndParent);
-		::DestroyWindow(m_hwndDlg);
+		::EndDialog(m_hwndDlg, 0);
 		break;
 
 	case WM_USER_ENABLE_APPLY_BUTTON:
@@ -479,7 +414,7 @@ get_font_pt_from_pixel(HDC hDC, int pixel, LPSTR buf)
 }
 
 FontConfigPage::FontConfigPage(DrawInfo* pDrawInfo)
-	: ConfigPage(pDrawInfo, IDD_CONFIG_FONT, "フォント"),
+	: ConfigPage(IDD_CONFIG_FONT, pDrawInfo, "フォント"),
 	  m_icFgColor(pDrawInfo->m_hDC),
 	  m_icBkColor(pDrawInfo->m_hDC),
 	  m_pSampleView(NULL)
@@ -489,8 +424,6 @@ FontConfigPage::FontConfigPage(DrawInfo* pDrawInfo)
 BOOL
 FontConfigPage::initDialog(HWND hDlg)
 {
-	if (!ConfigPage::initDialog(hDlg)) return FALSE;
-
 	m_FontConfig = m_pDrawInfo->m_FontInfo.getFontConfig();
 
 	prepareFontList(m_FontConfig.m_bProportional, m_FontConfig.m_pszFontFace);
@@ -886,7 +819,7 @@ FontConfigPage::chooseColor(COLORREF& cref)
 }
 
 CursorConfigPage::CursorConfigPage(DrawInfo* pDrawInfo)
-	: ConfigPage(pDrawInfo, IDD_CONFIG_CURSOR, "カーソル"),
+	: ConfigPage(IDD_CONFIG_CURSOR, pDrawInfo, "カーソル"),
 	  m_ScrollConfig(pDrawInfo->m_ScrollConfig)
 {
 //	m_ScrollConfig = m_pDrawInfo->m_ScrollConfig;
@@ -895,8 +828,6 @@ CursorConfigPage::CursorConfigPage(DrawInfo* pDrawInfo)
 BOOL
 CursorConfigPage::initDialog(HWND hDlg)
 {
-	if (!ConfigPage::initDialog(hDlg)) return FALSE;
-
 	switch (m_ScrollConfig.m_caretMove) {
 	case CARET_STATIC:
 		::SendDlgItemMessage(hDlg, IDC_CONFIG_CARET_STATIC,

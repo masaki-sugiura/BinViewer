@@ -31,6 +31,9 @@ protected:
 	HWND m_hwndDlg, m_hwndParent;
 	BOOL m_bModal;
 
+	static BOOL addToMessageLoop(Dialog*);
+	static BOOL removeFromMessageLoop(Dialog*);
+
 	virtual BOOL initDialog(HWND hDlg) = 0;
 	virtual void destroyDialog() = 0;
 	virtual BOOL dialogProcMain(UINT, WPARAM, LPARAM) = 0;

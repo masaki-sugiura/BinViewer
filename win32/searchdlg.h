@@ -4,36 +4,71 @@
 #define SEARCHDLG_H_INC
 
 #include "viewframe.h"
+#include "dialog.h"
 
-class SearchDlg {
+class SearchDlg : public Dialog {
 public:
-	static bool create(HWND hwndParent, ViewFrame* pViewFrame);
-	static void close();
+	SearchDlg(Dialog* pParentDlg, ViewFrame* pViewFrame);
+	~SearchDlg();
 
-	static bool search(int dir);
-	static bool grep();
-	static void enableControls(int dir, bool);
+	bool prepareFindCallbackArg(FindCallbackArg*& pFindCallbackArg);
 
-	static BOOL isDialogMessage(MSG* pmsg)
-	{
-		if (!m_hwndDlg) return FALSE;
-		return ::IsDialogMessage(m_hwndDlg, pmsg);
-	}
+	bool isSearching() const { return m_bSearching; }
+
+protected:
+	BOOL initDialog(HWND hDlg);
+	void destroyDialog();
+	BOOL dialogProcMain(UINT, WPARAM, LPARAM);
 
 private:
-	static bool m_bSearching, m_bShowGrepDialog;
-	static HWND m_hwndDlg, m_hwndSearch, m_hwndGrep, m_hwndParent;
-	static ViewFrame* m_pViewFrame;
+	Dialog* m_pParentDlg;
+	ViewFrame* m_pViewFrame;
+	bool m_bSearching;
 
-	static bool prepareFindCallbackArg(FindCallbackArg*& pFindCallbackArg);
+	void enableControls(int dir, bool);
 
-	static void adjustClientRect(HWND hDlg, const RECT& rctClient);
+	bool search(int dir);
 
-	static BOOL CALLBACK SearchMainDlgProc(HWND, UINT, WPARAM, LPARAM);
-	static BOOL CALLBACK SearchDlgProc(HWND, UINT, WPARAM, LPARAM);
-	static BOOL CALLBACK SearchGrepDlgProc(HWND, UINT, WPARAM, LPARAM);
 	static void FindCallbackProc(void* arg);
+};
+
+class GrepDlg : public Dialog {
+public:
+	GrepDlg(Dialog* pParentDlg, SearchDlg* pSearchDlg, ViewFrame* pViewFrame);
+	~GrepDlg();
+
+	bool grep();
+
+protected:
+	BOOL initDialog(HWND hDlg);
+	void destroyDialog();
+	BOOL dialogProcMain(UINT, WPARAM, LPARAM);
+
+private:
+	Dialog* m_pParentDlg;
+	SearchDlg* m_pSearchDlg;
+	ViewFrame* m_pViewFrame;
+
 	static void GrepCallbackProc(void* arg);
+};
+
+class SearchMainDlg : public Dialog {
+public:
+	SearchMainDlg(ViewFrame* pViewFrame);
+	~SearchMainDlg();
+
+protected:
+	BOOL initDialog(HWND hDlg);
+	void destroyDialog();
+	BOOL dialogProcMain(UINT, WPARAM, LPARAM);
+
+private:
+	ViewFrame* m_pViewFrame;
+	SearchDlg* m_pSearchDlg;
+	GrepDlg*   m_pGrepDlg;
+	bool m_bShowGrepDialog;
+
+	void adjustClientRect(HWND hDlg, const RECT& rctClient);
 };
 
 #endif

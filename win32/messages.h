@@ -11,6 +11,7 @@
 #define WM_USER_GREP_START   (WM_USER + 1004)
 #define WM_USER_GREP_NEXT    (WM_USER + 1005)
 #define WM_USER_GREP_FINISH  (WM_USER + 1006)
+#define WM_USER_SHOW_GREP_DIALOG (WM_USER + 1007)
 
 // 設定ダイアログとのやり取りで用いるメッセージ
 #define WM_USER_ENABLE_APPLY_BUTTON  (WM_USER + 1010)

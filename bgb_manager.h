@@ -24,6 +24,7 @@ struct FindCallbackArg {
 	filesize_t m_qStartAddress;   // [in] 検索開始位置
 	void (*m_pfnCallback)(void*); // [in] 検索終了時に呼び出されるコールバック関数
 	filesize_t m_qFindAddress; // [out] 見つかったアドレス
+	void* m_pUserData; // [in/out] ユーザー定義の変数
 };
 
 struct BGBuffer {
