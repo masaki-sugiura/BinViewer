@@ -143,6 +143,7 @@ protected:
 	struct ColorSelButtonInfo {
 		FontConfigPage* m_pFCPage;
 		WNDPROC m_pfnOrgWndProc;
+		HTHEME  m_hTheme;
 		HDC     m_hDC;
 		HBITMAP m_hBitmap;
 		HBRUSH  m_hbrColor;
@@ -150,9 +151,16 @@ protected:
 		BOOL m_bPressed;
 	};
 
+	struct ComboBoxInfo {
+		HWND m_hwndCombo;
+		WNDPROC m_pfnOrgWndProc;
+	};
+	ComboBoxInfo m_cbiFontName, m_cbiFontSize;
+
 	BOOL onSetImage(HWND hWnd, ColorSelButtonInfo* pInfo, int iNewState, HBITMAP hbmColor = NULL);
 
 	static LRESULT CALLBACK colorSelBtnProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+	static LRESULT CALLBACK comboBoxProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 	static int CALLBACK enumFontProc(ENUMLOGFONTEX *lpelfe,
 									 NEWTEXTMETRICEX *lpntme,

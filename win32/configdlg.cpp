@@ -8,6 +8,9 @@
 #include <Tmschema.h>
 #include <assert.h>
 
+#ifndef WM_THEMECHANGED
+#define WM_THEMECHANGED  0x031A
+#endif
 
 ConfigDialog::ConfigDialog(int nDialogID, Auto_Ptr<DrawInfo>& pDrawInfo)
 	: Dialog(nDialogID),
@@ -462,6 +465,7 @@ FontConfigPage::initDialog(HWND hDlg)
 		HWND hCtrl = ::GetDlgItem(hDlg, IDC_CONFIG_FONT_FGCOLOR);
 		ColorSelButtonInfo* pInfo = new ColorSelButtonInfo;
 		pInfo->m_pFCPage = this;
+		pInfo->m_hTheme = NULL;
 		pInfo->m_hDC = NULL;
 		pInfo->m_hBitmap = NULL;
 		pInfo->m_hbrColor = NULL;
@@ -474,6 +478,7 @@ FontConfigPage::initDialog(HWND hDlg)
 		hCtrl = ::GetDlgItem(hDlg, IDC_CONFIG_FONT_BKCOLOR);
 		pInfo = new ColorSelButtonInfo;
 		pInfo->m_pFCPage = this;
+		pInfo->m_hTheme = NULL;
 		pInfo->m_hDC = NULL;
 		pInfo->m_hBitmap = NULL;
 		pInfo->m_hbrColor = NULL;
@@ -483,6 +488,21 @@ FontConfigPage::initDialog(HWND hDlg)
 														  (LONG)colorSelBtnProc);
 		::SendMessage(hCtrl, WM_USER_INIT_COLORSELBUTTON, 0, (LPARAM)pInfo);
 	}
+
+	// フォント名コンボリストをサブクラス化
+	m_cbiFontName.m_hwndCombo = ::GetDlgItem(hDlg, IDC_CONFIG_FONT_NAME);
+	m_cbiFontName.m_pfnOrgWndProc
+		= (WNDPROC)::GetWindowLong(m_cbiFontName.m_hwndCombo, GWL_WNDPROC);
+	::SetWindowLong(m_cbiFontName.m_hwndCombo, GWL_USERDATA,
+					(LONG)&m_cbiFontName);
+	::SetWindowLong(m_cbiFontName.m_hwndCombo, GWL_WNDPROC,
+					(LONG)comboBoxProc);
+	// フォントサイズコンボボックスのエディットコントロールをサブクラス化
+	m_cbiFontSize.m_hwndCombo = ::GetDlgItem(hDlg, IDC_CONFIG_FONT_SIZE);
+	HWND hwndEdit = ::GetTopWindow(m_cbiFontSize.m_hwndCombo);
+	m_cbiFontSize.m_pfnOrgWndProc = (WNDPROC)::GetWindowLong(hwndEdit, GWL_WNDPROC);
+	::SetWindowLong(hwndEdit, GWL_USERDATA, (LONG)&m_cbiFontSize);
+	::SetWindowLong(hwndEdit, GWL_WNDPROC, (LONG)comboBoxProc);
 
 	return TRUE;
 }
@@ -863,7 +883,10 @@ FontConfigPage::onSetImage(HWND hCtrl,
 						   int iNewState,
 						   HBITMAP hbmColor)
 {
-	if (!(*m_pfnIsThemeActive)()) return FALSE;
+	if (!pInfo->m_hTheme) {
+		pInfo->m_hTheme = (*m_pfnOpenThemeData)(hCtrl, L"Button");
+		if (!pInfo->m_hTheme) return FALSE;
+	}
 
 	RECT rctCtrl;
 	::GetWindowRect(hCtrl, &rctCtrl);
@@ -895,33 +918,23 @@ FontConfigPage::onSetImage(HWND hCtrl,
 		HGDIOBJ hOrgBitmap = ::SelectObject(pInfo->m_hDC, hbmColor);
 		pInfo->m_hbrColor = ::CreateSolidBrush(::GetPixel(pInfo->m_hDC, 0, 0));
 		::SelectObject(pInfo->m_hDC, hOrgBitmap);
-	} else {
-		if (iNewState == pInfo->m_iState) return TRUE;
-		pInfo->m_iState = iNewState;
 	}
+
+	pInfo->m_iState = iNewState;
 
 	HRESULT hr = (*m_pfnDrawThemeParentBackground)(hCtrl, pInfo->m_hDC, &rctCtrl);
 	if (hr != S_OK) return FALSE;
 
-	HTHEME hTheme = (*m_pfnOpenThemeData)(hCtrl, L"Button");
-	if (!hTheme) return FALSE;
-
-	hr = (*m_pfnDrawThemeBackground)(hTheme, pInfo->m_hDC,
+	hr = (*m_pfnDrawThemeBackground)(pInfo->m_hTheme, pInfo->m_hDC,
 									 BP_PUSHBUTTON, pInfo->m_iState,
 									 &rctCtrl, NULL);
-	if (hr != S_OK) {
-		(*m_pfnCloseThemeData)(hTheme);
-		return FALSE;
-	}
+	if (hr != S_OK) return FALSE;
 
 	RECT rctContent;
-	hr = (*m_pfnGetThemeBackgroundContentRect)(hTheme, pInfo->m_hDC,
+	hr = (*m_pfnGetThemeBackgroundContentRect)(pInfo->m_hTheme, pInfo->m_hDC,
 											   BP_PUSHBUTTON, pInfo->m_iState,
 											   &rctCtrl, &rctContent);
-	if (hr != S_OK) {
-		(*m_pfnCloseThemeData)(hTheme);
-		return FALSE;
-	}
+	if (hr != S_OK) return FALSE;
 
 	// content 領域の 70% を描画
 	int w = (rctContent.right - rctContent.left) * 7 / 10,
@@ -932,8 +945,6 @@ FontConfigPage::onSetImage(HWND hCtrl,
 	rctContent.bottom = rctContent.top + h;
 
 	::FillRect(pInfo->m_hDC, &rctContent, pInfo->m_hbrColor);
-
-	(*m_pfnCloseThemeData)(hTheme);
 
 	return TRUE;
 }
@@ -952,7 +963,7 @@ FontConfigPage::colorSelBtnProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 	switch (uMsg) {
 	case WM_PAINT:
-		if (pInfo->m_hDC) {
+		if ((*m_pfnIsThemeActive)() && pInfo->m_hDC) {
 			PAINTSTRUCT ps;
 			::BeginPaint(hWnd, &ps);
 			::BitBlt(ps.hdc,
@@ -968,9 +979,10 @@ FontConfigPage::colorSelBtnProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		break;
 
 	case WM_LBUTTONDOWN:
-		if (pInfo->m_hDC) {
+		if ((*m_pfnIsThemeActive)() && pInfo->m_hDC) {
 			pInfo->m_bPressed = TRUE;
-			pInfo->m_pFCPage->onSetImage(hWnd, pInfo, PBS_PRESSED);
+			if (pInfo->m_iState != PBS_PRESSED)
+				pInfo->m_pFCPage->onSetImage(hWnd, pInfo, PBS_PRESSED);
 			::InvalidateRect(hWnd, NULL, FALSE);
 			::UpdateWindow(hWnd);
 			if (::GetCapture() != hWnd) ::SetCapture(hWnd);
@@ -979,7 +991,7 @@ FontConfigPage::colorSelBtnProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		break;
 
 	case WM_LBUTTONUP:
-		if (pInfo->m_hDC) {
+		if ((*m_pfnIsThemeActive)() && pInfo->m_hDC) {
 			pInfo->m_bPressed = FALSE;
 			if (::GetCapture() == hWnd) ::ReleaseCapture();
 			RECT rctWnd;
@@ -1001,8 +1013,9 @@ FontConfigPage::colorSelBtnProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 	case WM_CAPTURECHANGED:
 		if (::GetCapture() != hWnd) {
-			if (pInfo->m_hDC) {
-				pInfo->m_pFCPage->onSetImage(hWnd, pInfo, PBS_NORMAL);
+			if ((*m_pfnIsThemeActive)() && pInfo->m_hDC) {
+				if (pInfo->m_iState != PBS_NORMAL)
+					pInfo->m_pFCPage->onSetImage(hWnd, pInfo, PBS_NORMAL);
 				::InvalidateRect(hWnd, NULL, FALSE);
 				::UpdateWindow(hWnd);
 				return 0;
@@ -1011,7 +1024,7 @@ FontConfigPage::colorSelBtnProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		break;
 
 	case WM_MOUSEMOVE:
-		if (pInfo->m_hDC) {
+		if ((*m_pfnIsThemeActive)() && pInfo->m_hDC) {
 			RECT rctWnd;
 			::GetWindowRect(hWnd, &rctWnd);
 			rctWnd.right -= rctWnd.left;
@@ -1040,7 +1053,8 @@ FontConfigPage::colorSelBtnProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					}
 				}
 			}
-			pInfo->m_pFCPage->onSetImage(hWnd, pInfo, iState);
+			if (pInfo->m_iState != iState)
+				pInfo->m_pFCPage->onSetImage(hWnd, pInfo, iState);
 			::InvalidateRect(hWnd, NULL, FALSE);
 			::UpdateWindow(hWnd);
 			return 0;
@@ -1048,10 +1062,24 @@ FontConfigPage::colorSelBtnProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		break;
 
 	case BM_SETIMAGE:
-		pInfo->m_pFCPage->onSetImage(hWnd, pInfo, PBS_NORMAL, (HBITMAP)lParam);
-		::InvalidateRect(hWnd, NULL, FALSE);
-		::UpdateWindow(hWnd);
-		return 0;
+		if ((*m_pfnIsThemeActive)()) {
+			pInfo->m_pFCPage->onSetImage(hWnd, pInfo, PBS_NORMAL, (HBITMAP)lParam);
+			::InvalidateRect(hWnd, NULL, FALSE);
+			::UpdateWindow(hWnd);
+			return 0;
+		}
+		break;
+
+	case WM_THEMECHANGED:
+		(*m_pfnCloseThemeData)(pInfo->m_hTheme);
+		pInfo->m_hTheme = NULL;
+		if ((*m_pfnIsThemeActive)()) {
+			pInfo->m_pFCPage->onSetImage(hWnd, pInfo, pInfo->m_iState);
+			::InvalidateRect(hWnd, NULL, FALSE);
+			::UpdateWindow(hWnd);
+			return 0;
+		}
+		break;
 
 	case WM_DESTROY:
 		{
@@ -1061,6 +1089,7 @@ FontConfigPage::colorSelBtnProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				::DeleteObject(pInfo->m_hBitmap);
 				::DeleteDC(pInfo->m_hDC);
 			}
+			if (pInfo->m_hTheme) (*m_pfnCloseThemeData)(pInfo->m_hTheme);
 			delete pInfo;
 			::SetWindowLong(hWnd, GWL_WNDPROC, (LONG)pfnOrgWndProc);
 			return ::CallWindowProc(pfnOrgWndProc, hWnd, uMsg, wParam, lParam);
@@ -1071,6 +1100,22 @@ FontConfigPage::colorSelBtnProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	}
 
 	return ::CallWindowProc(pInfo->m_pfnOrgWndProc, hWnd, uMsg, wParam, lParam);
+}
+
+LRESULT CALLBACK
+FontConfigPage::comboBoxProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	ComboBoxInfo* pcbInfo = (ComboBoxInfo*)::GetWindowLong(hWnd, GWL_USERDATA);
+	if (uMsg == WM_KEYDOWN && wParam == VK_DOWN &&
+		!::SendMessage(pcbInfo->m_hwndCombo, CB_GETDROPPEDSTATE, 0, 0)) {
+		::SendMessage(pcbInfo->m_hwndCombo, CB_SHOWDROPDOWN, TRUE, 0);
+		int cursel = ::SendMessage(pcbInfo->m_hwndCombo, CB_GETCURSEL, 0, 0);
+		if (cursel == CB_ERR) cursel = 0;
+		::SendMessage(pcbInfo->m_hwndCombo, CB_SETCURSEL, cursel, 0);
+		return 0;
+	}
+	return ::CallWindowProc(pcbInfo->m_pfnOrgWndProc,
+							hWnd, uMsg, wParam, lParam);
 }
 
 CursorConfigPage::CursorConfigPage(Auto_Ptr<DrawInfo>& pDrawInfo)

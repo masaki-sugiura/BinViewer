@@ -236,5 +236,9 @@ SOURCE=.\mainicon.ico
 SOURCE=.\mainwnd.rc
 # End Source File
 # End Group
+# Begin Source File
+
+SOURCE=.\BinViewer.exe.manifest
+# End Source File
 # End Target
 # End Project

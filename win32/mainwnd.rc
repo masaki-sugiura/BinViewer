@@ -116,7 +116,7 @@ STYLE DS_MODALFRAME | DS_SETFOREGROUND | DS_CENTER | WS_POPUP | WS_VISIBLE |
     WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_CONTROLPARENT
 CAPTION "指定アドレスへジャンプ"
-FONT 9, "ＭＳ Ｐゴシック"
+FONT 9, "ＭＳ Ｐゴシック", 0, 0, 0x1
 BEGIN
     LTEXT           "有効範囲：",IDC_STATIC,7,7,34,12
     LTEXT           "",IDC_JUMPINFO,45,7,135,12
@@ -223,7 +223,7 @@ END
 
 IDD_SEARCH_GREP DIALOGEX 0, 0, 231, 93
 STYLE DS_CONTROL | WS_CHILD
-FONT 9, "ＭＳ Ｐゴシック"
+FONT 9, "ＭＳ Ｐゴシック", 0, 0, 0x1
 BEGIN
     PUSHBUTTON      "ジャンプ",IDC_JUMP,174,2,50,14,BS_NOTIFY
     CONTROL         "List1",IDC_SEARCH_GREP_RESULT,"SysListView32",
@@ -306,9 +306,6 @@ END
 //
 
 IDB_CONFIG_PLACE_HOLDER BITMAP  DISCARDABLE     "config_p.bmp"
-#endif    // 日本語 resources
-/////////////////////////////////////////////////////////////////////////////
-
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -316,6 +313,9 @@ IDB_CONFIG_PLACE_HOLDER BITMAP  DISCARDABLE     "config_p.bmp"
 //
 
 1                       24      MOVEABLE PURE   "BinViewer.exe.manifest"
+#endif    // 日本語 resources
+/////////////////////////////////////////////////////////////////////////////
+
 
 
 #ifndef APSTUDIO_INVOKED

@@ -18,6 +18,8 @@ PFN_DTB   Dialog::m_pfnDrawThemeBackground;
 PFN_DTPB  Dialog::m_pfnDrawThemeParentBackground;
 PFN_GTBCR Dialog::m_pfnGetThemeBackgroundContentRect;
 
+typedef void (STDAPICALLTYPE *PFN_STAP)(DWORD);
+
 Dialog::Dialog(int idd)
 	: m_nDialogID(idd),
 	  m_hwndDlg(NULL), m_hwndParent(NULL),
@@ -95,6 +97,14 @@ Dialog::initializeTheme()
 
 	m_hmUxTheme = ::LoadLibrary("UxTheme.dll");
 	if (!m_hmUxTheme) return FALSE;
+
+	PFN_STAP pfnSetThemeAppProperties
+		= (PFN_STAP)::GetProcAddress(m_hmUxTheme, "SetThemeAppProperties");
+	if (!pfnSetThemeAppProperties) return FALSE;
+
+	(*pfnSetThemeAppProperties)(STAP_ALLOW_NONCLIENT |
+								STAP_ALLOW_CONTROLS  |
+								STAP_ALLOW_WEBCONTENT);
 
 	m_pfnIsThemeActive
 		= (PFN_ITA)::GetProcAddress(m_hmUxTheme, "IsThemeActive");
