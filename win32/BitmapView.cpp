@@ -2,12 +2,10 @@
 
 #include "BitmapView.h"
 
-#define BV_WNDCLASSNAME  "BinViewer_BitmapViewClass32"
-
 BV_DrawInfo::BV_DrawInfo()
 {
-	setWidth(128);
-	setHeight(1024);
+	setWidth(BV_WIDTH);
+	setHeight(BV_HEIGHT);
 	setPixelsPerLine(1);
 	setBkColor(RGB(255, 255, 255));
 }
@@ -131,7 +129,7 @@ BV_DCBuffer::invertOneLineRegion(int start_column, int end_column, int line)
 }
 
 BV_DCManager::BV_DCManager()
-	: DC_Manager(128 * 1024, 5)
+	: DC_Manager(BV_WIDTH * BV_HEIGHT, BV_BUFCOUNT)
 {
 }
 
@@ -166,7 +164,7 @@ BitmapView::BitmapView(LF_Notifier& lfNotifier,
 		   new BV_DCManager(),
 		   pDrawInfo)
 {
-	setViewSize(128, -1);
+	setViewSize(BV_WIDTH, -1);
 }
 
 BitmapView::~BitmapView()
@@ -219,7 +217,7 @@ BitmapViewWindow::BitmapViewWindow(LF_Notifier& lfNotify, HWND hwndOwner)
 							  BV_WNDCLASSNAME, "BitmapView",
 							  WS_OVERLAPPED | WS_POPUP | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU,
 							  rctOwner.right, rctOwner.top,
-							  128, rctOwner.bottom - rctOwner.top,
+							  BV_WIDTH, rctOwner.bottom - rctOwner.top,
 							  hwndOwner, NULL, hInstance,
 							  (LPVOID)this);
 	if (!m_hWnd) {
@@ -260,7 +258,7 @@ BitmapViewWindow::onCreate(HWND hWnd)
 					+ (rctWindow.right - rctWindow.left)
 					- (rctClient.right - rctClient.left);
 
-	rctClient.right = 128;
+	rctClient.right = BV_WIDTH;
 
 	m_pBVDrawInfo = new BV_DrawInfo();
 	m_pBitmapView = new BitmapView(m_lfNotify, hWnd, rctClient, m_pBVDrawInfo.ptr());

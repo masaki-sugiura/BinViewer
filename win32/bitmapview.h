@@ -6,6 +6,12 @@
 #include "View.h"
 #include "auto_ptr.h"
 
+#define BV_WIDTH   128
+#define BV_HEIGHT 1024
+#define BV_BUFCOUNT  3
+
+#define BV_WNDCLASSNAME  "BinViewer_BitmapViewClass32"
+
 class BV_DrawInfo : public DrawInfo {
 public:
 	BV_DrawInfo();
