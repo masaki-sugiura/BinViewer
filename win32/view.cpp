@@ -90,10 +90,7 @@ bool
 View::onLoadFile()
 {
 	if (!m_pDCManager->onLoadFile(this)) return false;
-	RECT rctView;
-	::GetWindowRect(m_hwndView, &rctView);
-	SToC(rctView);
-	setFrameRect(rctView, false);
+	initScrollInfo();
 	m_smHorz.setPosition(0);
 	m_smVert.setPosition(0);
 	setCurrentLine(0, true);
@@ -107,6 +104,21 @@ View::onUnloadFile()
 	m_smHorz.disable();
 	m_smVert.disable();
 	redrawView();
+}
+
+void
+View::initScrollInfo()
+{
+	m_smHorz.setInfo(m_pDCManager->width(),
+					 m_pDCManager->getViewWidth(),
+					 m_smHorz.getCurrentPos());
+
+	int nPageLineNum = m_pDCManager->getViewHeight() / m_pDrawInfo->getPixelsPerLine();
+	filesize_t size = m_pDCManager->getFileSize();
+	if (size < 0)
+		m_smVert.disable();
+	else
+		m_smVert.setInfo(size / m_nBytesPerLine, nPageLineNum, m_smVert.getCurrentPos());
 }
 
 void
@@ -175,9 +187,10 @@ View::adjustWindowRect(RECT& rctFrame)
 
 	int nPixelsPerLine = m_pDrawInfo->getPixelsPerLine();
 
-	rctFrame.left = rctFrame.top = 0;
-	rctFrame.right = m_pDCManager->width() + x_diff;
-	rctFrame.bottom = ((rctClient.bottom - rctClient.top + nPixelsPerLine - 1) / nPixelsPerLine)
+//	rctFrame.left = rctFrame.top = 0;
+	rctFrame.right = rctFrame.left + m_pDCManager->width() + x_diff;
+	rctFrame.bottom = rctFrame.top
+					+ ((rctClient.bottom - rctClient.top + nPixelsPerLine - 1) / nPixelsPerLine)
 					   * nPixelsPerLine
 					+ y_diff;
 }
@@ -205,16 +218,7 @@ View::setFrameRect(const RECT& rctFrame, bool bRedraw)
 				   nViewHeight + y_diff,
 				   SWP_NOZORDER);
 
-	m_smHorz.setInfo(m_pDCManager->width(),
-					 nViewWidth,
-					 m_smHorz.getCurrentPos());
-
-	int nPageLineNum = nViewHeight / m_pDrawInfo->getPixelsPerLine();
-	filesize_t size = m_pDCManager->getFileSize();
-	if (size < 0)
-		m_smVert.disable();
-	else
-		m_smVert.setInfo(size / m_nBytesPerLine, nPageLineNum, m_smVert.getCurrentPos());
+	initScrollInfo();
 
 	if (bRedraw) {
 		redrawView();

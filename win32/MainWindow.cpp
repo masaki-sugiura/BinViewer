@@ -1,6 +1,7 @@
 // $Id$
 
 #include "MainWindow.h"
+#include "strutils.h"
 #include "resource.h"
 
 #include <commctrl.h>
@@ -17,6 +18,92 @@
 #define IDC_STATUSBAR  10
 #define STATUSBAR_HEIGHT  20
 #define STATUS_POS_HEADER    "カーソルの現在位置： 0x"
+
+Header::Header()
+	: m_pDrawInfo(NULL)
+{
+}
+
+bool
+Header::prepareDC(DrawInfo* pDrawInfo)
+{
+	HV_DrawInfo* pHVDrawInfo = dynamic_cast<HV_DrawInfo*>(pDrawInfo);
+	if (!pHVDrawInfo) {
+		return false;
+	}
+
+	if (!Renderer::prepareDC(pDrawInfo)) {
+		return false;
+	}
+
+	m_hbrBackground = pHVDrawInfo->m_tciHeader.getBkBrush();
+
+	m_pDrawInfo = pHVDrawInfo;
+
+	::SelectObject(m_hDC, (HGDIOBJ)m_pDrawInfo->m_FontInfo.getFont());
+
+	int nXPitch = m_pDrawInfo->m_FontInfo.getXPitch();
+	for (int i = 0; i < sizeof(m_anXPitch) / sizeof(m_anXPitch[0]); i++) {
+		m_anXPitch[i] = nXPitch;
+	}
+
+	return true;
+}
+
+void
+Header::bitBlt(HDC hDC, int x, int y, int cx, int cy,
+			   int sx, int sy) const
+{
+	::BitBlt(hDC, x, y, cx, cy, m_hDC, sx, sy, SRCCOPY);
+	if (sx + cx > m_nWidth) {
+		RECT rct;
+		rct.left   = x + (m_nWidth - sx);
+		rct.top    = y;
+		rct.right  = x + cx;
+		rct.bottom = y + cy;
+		::FillRect(hDC, &rct, m_hbrBackground);
+	}
+}
+
+int
+Header::render()
+{
+	RECT rctDC;
+	rctDC.left = rctDC.top = 0;
+	rctDC.right = m_nWidth;
+	rctDC.bottom = m_nHeight;
+	::FillRect(m_hDC, &rctDC, m_hbrBackground);
+
+	int nXPitch = m_pDrawInfo->m_FontInfo.getXPitch(),
+		nYPitch = m_pDrawInfo->m_FontInfo.getYPitch();
+
+	::ExtTextOut(m_hDC, nXPitch * ADDRESS_START_OFFSET, 0, 0, NULL,
+				 "0000000000000000", 16, m_anXPitch);
+
+	int i = 0, xoffset = nXPitch * DATA_FORMAR_START_OFFSET;
+	char buf[3];
+	buf[2];
+	while (i < 8) {
+		buf[0] = hex[(i >> 4) & 0x0F];
+		buf[1] = hex[(i >> 0) & 0x0F];
+		::ExtTextOut(m_hDC, xoffset, 0, 0, NULL, buf, 2, m_anXPitch);
+		xoffset += nXPitch * (DATA_HEX_WIDTH + 1);
+		i++;
+	}
+	::ExtTextOut(m_hDC, xoffset, 0, 0, NULL, "-", 1, m_anXPitch);
+	xoffset = nXPitch * DATA_LATTER_START_OFFSET;
+	while (i < 16) {
+		buf[0] = hex[(i >> 4) & 0x0F];
+		buf[1] = hex[(i >> 0) & 0x0F];
+		::ExtTextOut(m_hDC, xoffset, 0, 0, NULL, buf, 2, m_anXPitch);
+		xoffset += nXPitch * (DATA_HEX_WIDTH + 1);
+		i++;
+	}
+	xoffset = nXPitch * STRING_START_OFFSET;
+	::ExtTextOut(m_hDC, xoffset, 0, 0, NULL, hex, 16, m_anXPitch);
+
+	return 0; // dummy
+}
 
 MainWindow::MainWindow(HINSTANCE hInstance, LPCSTR lpszFileName)
 	: m_pHexView(NULL),
@@ -80,6 +167,9 @@ MainWindow::onCreate(HWND hWnd)
 {
 	m_pHVDrawInfo = loadDrawInfo(hWnd);
 
+	m_Header.prepareDC(m_pHVDrawInfo.ptr());
+	m_Header.render();
+
 	RECT rctClient;
 	::GetClientRect(hWnd, &rctClient);
 
@@ -87,7 +177,7 @@ MainWindow::onCreate(HWND hWnd)
 
 	m_pStatusBar = new StatusBar(m_lfNotifier, hWnd, rctClient);
 
-	rctClient.top = 0;
+	rctClient.top = m_pHVDrawInfo->getPixelsPerLine();
 	rctClient.bottom -= STATUSBAR_HEIGHT;
 
 	m_pHexView = new HexView(m_lfNotifier, hWnd, rctClient, m_pHVDrawInfo.ptr());
@@ -99,10 +189,22 @@ MainWindow::onCreate(HWND hWnd)
 }
 
 void
-MainWindow::onResize()
+MainWindow::onPaint(HWND hWnd)
+{
+	PAINTSTRUCT ps;
+	::BeginPaint(hWnd, &ps);
+	m_Header.bitBlt(ps.hdc, ps.rcPaint.left, ps.rcPaint.top,
+					ps.rcPaint.right - ps.rcPaint.left,
+					ps.rcPaint.bottom - ps.rcPaint.top,
+					0, 0);
+	::EndPaint(hWnd, &ps);
+}
+
+void
+MainWindow::onResize(HWND hWnd)
 {
 	RECT rctClient;
-	::GetClientRect(m_hWnd, &rctClient);
+	::GetClientRect(hWnd, &rctClient);
 
 	rctClient.top = rctClient.bottom - STATUSBAR_HEIGHT;
 	if (m_pStatusBar.ptr()) {
@@ -110,17 +212,17 @@ MainWindow::onResize()
 	}
 
 	rctClient.bottom -= STATUSBAR_HEIGHT;
-	rctClient.top = 0;
+	rctClient.top = m_pHVDrawInfo->getPixelsPerLine();
 	m_pHexView->setFrameRect(rctClient, true);
 }
 
 void
-MainWindow::onResizing(RECT* prctNew)
+MainWindow::onResizing(HWND hWnd, RECT* prctNew)
 {
 	RECT rctWnd, rctClient;
 
-	::GetWindowRect(m_hWnd, &rctWnd);
-	::GetClientRect(m_hWnd, &rctClient);
+	::GetWindowRect(hWnd, &rctWnd);
+	::GetClientRect(hWnd, &rctClient);
 
 	rctClient.right += (prctNew->right - prctNew->left)
 					 - (rctWnd.right - rctWnd.left);
@@ -134,7 +236,7 @@ MainWindow::onResizing(RECT* prctNew)
 	}
 
 	rctClient.bottom -= STATUSBAR_HEIGHT;
-	rctClient.top = 0;
+	rctClient.top = m_pHVDrawInfo->getPixelsPerLine();
 	m_pHexView->setFrameRect(rctClient, true);
 }
 
@@ -434,12 +536,16 @@ MainWindow::MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 
+	case WM_PAINT:
+		pMainWindow->onPaint(hWnd);
+		break;
+
 	case WM_SIZE:
-		pMainWindow->onResize();
+		pMainWindow->onResize(hWnd);
 		break;
 
 	case WM_SIZING:
-		pMainWindow->onResizing((RECT*)lParam);
+		pMainWindow->onResizing(hWnd, (RECT*)lParam);
 		break;
 
 	case WM_CLOSE:

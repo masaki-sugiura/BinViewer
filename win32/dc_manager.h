@@ -99,6 +99,9 @@ public:
 	int getXOffset() const { return m_nXOffset; }
 	filesize_t getYOffset() const { return m_qYOffset; }
 
+	int getViewWidth() const { return m_nViewWidth; }
+	int getViewHeight() const { return m_nViewHeight; }
+
 	// ‰¼‘zŠÖ”‚Å‚Í‚È‚­ABGB_Manager::getCurrentBuffer() ‚ğ‰B‚·
 	DCBuffer* getCurrentBuffer(int offset = 0)
 	{

@@ -85,6 +85,8 @@ protected:
 
 	void bitBlt(const RECT& rcPaint);
 
+	void initScrollInfo();
+
 	virtual void ensureVisible(filesize_t pos, bool bRedraw);
 	virtual void setCurrentLine(filesize_t newline, bool bRedraw);
 

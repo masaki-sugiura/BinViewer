@@ -8,6 +8,21 @@
 #include "StatusBar.h"
 #include "auto_ptr.h"
 
+struct Header : public Renderer {
+	Header();
+
+	bool prepareDC(DrawInfo* pDrawInfo);
+
+	void bitBlt(HDC hDC, int x, int y, int cx, int cy,
+				int sx, int sy) const;
+
+	int render();
+
+protected:
+	HV_DrawInfo* m_pDrawInfo;
+	int m_anXPitch[16];
+};
+
 class MainWindow {
 public:
 	MainWindow(HINSTANCE hInstance, LPCSTR lpszFileName);
@@ -26,10 +41,12 @@ private:
 	Auto_Ptr<StatusBar> m_pStatusBar;
 	HWND m_hWnd;
 	HACCEL m_hAccel;
+	Header m_Header;
 
 	void onCreate(HWND hWnd);
-	void onResize();
-	void onResizing(RECT* pRect);
+	void onPaint(HWND hWnd);
+	void onResize(HWND hWnd);
+	void onResizing(HWND hWnd, RECT* pRect);
 	void onQuit();
 	void onOpenFile();
 	void onCloseFile();
