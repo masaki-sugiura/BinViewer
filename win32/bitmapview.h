@@ -9,9 +9,11 @@
 #include <exception>
 using std::exception;
 
+class ViewFrame;
+
 class BitmapView {
 public:
-	BitmapView(HWND hwndOwner, LargeFileReader* pLFReader = NULL);
+	BitmapView(HWND hwndOwner, ViewFrame* pViewFrame);
 	~BitmapView();
 
 	bool loadFile(LargeFileReader* pLFReader);
@@ -24,6 +26,7 @@ public:
 
 private:
 	HWND m_hwndOwner, m_hwndView;
+	ViewFrame* m_pViewFrame;
 	LargeFileReader* m_pLFReader;
 	UINT m_uWindowWidth;
 	RECT m_rctClient;
@@ -39,6 +42,7 @@ private:
 	void onPaint(HWND hWnd);
 	bool onResize(HWND hWnd);
 	void onScroll(WPARAM, LPARAM);
+	void onLButtonDown(WPARAM, LPARAM);
 
 	static LRESULT CALLBACK BitmapViewWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 };

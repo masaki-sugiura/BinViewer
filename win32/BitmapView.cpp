@@ -1,14 +1,21 @@
 // $Id$
 
 #include "BitmapView.h"
+#include "ViewFrame.h"
+#include "messages.h"
 
-BitmapView::BitmapView(HWND hwndOwner, LargeFileReader* pLFReader)
+BitmapView::BitmapView(HWND hwndOwner, ViewFrame* pViewFrame)
 	: m_hwndOwner(hwndOwner),
-	  m_pLFReader(pLFReader),
+	  m_pViewFrame(pViewFrame),
+	  m_pLFReader(NULL),
 	  m_qCurrentPos(-1),
 	  m_qHeadPos(-1),
 	  m_pScrollManager(NULL)
 {
+	if (!pViewFrame) throw CreateBitmapViewError();
+
+	m_pLFReader = pViewFrame->getReader();
+
 	HINSTANCE hInstance = (HINSTANCE)::GetWindowLong(hwndOwner, GWL_HINSTANCE);
 
 	// Window class ‚Ì“o˜^
@@ -23,11 +30,14 @@ BitmapView::BitmapView(HWND hwndOwner, LargeFileReader* pLFReader)
 	wc.lpszMenuName = NULL;
 	if (!::RegisterClass(&wc)) throw CreateBitmapViewError();
 
+	RECT rctOwner;
+	::GetWindowRect(hwndOwner, &rctOwner);
+
 	m_hwndView = ::CreateWindowEx(WS_EX_TOOLWINDOW | WS_EX_OVERLAPPEDWINDOW,
 								  wc.lpszClassName, "BitmapView",
 								  WS_POPUP | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU |
 								   WS_VSCROLL,
-								  CW_USEDEFAULT, CW_USEDEFAULT,
+								  rctOwner.right, rctOwner.top,
 								  128, 512,
 								  NULL, NULL, hInstance,
 								  (LPVOID)this);
@@ -134,14 +144,26 @@ BitmapView::drawDC(const RECT& rctPaint)
 	}
 }
 
+inline void invertPixel(HDC hDC, int x, int y)
+{
+	COLORREF cref = ::GetPixel(hDC, x, y);
+	cref ^= RGB(0, 255, 255);
+	::SetPixel(hDC, x, y, cref);
+}
+
 void
 BitmapView::invertPos()
 {
 	int offset = m_qCurrentPos - m_qHeadPos;
 	int x = offset % 128, y = offset / 128;
-	COLORREF cref = ::GetPixel(m_hdcView, x, y);
-	cref ^= RGB(0, 255, 255);
-	::SetPixel(m_hdcView, x, y, cref);
+	invertPixel(m_hdcView, x - 1, y - 1);
+	invertPixel(m_hdcView, x,     y - 1);
+	invertPixel(m_hdcView, x + 1, y - 1);
+	invertPixel(m_hdcView, x - 1, y);
+	invertPixel(m_hdcView, x + 1, y);
+	invertPixel(m_hdcView, x - 1, y + 1);
+	invertPixel(m_hdcView, x,     y + 1);
+	invertPixel(m_hdcView, x + 1, y + 1);
 }
 
 bool
@@ -161,7 +183,7 @@ BitmapView::onCreate(HWND hWnd)
 				   rctWindow.left, rctWindow.top,
 				   m_uWindowWidth,
 				   rctWindow.bottom - rctWindow.top,
-				   SWP_NOZORDER);
+				   SWP_NOZORDER | SWP_NOMOVE);
 
 	HDC hDC = ::GetDC(hWnd);
 	m_hdcView = ::CreateCompatibleDC(hDC);
@@ -213,8 +235,25 @@ void
 BitmapView::onScroll(WPARAM wParam, LPARAM lParam)
 {
 	if (!m_pLFReader) return;
-	filesize_t qNewPos = m_pScrollManager->onScroll(LOWORD(wParam));
+	filesize_t qNewPos = m_pScrollManager->onScroll(LOWORD(wParam)) * 128;
 	setPosition(qNewPos);
+}
+
+void
+BitmapView::onLButtonDown(WPARAM wParam, LPARAM lParam)
+{
+	if (!m_pLFReader) return;
+
+	const POINTS& pt = MAKEPOINTS(lParam);
+
+	filesize_t pos = m_qHeadPos + 128 * pt.y + pt.x;
+	if (pos > m_pLFReader->size()) return;
+
+	invertPos();
+	m_qCurrentPos = pos;
+	invertPos();
+
+	m_pViewFrame->onJump(pos);
 }
 
 LRESULT CALLBACK
@@ -256,6 +295,10 @@ BitmapView::BitmapViewWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 
 	case WM_VSCROLL:
 		pBitmapView->onScroll(wParam, lParam);
+		break;
+
+	case WM_LBUTTONDOWN:
+		pBitmapView->onLButtonDown(wParam, lParam);
 		break;
 
 	case WM_CLOSE:

@@ -110,6 +110,8 @@ public:
 	const RECT& getFrameRect() const { return m_rctFrame; }
 	void adjustWindowRect(RECT& rctFrame);
 
+	void setPosition(filesize_t offset, bool bRedraw = true);
+
 	void updateWithoutHeader();
 
 	void onPaint(WPARAM, LPARAM);
@@ -155,7 +157,6 @@ private:
 
 	void ensureVisible(filesize_t pos, bool bRedraw = true);
 	void setCurrentLine(filesize_t newline, bool bRedraw = true);
-	void setPosition(filesize_t offset, bool bRedraw = true);
 
 	void recalcPageInfo();
 

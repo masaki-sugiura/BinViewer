@@ -279,7 +279,7 @@ OnCreate(HWND hWnd)
 
 	g_pSearchDlg = new SearchMainDlg(*g_pViewFrame);
 
-	g_pBitmapView = new BitmapView(hWnd, NULL);
+	g_pBitmapView = new BitmapView(hWnd, g_pViewFrame.ptr());
 
 	AdjustWindowSize(hWnd, rctClient);
 
