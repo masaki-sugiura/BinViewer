@@ -45,6 +45,33 @@ BV_DCBuffer::prepareDC(DrawInfo* pDrawInfo)
 	return true;
 }
 
+static bool
+init_bmi(BYTE* bmiBuf, HDC hDC, int width, int height)
+{
+	BITMAPINFOHEADER* pBmiHeader = (BITMAPINFOHEADER*)bmiBuf;
+	pBmiHeader->biSize = sizeof(BITMAPINFOHEADER);
+	pBmiHeader->biWidth = width;
+	pBmiHeader->biHeight = - height;
+	pBmiHeader->biPlanes = 1;
+	pBmiHeader->biBitCount = 8;
+	pBmiHeader->biCompression = BI_RGB;
+	pBmiHeader->biSizeImage = 0;
+	pBmiHeader->biXPelsPerMeter = 1000 * ::GetDeviceCaps(hDC, HORZRES) / ::GetDeviceCaps(hDC, HORZSIZE);
+	pBmiHeader->biYPelsPerMeter = 1000 * ::GetDeviceCaps(hDC, VERTRES) / ::GetDeviceCaps(hDC, VERTSIZE);
+	pBmiHeader->biClrUsed = 256;
+	pBmiHeader->biClrImportant = 0;
+
+	bmiBuf = (BYTE*)((BITMAPINFO*)bmiBuf)->bmiColors;
+	for (int i = 0; i < 256; i++) {
+		RGBQUAD* pRGB = (RGBQUAD*)bmiBuf;
+		pRGB->rgbRed = pRGB->rgbGreen = pRGB->rgbBlue = ~i;
+		pRGB->rgbReserved = 0;
+		bmiBuf += sizeof(RGBQUAD);
+	}
+
+	return true;
+}
+
 int
 BV_DCBuffer::render()
 {
@@ -54,6 +81,11 @@ BV_DCBuffer::render()
 
 	assert(width * height == m_nBufSize);
 
+	if (m_nDataSize < m_nBufSize) {
+		memset(m_pDataBuf + m_nDataSize, 0, m_nBufSize - m_nDataSize);
+	}
+
+#if 0
 	int x = 0, y = 0;
 	for (int i = 0; i < m_nDataSize; i++) {
 		BYTE val = 255 - m_pDataBuf[i]; // 0 ‚ª”’‚É‚È‚é‚æ‚¤‚É
@@ -70,6 +102,12 @@ BV_DCBuffer::render()
 			x = 0; y++;
 		}
 	}
+#endif
+	static BYTE bmiBuf[sizeof(BITMAPINFO) + sizeof(RGBQUAD) * 255];
+	static bool bInit = init_bmi(bmiBuf, m_hDC, width, height);
+
+	::SetDIBitsToDevice(m_hDC, 0, 0, width, height, 0, 0, 0, height,
+						m_pDataBuf, (BITMAPINFO*)bmiBuf, DIB_RGB_COLORS);
 
 	return m_nDataSize;
 }

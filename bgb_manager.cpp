@@ -108,7 +108,9 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 	if (!m_bRBInit) { // 最初の呼び出し
 		// m_nBufCount 個のリングバッファ要素を追加
 		for (int i = 0; i < m_nBufCount; i++) {
-			m_rbBuffers.addElement(createBGBufferInstance(), i);
+			BGBuffer* pBuf = createBGBufferInstance();
+			if (!pBuf) return -1;
+			m_rbBuffers.addElement(pBuf, i);
 		}
 		m_bRBInit = true;
 	}

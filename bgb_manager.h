@@ -15,17 +15,19 @@ struct BGBuffer {
 	filesize_t m_qAddress;
 	int m_nBufSize, m_nDataSize;
 	BYTE* m_pDataBuf;
+	BYTE* m_pDataBufHeader;
 
 	BGBuffer(int bufsize)
 		: m_qAddress(-1),
 		  m_nBufSize(bufsize),
 		  m_nDataSize(0)
 	{
-		m_pDataBuf = new BYTE[bufsize];
+		m_pDataBufHeader = new BYTE[bufsize + sizeof(DWORD) - 1];
+		m_pDataBuf = (BYTE*)(((DWORD)m_pDataBufHeader + sizeof(DWORD) - 1) & ~(sizeof(DWORD) - 1));
 	}
 	virtual ~BGBuffer()
 	{
-		delete [] m_pDataBuf;
+		delete [] m_pDataBufHeader;
 	}
 
 	virtual int init(LargeFileReader& LFReader, filesize_t offset);
