@@ -47,16 +47,73 @@ BGBuffer::uninit()
 
 
 /*
-	リングバッファによるバッファの管理：
+	2k + 1 個のリングバッファによるバッファの管理：
 
-					[-1: m_qCPos - BSIZE ～ m_pCPos - 1]
-							↓↑					↓↑
-	[0 : m_qCPos ～ m_qCPos + BSIZE - 1]		[2 : 無効(または前回の値)]
-							↓↑					↓↑
-					[1 : m_qCPos + BSIZE ～ m_pCPos + 2 * BSIZE - 1]
+	[-k: m_qCPos - k * BSIZE ～ m_pCPos - (k - 1) * BSIZE - 1]
+					↓↑
+				[..........]
+					↓↑
+	[-2: m_qCPos - 2 * BSIZE ～ m_pCPos - BSIZE - 1]
+					↓↑
+	[-1: m_qCPos - BSIZE ～ m_pCPos - 1]
+					↓↑
+	[0 : m_qCPos ～ m_qCPos + BSIZE - 1]
+					↓↑
+	[1 : m_qCPos + BSIZE ～ m_pCPos + 2 * BSIZE - 1]
+					↓↑
+				[..........]
+					↓↑
+	[k : m_qCPos + k * BSIZE ～ m_pCPos + (k + 1) * BSIZE - 1]
 
-	４個のバッファのうち -1, 0, 1 番目の要素を常に有効にしておく。
-	(ファイルの先頭または終端の場合は -1, または 1 番目の要素は無効)
+	(一般に [j : m_qCPos + j * BSIZE ～ m_pCPos + (j + 1) * BSIZE - 1] (-k <= j <= k))
+
+	1) m_qCPos -> m_qCPos + m (0 < m <= k) の場合
+	[-k: m_qCPos + (m - k) * BSIZE ～ m_pCPos + (m - k + 1) * BSIZE - 1]
+					↓↑
+				[..........]
+					↓↑
+	[-2: m_qCPos + (m - 2) * BSIZE ～ m_pCPos + (m - 1) * BSIZE - 1]
+					↓↑
+	[-1: m_qCPos + (m - 1) * BSIZE ～ m_pCPos + m * BSIZE - 1]
+					↓↑
+	[0 : m_qCPos + m * BSIZE ～ m_qCPos + (m + 1) * BSIZE - 1]
+					↓↑
+	[1 : m_qCPos + (m + 1) * BSIZE ～ m_pCPos + (m + 2) * BSIZE - 1]
+					↓↑
+				[..........]
+					↓↑
+	[k - m : m_qCPos + k * BSIZE ～ m_pCPos + (k + 1) * BSIZE - 1]
+					↓↑
+	[k - m + 1 : m_qCPos + (k + 1) * BSIZE ～ m_pCPos + (k + 2) * BSIZE - 1] *
+					↓↑
+				[..........] *
+					↓↑
+	[k : m_qCPos + (m + k) * BSIZE ～ m_pCPos + (m + k + 1) * BSIZE - 1] *
+
+	2) m_qCPos -> m_qCPos - m (0 < m <= k) の場合
+	[-k: m_qCPos - (m + k) * BSIZE ～ m_pCPos - (m + k - 1) * BSIZE - 1] *
+					↓↑
+				[..........] *
+					↓↑
+	[- k + m - 1: m_qCPos - (k + 1) * BSIZE ～ m_pCPos - (k + 2) * BSIZE - 1] *
+					↓↑
+	[- k + m: m_qCPos - k * BSIZE ～ m_pCPos - (k - 1) * BSIZE - 1]
+					↓↑
+				[..........]
+					↓↑
+	[-1: m_qCPos - (m + 1) * BSIZE ～ m_pCPos - m * BSIZE - 1]
+					↓↑
+	[0 : m_qCPos - m * BSIZE ～ m_qCPos + (m + 1) * BSIZE - 1]
+					↓↑
+	[1 : m_qCPos - (m - 1) * BSIZE ～ m_pCPos - (m - 2) * BSIZE - 1]
+					↓↑
+				[..........]
+					↓↑
+	[m : m_qCPos + 0 * BSIZE ～ m_pCPos + 1 * BSIZE - 1]
+					↓↑
+				[..........]
+					↓↑
+	[k : m_qCPos + (k - m) * BSIZE ～ m_pCPos + (k - m + 1) * BSIZE - 1]
  */
 
 BGB_Manager::BGB_Manager(int bufsize, int bufcount, LargeFileReader* pLFReader)
@@ -110,7 +167,7 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 	assert(offset >= 0);
 
 	if (!m_bRBInit) { // 最初の呼び出し
-		// BUFFER_NUM 個のリングバッファ要素を追加
+		// m_nBufCount 個のリングバッファ要素を追加
 		for (int i = 0; i < m_nBufCount; i++) {
 			m_rbBuffers.addElement(createBGBufferInstance(), i);
 		}
@@ -119,28 +176,31 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 
 	if (!isLoaded()) return -1;
 
-	// offset - m_nBufSize から offset + 2 * m_nBufSize - 1
-	// のデータをファイルから読み出す
-
-	// m_nBufSize でアライメント
+	// offset を m_nBufSize でアライメント
 //	offset = (offset / m_nBufSize) * m_nBufSize;
 	offset &= ~(m_nBufSize - 1); // m_nBufSize == 2^n を仮定
 
-	// 現在のバッファリストに挿入するべきか、
-	// 現在のリストを(全て、または一部)破棄して読み込むべきかを調べる
 	int radius = (m_nBufCount / 2) * m_nBufSize;
+
+	// offset - radius * m_nBufSize から offset + (radius + 1) * m_nBufSize - 1
+	// のデータをファイルから読み出す
+
+	// 全てを新規に読み込むべきか、
+	// 現在のリストを一部破棄して読み込むべきかを調べる
 	if (m_qCurrentPos < 0 ||
-		offset >= m_qCurrentPos + 2 * radius ||
-		offset <  m_qCurrentPos - 2 * radius) {
+		offset >= m_qCurrentPos + radius + m_nBufSize ||
+		offset <  m_qCurrentPos - radius) {
 		// 全く新規に読み込み
-//		if (m_qCurrentPos < 0) m_qCurrentPos = 0;
 		m_qCurrentPos = offset;
 		int i = - radius / m_nBufSize;
 		filesize_t start, end;
 		start = m_qCurrentPos - radius;
 		end = start + m_nBufCount * m_nBufSize;
 		while (start < end) {
-			m_rbBuffers.elementAt(i++)->init(*m_pLFReader, start);
+			if (start >= 0) { // 終端を越えて描画するためファイル終端を判定してはいけない！！
+				m_rbBuffers.elementAt(i)->init(*m_pLFReader, start);
+			}
+			i++;
 			start += m_nBufSize;
 		}
 	} else if (offset != m_qCurrentPos) {
@@ -148,55 +208,30 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 		int new_top = (int)(offset - m_qCurrentPos), i;
 		filesize_t start, end;
 		if (new_top > 0) {
+			// case 1)
 			i = radius / m_nBufSize + 1;
 			start = m_qCurrentPos + radius + m_nBufSize;
 			end = start + new_top;
 		} else {
+			// case 2)
 			i = (- radius + new_top) / m_nBufSize;
 			end = m_qCurrentPos - radius;
 			start = end + new_top;
 		}
 		while (start < end) {
-			m_rbBuffers.elementAt(i++)->init(*m_pLFReader, start);
+			if (start >= 0) {
+				m_rbBuffers.elementAt(i)->init(*m_pLFReader, start);
+			}
+			i++;
 			start += m_nBufSize;
 		}
 		m_rbBuffers.setTop(new_top / m_nBufSize);
 	}
 
-#if 0
-	if (m_qCurrentPos == offset) {
-		// 現在と同じバッファを返す
-	} else if (offset == m_qCurrentPos + m_nBufSize) {
-		// 0, 1 番目のバッファは再利用可能
-		m_rbBuffers.setTop(1); // 0 -> -1, 1 -> 0
-		m_rbBuffers.elementAt(1)->init(*m_pLFReader, offset + m_nBufSize);
-	} else if (offset == m_qCurrentPos + 2 * m_nBufSize) {
-		// 1 番目のバッファは再利用可能
-		m_rbBuffers.setTop(2); // 1 -> -1
-		m_rbBuffers.elementAt(0)->init(*m_pLFReader, offset);
-		m_rbBuffers.elementAt(1)->init(*m_pLFReader, offset + m_nBufSize);
-	} else if (offset == m_qCurrentPos - m_nBufSize) {
-		// 0, -1 番目のバッファは再利用可能
-		m_rbBuffers.setTop(-1); // -1 -> 0, 0 -> 1
-		m_rbBuffers.elementAt(-1)->init(*m_pLFReader, offset - m_nBufSize);
-	} else if (offset == m_qCurrentPos + 2 * m_nBufSize) {
-		// -1 番目のバッファは再利用可能
-		m_rbBuffers.setTop(-2); // -1 -> 1
-		m_rbBuffers.elementAt(-1)->init(*m_pLFReader, offset - m_nBufSize);
-		m_rbBuffers.elementAt(0)->init(*m_pLFReader, offset);
-	} else {
-		// 全てを破棄して読み込み (m_qCurrentPos == -1 の場合も含む)
-		m_rbBuffers.elementAt(-1)->init(*m_pLFReader, offset - m_nBufSize);
-		m_rbBuffers.elementAt(0)->init(*m_pLFReader, offset);
-		m_rbBuffers.elementAt(1)->init(*m_pLFReader, offset + m_nBufSize);
-	}
-#endif
-
 	// カレントポジションの変更
 	m_qCurrentPos = offset;
 
 	// バッファに貯められているデータサイズの計算
-	// (但し 2 以上または -2 以下の要素は含めない)
 	int totalsize = 0;
 	for (int i = 0; i < m_nBufCount; i++) {
 		BGBuffer* pbgb = m_rbBuffers.elementAt(i);
