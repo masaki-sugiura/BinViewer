@@ -46,6 +46,7 @@ CLEAN :
 	-@erase "$(INTDIR)\configdlg.obj"
 	-@erase "$(INTDIR)\dc_manager.obj"
 	-@erase "$(INTDIR)\drawinfo.obj"
+	-@erase "$(INTDIR)\jumpdlg.obj"
 	-@erase "$(INTDIR)\LargeFileReader.obj"
 	-@erase "$(INTDIR)\lock.obj"
 	-@erase "$(INTDIR)\main.obj"
@@ -85,7 +86,8 @@ LINK32_OBJS= \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res"
+	"$(INTDIR)\mainwnd.res" \
+	"$(INTDIR)\jumpdlg.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -112,6 +114,8 @@ CLEAN :
 	-@erase "$(INTDIR)\dc_manager.sbr"
 	-@erase "$(INTDIR)\drawinfo.obj"
 	-@erase "$(INTDIR)\drawinfo.sbr"
+	-@erase "$(INTDIR)\jumpdlg.obj"
+	-@erase "$(INTDIR)\jumpdlg.sbr"
 	-@erase "$(INTDIR)\LargeFileReader.obj"
 	-@erase "$(INTDIR)\LargeFileReader.sbr"
 	-@erase "$(INTDIR)\lock.obj"
@@ -155,7 +159,8 @@ BSC32_SBRS= \
 	"$(INTDIR)\searchdlg.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
-	"$(INTDIR)\viewframe.sbr"
+	"$(INTDIR)\viewframe.sbr" \
+	"$(INTDIR)\jumpdlg.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -176,7 +181,8 @@ LINK32_OBJS= \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res"
+	"$(INTDIR)\mainwnd.res" \
+	"$(INTDIR)\jumpdlg.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -302,6 +308,22 @@ SOURCE=.\drawinfo.cpp
 
 
 "$(INTDIR)\drawinfo.obj"	"$(INTDIR)\drawinfo.sbr" : $(SOURCE) "$(INTDIR)"
+
+
+!ENDIF 
+
+SOURCE=.\jumpdlg.cpp
+
+!IF  "$(CFG)" == "BinViewer - Win32 Release"
+
+
+"$(INTDIR)\jumpdlg.obj" : $(SOURCE) "$(INTDIR)"
+
+
+!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
+
+
+"$(INTDIR)\jumpdlg.obj"	"$(INTDIR)\jumpdlg.sbr" : $(SOURCE) "$(INTDIR)"
 
 
 !ENDIF 

@@ -114,6 +114,10 @@ SOURCE=.\drawinfo.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\jumpdlg.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\LargeFileReader.cpp
 # End Source File
 # Begin Source File
@@ -163,6 +167,10 @@ SOURCE=.\dc_manager.h
 # Begin Source File
 
 SOURCE=.\drawinfo.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\jumpdlg.h
 # End Source File
 # Begin Source File
 

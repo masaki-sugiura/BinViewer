@@ -189,23 +189,24 @@ SearchDlg::enableControls(int dir, bool enable)
 {
 	if (enable) {
 		::SetWindowText(::GetDlgItem(m_hwndSearch, IDC_SEARCH_FORWARD),
-						"Œã•ûŒŸõ");
+						"Œã•ûŒŸõ(&F)");
 		::SetWindowText(::GetDlgItem(m_hwndSearch, IDC_SEARCH_BACKWARD),
-						"‘O•ûŒŸõ");
+						"‘O•ûŒŸõ(&B)");
 		::EnableWindow(::GetDlgItem(m_hwndSearch, IDC_SEARCH_FORWARD), TRUE);
 		::EnableWindow(::GetDlgItem(m_hwndSearch, IDC_SEARCH_BACKWARD), TRUE);
 	} else {
 		if (dir == FIND_FORWARD) {
-			::SetWindowText(::GetDlgItem(m_hwndSearch, IDC_SEARCH_FORWARD), "’†’f");
+			::SetWindowText(::GetDlgItem(m_hwndSearch, IDC_SEARCH_FORWARD), "’†’f(&A)");
 			::EnableWindow(::GetDlgItem(m_hwndSearch, IDC_SEARCH_BACKWARD), FALSE);
 		} else {
-			::SetWindowText(::GetDlgItem(m_hwndSearch, IDC_SEARCH_BACKWARD), "’†’f");
+			::SetWindowText(::GetDlgItem(m_hwndSearch, IDC_SEARCH_BACKWARD), "’†’f(&A)");
 			::EnableWindow(::GetDlgItem(m_hwndSearch, IDC_SEARCH_FORWARD), FALSE);
 		}
 	}
 	::EnableWindow(::GetDlgItem(m_hwndSearch, IDC_SEARCHDATA), enable);
 	::EnableWindow(::GetDlgItem(m_hwndSearch, IDC_DT_HEX), enable);
 	::EnableWindow(::GetDlgItem(m_hwndSearch, IDC_DT_STRING), enable);
+	::EnableWindow(::GetDlgItem(m_hwndSearch, IDC_GREP), enable);
 	::EnableWindow(::GetDlgItem(m_hwndSearch, IDOK), enable);
 }
 
@@ -398,6 +399,7 @@ SearchDlg::SearchGrepDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			HWND hwndLView = ::GetDlgItem(hDlg, IDC_SEARCH_GREP_RESULT);
 			RECT rctLView;
 			::GetClientRect(hwndLView, &rctLView);
+			rctLView.right -= ::GetSystemMetrics(SM_CXVSCROLL);
 			LVCOLUMN lvc;
 			lvc.mask = LVCF_FMT | LVCF_TEXT | LVCF_SUBITEM | LVCF_WIDTH;
 			lvc.fmt  = LVCFMT_RIGHT;
@@ -446,9 +448,9 @@ SearchDlg::SearchGrepDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			GrepResult* gr = (GrepResult*)lParam;
 			*((GrepResult*)lvitem.lParam) = *gr;
 			char buf[24];
-			wsprintf(buf, "0x%08x%08x",
-					 (int)(gr->m_qAddress >> 32),
-					 (int)gr->m_qAddress);
+			buf[0] = '0'; buf[1] = 'x';
+			QuadToStr((int)gr->m_qAddress, (int)(gr->m_qAddress >> 32), buf + 2);
+			buf[2 + 16] = '\0';
 			lvitem.pszText = buf;
 			lvitem.iItem = ListView_InsertItem(hwndLView, &lvitem);
 			lvitem.mask = LVIF_TEXT;

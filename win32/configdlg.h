@@ -14,6 +14,37 @@ using std::exception;
 using std::map;
 using std::make_pair;
 
+#define COLOR_BLACK      RGB(0, 0, 0)
+#define COLOR_GRAY       RGB(128, 128, 128)
+#define COLOR_LIGHTGRAY  RGB(192, 192, 192)
+#define COLOR_WHITE      RGB(255, 255, 255)
+#define COLOR_YELLOW     RGB(255, 255, 0)
+
+#define REG_ROOT        "Software\\SugiApp\\BinViewer"
+#define RK_FONTNAME     "FontFace"
+#define RK_FONTSIZE     "FontSize"
+#define RK_IS_BOLD      "IsBoldFont"
+#define RK_HEADER_FGC   "Header_FgColor"
+#define RK_HEADER_BKC   "Header_BkColor"
+#define RK_ADDRESS_FGC  "Address_FgColor"
+#define RK_ADDRESS_BKC  "Address_BkColor"
+#define RK_DATA_FGC     "Data_FgColor"
+#define RK_DATA_BKC     "Data_BkColor"
+#define RK_STRING_FGC   "String_FgColor"
+#define RK_STRING_BKC   "String_BkColor"
+#define RK_CARET_MOVE   "Caret_Move"
+#define RK_WHEEL_SCROLL "Wheel_Scroll"
+
+#define DEFAULT_FONT_SIZE  12
+#define DEFAULT_FG_COLOR_ADDRESS COLOR_WHITE
+#define DEFAULT_BK_COLOR_ADDRESS COLOR_GRAY
+#define DEFAULT_FG_COLOR_DATA    COLOR_BLACK
+#define DEFAULT_BK_COLOR_DATA    COLOR_WHITE
+#define DEFAULT_FG_COLOR_STRING  COLOR_BLACK
+#define DEFAULT_BK_COLOR_STRING  COLOR_LIGHTGRAY
+#define DEFAULT_FG_COLOR_HEADER  COLOR_BLACK
+#define DEFAULT_BK_COLOR_HEADER  COLOR_YELLOW
+
 #define CONFIG_DIALOG_PAGE_NUM  2
 
 class CreateDialogError : public exception {};
@@ -173,5 +204,8 @@ protected:
 
 	bool createPage(int i);
 };
+
+void LoadConfig(Auto_Ptr<DrawInfo>& pDrawInfo);
+void SaveConfig(const Auto_Ptr<DrawInfo>& pDrawInfo);
 
 #endif

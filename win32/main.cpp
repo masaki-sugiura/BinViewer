@@ -11,6 +11,7 @@
 #include "resource.h"
 #include "strutils.h"
 #include "viewframe.h"
+#include "jumpdlg.h"
 #include "searchdlg.h"
 #include "configdlg.h"
 #include "messages.h"
@@ -22,12 +23,6 @@
 #define W_WIDTH  (ADDR_WIDTH + BYTE_WIDTH * 16 + 20 + DATA_WIDTH + 20)
 #define W_HEIGHT 720
 
-#define COLOR_BLACK      RGB(0, 0, 0)
-#define COLOR_GRAY       RGB(128, 128, 128)
-#define COLOR_LIGHTGRAY  RGB(192, 192, 192)
-#define COLOR_WHITE      RGB(255, 255, 255)
-#define COLOR_YELLOW     RGB(255, 255, 0)
-
 #define STATUSBAR_HEIGHT  20
 
 #define IDC_STATUSBAR  10
@@ -36,21 +31,6 @@
 
 #define MAINWND_CLASSNAME    "BinViewerClass32"
 
-#define REG_ROOT        "Software\\SugiApp\\BinViewer"
-#define RK_FONTNAME     "FontFace"
-#define RK_FONTSIZE     "FontSize"
-#define RK_IS_BOLD      "IsBoldFont"
-#define RK_HEADER_FGC   "Header_FgColor"
-#define RK_HEADER_BKC   "Header_BkColor"
-#define RK_ADDRESS_FGC  "Address_FgColor"
-#define RK_ADDRESS_BKC  "Address_BkColor"
-#define RK_DATA_FGC     "Data_FgColor"
-#define RK_DATA_BKC     "Data_BkColor"
-#define RK_STRING_FGC   "String_FgColor"
-#define RK_STRING_BKC   "String_BkColor"
-#define RK_CARET_MOVE   "Caret_Move"
-#define RK_WHEEL_SCROLL "Wheel_Scroll"
-
 // resources
 static HINSTANCE g_hInstance;
 static HWND g_hwndMain, g_hwndStatusBar;
@@ -58,15 +38,6 @@ static string g_strAppName;
 
 // window properties
 static Auto_Ptr<DrawInfo> g_pDrawInfo(NULL);
-#define DEFAULT_FONT_SIZE  12
-#define DEFAULT_FG_COLOR_ADDRESS COLOR_WHITE
-#define DEFAULT_BK_COLOR_ADDRESS COLOR_GRAY
-#define DEFAULT_FG_COLOR_DATA    COLOR_BLACK
-#define DEFAULT_BK_COLOR_DATA    COLOR_WHITE
-#define DEFAULT_FG_COLOR_STRING  COLOR_BLACK
-#define DEFAULT_BK_COLOR_STRING  COLOR_LIGHTGRAY
-#define DEFAULT_FG_COLOR_HEADER  COLOR_BLACK
-#define DEFAULT_BK_COLOR_HEADER  COLOR_YELLOW
 
 static Auto_Ptr<ViewFrame> g_pViewFrame(NULL);
 
@@ -80,232 +51,6 @@ GetParameters()
 {
 	g_strAppName = __argv[0];
 	if (__argc > 1) g_strImageFile = __argv[1];
-}
-
-static void
-LoadConfig(Auto_Ptr<DrawInfo>& pDrawInfo)
-{
-	assert(!pDrawInfo.ptr());
-
-	HKEY hKeyRoot = NULL;
-	if (::RegOpenKeyEx(HKEY_CURRENT_USER,
-						REG_ROOT,
-						0, KEY_ALL_ACCESS,
-						&hKeyRoot) != ERROR_SUCCESS) {
-		pDrawInfo = new DrawInfo(NULL, DEFAULT_FONT_SIZE, "FixedSys", false,
-								 DEFAULT_FG_COLOR_ADDRESS, DEFAULT_BK_COLOR_ADDRESS,
-								 DEFAULT_FG_COLOR_DATA, DEFAULT_BK_COLOR_DATA,
-								 DEFAULT_FG_COLOR_STRING, DEFAULT_BK_COLOR_STRING,
-								 DEFAULT_FG_COLOR_HEADER, DEFAULT_BK_COLOR_HEADER,
-								 CARET_STATIC, WHEEL_AS_ARROW_KEYS);
-		return;
-	}
-
-	DWORD dwType, dwSize;
-
-	dwType = REG_BINARY;
-	dwSize = sizeof(float);
-	float fontsize;
-	if (::RegQueryValueEx(hKeyRoot, RK_FONTSIZE, 0,
-						  &dwType, (BYTE*)&fontsize, &dwSize) != ERROR_SUCCESS) {
-		fontsize = DEFAULT_FONT_SIZE;
-	}
-
-	dwType = REG_SZ;
-	dwSize = LF_FACESIZE;
-	char fontface[LF_FACESIZE];
-	if (::RegQueryValueEx(hKeyRoot, RK_FONTNAME, 0,
-						  &dwType, (BYTE*)&fontface, &dwSize) != ERROR_SUCCESS) {
-		lstrcpy(fontface, "FixedSys");
-	}
-
-	dwType = REG_DWORD;
-	dwSize = sizeof(DWORD);
-	DWORD dwBoldFace;
-	if (::RegQueryValueEx(hKeyRoot, RK_IS_BOLD, 0,
-						  &dwType, (BYTE*)&dwBoldFace, &dwSize) != ERROR_SUCCESS) {
-		dwBoldFace = 0;
-	}
-
-	COLORREF crFgHeader, crBkHeader;
-	if (::RegQueryValueEx(hKeyRoot, RK_HEADER_FGC, 0,
-						  &dwType, (BYTE*)&crFgHeader, &dwSize) != ERROR_SUCCESS) {
-		crFgHeader = DEFAULT_FG_COLOR_HEADER;
-	}
-	if (::RegQueryValueEx(hKeyRoot, RK_HEADER_BKC, 0,
-						  &dwType, (BYTE*)&crBkHeader, &dwSize) != ERROR_SUCCESS) {
-		crBkHeader = DEFAULT_BK_COLOR_HEADER;
-	}
-	COLORREF crFgAddress, crBkAddress;
-	if (::RegQueryValueEx(hKeyRoot, RK_ADDRESS_FGC, 0,
-						  &dwType, (BYTE*)&crFgAddress, &dwSize) != ERROR_SUCCESS) {
-		crFgAddress = DEFAULT_FG_COLOR_ADDRESS;
-	}
-	if (::RegQueryValueEx(hKeyRoot, RK_ADDRESS_BKC, 0,
-						  &dwType, (BYTE*)&crBkAddress, &dwSize) != ERROR_SUCCESS) {
-		crBkAddress = DEFAULT_BK_COLOR_ADDRESS;
-	}
-	COLORREF crFgData, crBkData;
-	if (::RegQueryValueEx(hKeyRoot, RK_DATA_FGC, 0,
-						  &dwType, (BYTE*)&crFgData, &dwSize) != ERROR_SUCCESS) {
-		crFgData = DEFAULT_FG_COLOR_DATA;
-	}
-	if (::RegQueryValueEx(hKeyRoot, RK_DATA_BKC, 0,
-						  &dwType, (BYTE*)&crBkData, &dwSize) != ERROR_SUCCESS) {
-		crBkData = DEFAULT_BK_COLOR_DATA;
-	}
-	COLORREF crFgString, crBkString;
-	if (::RegQueryValueEx(hKeyRoot, RK_STRING_FGC, 0,
-						  &dwType, (BYTE*)&crFgString, &dwSize) != ERROR_SUCCESS) {
-		crFgString = DEFAULT_FG_COLOR_STRING;
-	}
-	if (::RegQueryValueEx(hKeyRoot, RK_STRING_BKC, 0,
-						  &dwType, (BYTE*)&crBkString, &dwSize) != ERROR_SUCCESS) {
-		crBkString = DEFAULT_BK_COLOR_STRING;
-	}
-
-	DWORD dwCaretMove;
-	if (::RegQueryValueEx(hKeyRoot, RK_CARET_MOVE, 0,
-						  &dwType, (BYTE*)&dwCaretMove, &dwSize) != ERROR_SUCCESS) {
-		dwCaretMove = CARET_STATIC;
-	}
-	DWORD dwWheelScroll;
-	if (::RegQueryValueEx(hKeyRoot, RK_WHEEL_SCROLL, 0,
-						  &dwType, (BYTE*)&dwWheelScroll, &dwSize) != ERROR_SUCCESS) {
-		dwWheelScroll = WHEEL_AS_ARROW_KEYS;
-	}
-
-	::RegCloseKey(hKeyRoot);
-
-	pDrawInfo = new DrawInfo(NULL, fontsize, fontface, dwBoldFace != 0,
-							 crFgAddress, crBkAddress,
-							 crFgData, crBkData,
-							 crFgString, crBkString,
-							 crFgHeader, crBkHeader,
-							 (CARET_MOVE)dwCaretMove,
-							 (WHEEL_SCROLL)dwWheelScroll);
-}
-
-static void
-SaveConfig(const Auto_Ptr<DrawInfo>& pDrawInfo)
-{
-	HKEY hKeyRoot;
-	if (::RegCreateKeyEx(HKEY_CURRENT_USER,
-						 REG_ROOT,
-						 0, NULL,
-						 REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS,
-						 NULL,
-						 &hKeyRoot, NULL) != ERROR_SUCCESS) {
-		assert(0);
-		return;
-	}
-
-	DWORD dwType, dwSize;
-
-	dwType = REG_BINARY;
-	dwSize = sizeof(float);
-	float fontsize = pDrawInfo->m_FontInfo.getFontSize();
-	::RegSetValueEx(hKeyRoot, RK_FONTSIZE, 0,
-					dwType, (BYTE*)&fontsize, dwSize);
-
-	dwType = REG_SZ;
-	dwSize = lstrlen(pDrawInfo->m_FontInfo.getFaceName());
-	::RegSetValueEx(hKeyRoot, RK_FONTNAME, 0,
-					dwType, (BYTE*)pDrawInfo->m_FontInfo.getFaceName(), dwSize);
-
-	dwType = REG_DWORD;
-	dwSize = sizeof(DWORD);
-	DWORD dwBoldFace = pDrawInfo->m_FontInfo.isBoldFace();
-	::RegSetValueEx(hKeyRoot, RK_IS_BOLD, 0,
-					dwType, (BYTE*)&dwBoldFace, dwSize);
-
-	COLORREF crFgHeader = pDrawInfo->m_tciHeader.getFgColor(),
-			 crBkHeader = pDrawInfo->m_tciHeader.getBkColor();
-	::RegSetValueEx(hKeyRoot, RK_HEADER_FGC, 0,
-					dwType, (BYTE*)&crFgHeader, dwSize);
-	::RegSetValueEx(hKeyRoot, RK_HEADER_BKC, 0,
-					dwType, (BYTE*)&crBkHeader, dwSize);
-
-	COLORREF crFgAddress = pDrawInfo->m_tciAddress.getFgColor(),
-			 crBkAddress = pDrawInfo->m_tciAddress.getBkColor();
-	::RegSetValueEx(hKeyRoot, RK_ADDRESS_FGC, 0,
-					dwType, (BYTE*)&crFgAddress, dwSize);
-	::RegSetValueEx(hKeyRoot, RK_ADDRESS_BKC, 0,
-					dwType, (BYTE*)&crBkAddress, dwSize);
-
-	COLORREF crFgData = pDrawInfo->m_tciData.getFgColor(),
-			 crBkData = pDrawInfo->m_tciData.getBkColor();
-	::RegSetValueEx(hKeyRoot, RK_DATA_FGC, 0,
-					dwType, (BYTE*)&crFgData, dwSize);
-	::RegSetValueEx(hKeyRoot, RK_DATA_BKC, 0,
-					dwType, (BYTE*)&crBkData, dwSize);
-
-	COLORREF crFgString = pDrawInfo->m_tciString.getFgColor(),
-			 crBkString = pDrawInfo->m_tciString.getBkColor();
-	::RegSetValueEx(hKeyRoot, RK_STRING_FGC, 0,
-					dwType, (BYTE*)&crFgString, dwSize);
-	::RegSetValueEx(hKeyRoot, RK_STRING_BKC, 0,
-					dwType, (BYTE*)&crBkString, dwSize);
-
-	DWORD dwCaretMove = pDrawInfo->m_ScrollConfig.m_caretMove;
-	::RegSetValueEx(hKeyRoot, RK_CARET_MOVE, 0,
-					dwType, (BYTE*)&dwCaretMove, dwSize);
-
-	DWORD dwWheelScroll = pDrawInfo->m_ScrollConfig.m_wheelScroll;
-	::RegSetValueEx(hKeyRoot, RK_WHEEL_SCROLL, 0,
-					dwType, (BYTE*)&dwWheelScroll, dwSize);
-
-	::RegCloseKey(hKeyRoot);
-}
-
-static BOOL
-JumpAddrDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	switch (uMsg) {
-	case WM_INITDIALOG:
-		{
-			::SetWindowLong(hDlg, DWL_USER, (LONG)lParam);
-			filesize_t size = g_pViewFrame->getFileSize();
-			char str[32];
-//			wsprintf(str, "0 - 0x%08x%08x",
-//					 (int)(size >> 32), (int)size);
-			::CopyMemory(str, "0 - 0x", 6);
-			QuadToStr((UINT)size, (UINT)(size >> 32), str + 6);
-			str[22] = '\0';
-			::SetWindowText(::GetDlgItem(hDlg, IDC_JUMPINFO), str);
-			HWND hEditCtrl = ::GetDlgItem(hDlg, IDC_JUMPADDRESS);
-			filesize_t pos = g_pViewFrame->getPosition();
-//			wsprintf(str, "0x%08x%08x",
-//					 (int)(pos >> 32), (int)pos);
-			str[0] = '0';  str[1] = 'x';
-			QuadToStr((UINT)pos, (UINT)(pos >> 32), str + 2);
-			str[18] = '\0';
-			::SetWindowText(hEditCtrl, str);
-		}
-		break;
-
-	case WM_COMMAND:
-		switch (LOWORD(wParam)) {
-		case IDOK:
-			{
-				HWND hCtrl = ::GetDlgItem(hDlg, IDC_JUMPADDRESS);
-				char buf[32];
-				::GetWindowText(hCtrl, buf, 32);
-				filesize_t* ppos = (filesize_t*)::GetWindowLong(hDlg, DWL_USER);
-				*ppos = ParseNumber(buf);
-			}
-			// through down
-		case IDCANCEL:
-			::EndDialog(hDlg, 0);
-			break;
-		}
-		break;
-
-	default:
-		return FALSE;
-	}
-
-	return TRUE;
 }
 
 static bool
@@ -352,10 +97,14 @@ AdjustWindowSize(HWND hWnd, const RECT& rctFrame)
 }
 
 static void
-EnableEditMenu(HWND hWnd, BOOL bEnable)
+EnableMenuForLoadedFile(HWND hWnd, BOOL bEnable)
 {
 	HMENU hMenu = ::GetMenu(hWnd);
 	assert(hMenu);
+	HMENU hFileMenu = ::GetSubMenu(hMenu, 0);
+	assert(hMenu);
+	::EnableMenuItem(hFileMenu, IDM_CLOSE,
+					 MF_BYCOMMAND | (bEnable ? MF_ENABLED : MF_GRAYED));
 	::EnableMenuItem(hMenu, 1,
 					 MF_BYPOSITION | (bEnable ? MF_ENABLED : MF_GRAYED));
 	::SendMessage(hWnd, WM_NCPAINT, 1, 0);
@@ -396,7 +145,7 @@ LoadFile(const string& filename)
 		bRet = FALSE;
 	}
 
-	EnableEditMenu(g_hwndMain, bRet);
+	EnableMenuForLoadedFile(g_hwndMain, bRet);
 
 	return bRet;
 }
@@ -412,7 +161,7 @@ UnloadFile()
 	g_strImageFile = "";
 	::SetWindowText(g_hwndMain, "BinViewer");
 
-	EnableEditMenu(g_hwndMain, FALSE);
+	EnableMenuForLoadedFile(g_hwndMain, FALSE);
 	OnSetPosition(g_hwndMain, 0, 0);
 }
 
@@ -512,7 +261,7 @@ OnCreate(HWND hWnd)
 	::ReleaseDC(g_hwndStatusBar, hDC);
 
 	if (g_strImageFile.length() == 0) {
-		EnableEditMenu(hWnd, FALSE);
+		EnableMenuForLoadedFile(hWnd, FALSE);
 		OnSetPosition(hWnd, 0, 0);
 		return;
 	}
@@ -639,15 +388,7 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case IDM_JUMP:
-			{
-				// show dialog box
-				// parse string and return filesize_t pos
-				// set position to pos
-				filesize_t pos = -1;
-				::DialogBoxParam(g_hInstance, MAKEINTRESOURCE(IDD_JUMP),
-								 hWnd, (DLGPROC)JumpAddrDlgProc, (LPARAM)&pos);
-				if (pos >= 0) g_pViewFrame->onJump(pos);
-			}
+			JumpDlg::doModal(hWnd, g_pViewFrame.ptr());
 			break;
 
 		case IDK_LINEDOWN:

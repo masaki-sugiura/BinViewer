@@ -42,6 +42,9 @@
 #define IDC_GREP                        1029
 #define IDC_SEARCH_GREP_RESULT          1030
 #define IDC_JUMP                        1031
+#define IDC_BLOCKSIZE                   1033
+#define IDC_BLOCKCOUNT                  1034
+#define IDC_CALC_SIZE                   1035
 #define IDR_OPEN                        40001
 #define IDM_OPEN                        40001
 #define IDR_CLOSE                       40002
@@ -74,7 +77,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        113
 #define _APS_NEXT_COMMAND_VALUE         40020
-#define _APS_NEXT_CONTROL_VALUE         1032
+#define _APS_NEXT_CONTROL_VALUE         1036
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
