@@ -9,6 +9,7 @@
 #include "resource.h"
 #include "strutils.h"
 #include "viewframe.h"
+#include "searchdlg.h"
 
 #define ADDR_WIDTH   100
 #define BYTE_WIDTH    32
@@ -31,7 +32,6 @@
 static HINSTANCE g_hInstance;
 static HWND g_hwndMain, g_hwndStatusBar;
 static string g_strAppName;
-static HWND g_hSearchDlg;
 
 // window properties
 static Auto_Ptr<DrawInfo> g_pDrawInfo(NULL);
@@ -55,241 +55,6 @@ GetParameters()
 	if (__argc > 1) g_strImageFile = __argv[1];
 }
 
-static inline BYTE
-xdigit(BYTE ch)
-{
-	assert(IsCharXDigit(ch));
-	return IsCharDigit(ch) ? (ch - '0') : ((ch & 0x5F) - 'A' + 10);
-}
-
-static filesize_t
-ParseNumber(LPCSTR str)
-{
-	while (*str && IsCharSpace(*str)) str++;
-	if (!*str) return -1;
-	else if (*str == '0') {
-		str++;
-		filesize_t num = 0;
-		if (*str == 'x' || *str == 'X') {
-			// hex
-			for (;;) {
-				str++;
-				if (!IsCharXDigit(*str)) break;
-				num <<= 4;
-				num += xdigit(*str);
-			}
-		} else {
-			// octal
-			while (*str >= '0' && *str <= '7') {
-				num <<= 3;
-				num += *str - '0';
-				str++;
-			}
-		}
-		return num;
-	} else if (IsCharDigit(*str)) {
-		// decimal
-		filesize_t num = 0;
-		while (IsCharDigit(*str)) {
-			num *= 10;
-			num += *str - '0';
-			str++;
-		}
-		return num;
-	}
-	return -1;
-}
-
-static void
-FindCallbackProc(void* arg)
-{
-	assert(arg);
-
-	FindCallbackArg* pArg = (FindCallbackArg*)arg;
-
-	if (::IsWindow(g_hSearchDlg)) {
-		if (pArg->m_qFindAddress >= 0) {
-			g_pViewFrame->onJump(pArg->m_qFindAddress + pArg->m_nBufSize);
-			g_pViewFrame->onJump(pArg->m_qFindAddress);
-			g_pViewFrame->select(pArg->m_qFindAddress, pArg->m_nBufSize);
-		} else {
-			::MessageBeep(MB_ICONEXCLAMATION);
-			g_pViewFrame->select(pArg->m_qOrgAddress, pArg->m_nOrgSelectedSize);
-		}
-		::PostMessage(g_hSearchDlg, WM_USER_FIND_FINISH, 0, 0);
-	}
-
-	delete [] pArg->m_pData;
-	delete pArg;
-}
-
-static bool
-SearchData(HWND hDlg, int dir)
-{
-	typedef enum {
-		DATATYPE_HEX, DATATYPE_STRING
-	} SEARCH_DATATYPE;
-
-	if (!g_pViewFrame->isLoaded()) return false;
-
-	// get raw data
-	HWND hEdit = ::GetDlgItem(hDlg, IDC_SEARCHDATA);
-	int len = ::GetWindowTextLength(hEdit);
-	BYTE* buf = new BYTE[len + 1];
-	::GetWindowText(hEdit, (char*)buf, len + 1);
-
-	// get datatype
-	if (::SendMessage(::GetDlgItem(hDlg, IDC_DT_HEX), BM_GETCHECK, 0, 0)) {
-		// convert hex string data to the actual data
-		BYTE data = 0;
-		int j = 0;
-		for (int i = 0; i < len; i++) {
-			if (!IsCharXDigit(buf[i])) break;
-			if (i & 1) {
-				data <<= 4;
-				data += xdigit(buf[i]);
-				buf[j++] = data;
-			} else {
-				data = xdigit(buf[i]);
-			}
-		}
-		if (len & 1) {
-			buf[j++] = data;
-		}
-		len = j;
-	}
-
-	// prepare a callback arg
-	FindCallbackArg* pFindCallbackArg = new FindCallbackArg;
-	pFindCallbackArg = new FindCallbackArg;
-	pFindCallbackArg->m_pData = buf;
-	pFindCallbackArg->m_nBufSize = len;
-	pFindCallbackArg->m_nDirection = dir;
-	pFindCallbackArg->m_pfnCallback = FindCallbackProc;
-	pFindCallbackArg->m_qFindAddress = -1;
-	pFindCallbackArg->m_qOrgAddress = g_pViewFrame->getPosition();
-	pFindCallbackArg->m_nOrgSelectedSize = g_pViewFrame->getSelectedSize();
-
-	pFindCallbackArg->m_qStartAddress = pFindCallbackArg->m_qOrgAddress;
-	if (dir == FIND_FORWARD) {
-		pFindCallbackArg->m_qStartAddress += pFindCallbackArg->m_nOrgSelectedSize;
-	}
-
-	g_pViewFrame->unselect();
-
-	if (g_pViewFrame->findCallback(pFindCallbackArg)) return true;
-
-	delete [] buf;
-	delete pFindCallbackArg;
-
-	assert(0);
-
-	return false;
-}
-
-static void
-EnableSearchDlgControls(HWND hDlg, int dir, BOOL bEnable)
-{
-	if (bEnable) {
-		::SetWindowText(::GetDlgItem(hDlg, IDC_SEARCH_FORWARD),
-						"後方検索");
-		::SetWindowText(::GetDlgItem(hDlg, IDC_SEARCH_BACKWARD),
-						"前方検索");
-		::EnableWindow(::GetDlgItem(hDlg, IDC_SEARCH_FORWARD), TRUE);
-		::EnableWindow(::GetDlgItem(hDlg, IDC_SEARCH_BACKWARD), TRUE);
-	} else {
-		if (dir == FIND_FORWARD) {
-			::SetWindowText(::GetDlgItem(hDlg, IDC_SEARCH_FORWARD), "中断");
-			::EnableWindow(::GetDlgItem(hDlg, IDC_SEARCH_BACKWARD), FALSE);
-		} else {
-			::SetWindowText(::GetDlgItem(hDlg, IDC_SEARCH_BACKWARD), "中断");
-			::EnableWindow(::GetDlgItem(hDlg, IDC_SEARCH_FORWARD), FALSE);
-		}
-	}
-	::EnableWindow(::GetDlgItem(hDlg, IDC_SEARCHDATA), bEnable);
-	::EnableWindow(::GetDlgItem(hDlg, IDC_DT_HEX), bEnable);
-	::EnableWindow(::GetDlgItem(hDlg, IDC_DT_STRING), bEnable);
-	::EnableWindow(::GetDlgItem(hDlg, IDOK), bEnable);
-}
-
-static BOOL
-SearchDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	static bool bSearching = false;
-
-	switch (uMsg) {
-	case WM_INITDIALOG:
-		::SendMessage(::GetDlgItem(hDlg, IDC_DT_HEX),
-					  BM_SETCHECK, BST_CHECKED, 0);
-		break;
-
-	case WM_COMMAND:
-		switch (LOWORD(wParam)) {
-		case IDC_SEARCH_FORWARD:
-			if (!bSearching) {
-				if (bSearching = SearchData(hDlg, FIND_FORWARD)) {
-					EnableSearchDlgControls(hDlg, FIND_FORWARD, FALSE);
-					::EnableWindow(g_hwndMain, FALSE);
-				}
-			} else {
-				g_pViewFrame->stopFind();
-				// コールバック関数により WM_USER_FIND_FINISH が投げられる
-			}
-			break;
-		case IDC_SEARCH_BACKWARD:
-			if (!bSearching) {
-				if (bSearching = SearchData(hDlg, FIND_BACKWARD)) {
-					EnableSearchDlgControls(hDlg, FIND_BACKWARD, FALSE);
-					::EnableWindow(g_hwndMain, FALSE);
-				}
-			} else {
-				g_pViewFrame->stopFind();
-				// コールバック関数により WM_USER_FIND_FINISH が投げられる
-			}
-			break;
-		case IDOK:
-			::DestroyWindow(hDlg);
-			break;
-		}
-		break;
-
-	case WM_USER_FIND_FINISH:
-		if (bSearching) {
-			g_pViewFrame->cleanupCallback();
-			EnableSearchDlgControls(hDlg, 0, TRUE);
-			::EnableWindow(g_hwndMain, TRUE);
-			bSearching = false;
-		}
-		break;
-
-	case WM_MOUSEWHEEL:
-		if (!bSearching) {
-			g_pViewFrame->onMouseWheel(wParam, lParam);
-		}
-		break;
-
-	case WM_CLOSE:
-		::DestroyWindow(hDlg);
-		break;
-
-	case WM_DESTROY:
-		{
-			if (bSearching) {
-				bSearching = false;
-				g_pViewFrame->stopFind();
-				g_pViewFrame->cleanupCallback();
-				::EnableWindow(g_hwndMain, TRUE);
-			}
-			g_hSearchDlg = NULL;
-		}
-		break;
-
-	default:
-		return FALSE;
-	}
-	return TRUE;
-}
-
 static BOOL
 JumpAddrDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -299,13 +64,19 @@ JumpAddrDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			::SetWindowLong(hDlg, DWL_USER, (LONG)lParam);
 			filesize_t size = g_pViewFrame->getFileSize();
 			char str[32];
-			wsprintf(str, "0 - 0x%08x%08x",
-					 (int)(size >> 32), (int)size);
+//			wsprintf(str, "0 - 0x%08x%08x",
+//					 (int)(size >> 32), (int)size);
+			::CopyMemory(str, "0 - 0x", 6);
+			QuadToStr((UINT)size, (UINT)(size >> 32), str + 6);
+			str[22] = '\0';
 			::SetWindowText(::GetDlgItem(hDlg, IDC_JUMPINFO), str);
 			HWND hEditCtrl = ::GetDlgItem(hDlg, IDC_JUMPADDRESS);
 			filesize_t pos = g_pViewFrame->getPosition();
-			wsprintf(str, "0x%08x%08x",
-					 (int)(pos >> 32), (int)pos);
+//			wsprintf(str, "0x%08x%08x",
+//					 (int)(pos >> 32), (int)pos);
+			str[0] = '0';  str[1] = 'x';
+			QuadToStr((UINT)pos, (UINT)(pos >> 32), str + 2);
+			str[18] = '\0';
 			::SetWindowText(hEditCtrl, str);
 		}
 		break;
@@ -445,8 +216,10 @@ UnloadFile()
 static void
 OnSetPosition(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
-	char msgbuf[80];
-	wsprintf(msgbuf, "カーソルの現在位置： 0x%08X%08X", wParam, lParam);
+	char msgbuf[40];
+	::CopyMemory(msgbuf, "カーソルの現在位置： 0x", 23);
+	QuadToStr((UINT)lParam, (UINT)wParam, msgbuf + 23);
+	msgbuf[39] = '\0';
 	::SetWindowText(g_hwndStatusBar, msgbuf);
 }
 
@@ -539,6 +312,7 @@ OnCreate(HWND hWnd)
 static void
 OnQuit(HWND)
 {
+	SearchDlg::close();
 	g_pLFReader = NULL;
 	g_pViewFrame = NULL;
 }
@@ -609,15 +383,8 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case IDR_SEARCH:
-			{
-				if (g_hSearchDlg) break;
-				g_hSearchDlg = ::CreateDialogParam(g_hInstance, MAKEINTRESOURCE(IDD_SEARCH),
-												   hWnd, (DLGPROC)SearchDlgProc,
-												   (LPARAM)NULL);
-				if (!g_hSearchDlg) {
-					::MessageBox(hWnd, "検索ダイアログの表示に失敗しました", NULL, MB_OK);
-					break;
-				}
+			if (!SearchDlg::create(hWnd, g_pViewFrame.ptr())) {
+				::MessageBox(hWnd, "検索ダイアログの表示に失敗しました", NULL, MB_OK);
 			}
 			break;
 
@@ -742,7 +509,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	MSG msg;
 	while (::GetMessage(&msg, NULL, 0, 0)) {
-		if (!::IsDialogMessage(g_hSearchDlg, &msg) &&
+		if (!SearchDlg::isDialogMessage(&msg) &&
 			!::TranslateAccelerator(g_hwndMain, hAccel, &msg)) {
 			::TranslateMessage(&msg);
 			::DispatchMessage(&msg);

@@ -4,8 +4,6 @@
 #include "strutils.h"
 #include <assert.h>
 
-static const char* const hex = "0123456789ABCDEF";
-
 Renderer::Renderer(HDC hDC,
 				   const TextColorInfo* pTCInfo,
 				   const FontInfo* pFontInfo,
@@ -133,7 +131,8 @@ DCBuffer::render()
 		int idx_top = (i << 4);
 #if 1
 		filesize_t qCurAddress = m_qAddress + idx_top;
-		wsprintf(linebuf, "%08X%08X", (int)(qCurAddress >> 32), (int)qCurAddress);
+//		wsprintf(linebuf, "%08X%08X", (int)(qCurAddress >> 32), (int)qCurAddress);
+		QuadToStr((UINT)qCurAddress, (UINT)(qCurAddress >> 32), linebuf);
 		::ExtTextOut(m_hDC, nXPitch, yoffset, 0, NULL, linebuf, 16, m_anXPitch);
 		xoffset = nXPitch * 18;
 		linebuf[2] = 0;
@@ -189,7 +188,8 @@ DCBuffer::render()
 	if (m_nDataSize & 0x0F) {
 		yoffset = linenum * nYPitch;
 		filesize_t qCurAddress = m_qAddress + (linenum << 4);
-		wsprintf(linebuf, "%08X%08X", (int)(qCurAddress >> 32), (int)qCurAddress);
+//		wsprintf(linebuf, "%08X%08X", (int)(qCurAddress >> 32), (int)qCurAddress);
+		QuadToStr((UINT)qCurAddress, (UINT)(qCurAddress >> 32), linebuf);
 		::ExtTextOut(m_hDC, nXPitch, yoffset, 0, NULL, linebuf, 16, m_anXPitch);
 		xoffset = nXPitch * 18;
 		linebuf[2] = 0;

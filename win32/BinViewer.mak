@@ -43,18 +43,20 @@ ALL : "$(OUTDIR)\BinViewer.exe"
 
 CLEAN :
 	-@erase "$(INTDIR)\bgb_manager.obj"
-	-@erase "$(INTDIR)\bgb_manager_win32.obj"
 	-@erase "$(INTDIR)\dc_manager.obj"
 	-@erase "$(INTDIR)\drawinfo.obj"
 	-@erase "$(INTDIR)\LargeFileReader.obj"
 	-@erase "$(INTDIR)\lock.obj"
 	-@erase "$(INTDIR)\main.obj"
 	-@erase "$(INTDIR)\mainwnd.res"
+	-@erase "$(INTDIR)\searchdlg.obj"
 	-@erase "$(INTDIR)\strutils.obj"
 	-@erase "$(INTDIR)\thread.obj"
 	-@erase "$(INTDIR)\vc60.idb"
 	-@erase "$(INTDIR)\viewframe.obj"
 	-@erase "$(OUTDIR)\BinViewer.exe"
+	-@erase "$(OUTDIR)\BinViewer.ilk"
+	-@erase "$(OUTDIR)\BinViewer.pdb"
 
 "$(OUTDIR)" :
     if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
@@ -69,19 +71,19 @@ BSC32_FLAGS=/nologo /o"$(OUTDIR)\BinViewer.bsc"
 BSC32_SBRS= \
 	
 LINK32=link.exe
-LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /incremental:no /pdb:"$(OUTDIR)\BinViewer.pdb" /machine:I386 /out:"$(OUTDIR)\BinViewer.exe" 
+LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /incremental:yes /pdb:"$(OUTDIR)\BinViewer.pdb" /debug /machine:I386 /out:"$(OUTDIR)\BinViewer.exe" 
 LINK32_OBJS= \
 	"$(INTDIR)\bgb_manager.obj" \
-	"$(INTDIR)\bgb_manager_win32.obj" \
 	"$(INTDIR)\dc_manager.obj" \
+	"$(INTDIR)\drawinfo.obj" \
 	"$(INTDIR)\LargeFileReader.obj" \
 	"$(INTDIR)\lock.obj" \
 	"$(INTDIR)\main.obj" \
+	"$(INTDIR)\searchdlg.obj" \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res" \
-	"$(INTDIR)\drawinfo.obj"
+	"$(INTDIR)\mainwnd.res"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -102,8 +104,6 @@ ALL : "$(OUTDIR)\BinViewer.exe" "$(OUTDIR)\BinViewer.bsc"
 CLEAN :
 	-@erase "$(INTDIR)\bgb_manager.obj"
 	-@erase "$(INTDIR)\bgb_manager.sbr"
-	-@erase "$(INTDIR)\bgb_manager_win32.obj"
-	-@erase "$(INTDIR)\bgb_manager_win32.sbr"
 	-@erase "$(INTDIR)\dc_manager.obj"
 	-@erase "$(INTDIR)\dc_manager.sbr"
 	-@erase "$(INTDIR)\drawinfo.obj"
@@ -115,6 +115,8 @@ CLEAN :
 	-@erase "$(INTDIR)\main.obj"
 	-@erase "$(INTDIR)\main.sbr"
 	-@erase "$(INTDIR)\mainwnd.res"
+	-@erase "$(INTDIR)\searchdlg.obj"
+	-@erase "$(INTDIR)\searchdlg.sbr"
 	-@erase "$(INTDIR)\strutils.obj"
 	-@erase "$(INTDIR)\strutils.sbr"
 	-@erase "$(INTDIR)\thread.obj"
@@ -140,15 +142,15 @@ BSC32=bscmake.exe
 BSC32_FLAGS=/nologo /o"$(OUTDIR)\BinViewer.bsc" 
 BSC32_SBRS= \
 	"$(INTDIR)\bgb_manager.sbr" \
-	"$(INTDIR)\bgb_manager_win32.sbr" \
 	"$(INTDIR)\dc_manager.sbr" \
+	"$(INTDIR)\drawinfo.sbr" \
 	"$(INTDIR)\LargeFileReader.sbr" \
 	"$(INTDIR)\lock.sbr" \
 	"$(INTDIR)\main.sbr" \
+	"$(INTDIR)\searchdlg.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
-	"$(INTDIR)\viewframe.sbr" \
-	"$(INTDIR)\drawinfo.sbr"
+	"$(INTDIR)\viewframe.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -159,16 +161,16 @@ LINK32=link.exe
 LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /incremental:yes /pdb:"$(OUTDIR)\BinViewer.pdb" /debug /machine:I386 /out:"$(OUTDIR)\BinViewer.exe" /pdbtype:sept 
 LINK32_OBJS= \
 	"$(INTDIR)\bgb_manager.obj" \
-	"$(INTDIR)\bgb_manager_win32.obj" \
 	"$(INTDIR)\dc_manager.obj" \
+	"$(INTDIR)\drawinfo.obj" \
 	"$(INTDIR)\LargeFileReader.obj" \
 	"$(INTDIR)\lock.obj" \
 	"$(INTDIR)\main.obj" \
+	"$(INTDIR)\searchdlg.obj" \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res" \
-	"$(INTDIR)\drawinfo.obj"
+	"$(INTDIR)\mainwnd.res"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -250,22 +252,6 @@ SOURCE=..\bgb_manager.cpp
 
 !ENDIF 
 
-SOURCE=.\bgb_manager_win32.cpp
-
-!IF  "$(CFG)" == "BinViewer - Win32 Release"
-
-
-"$(INTDIR)\bgb_manager_win32.obj" : $(SOURCE) "$(INTDIR)"
-
-
-!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
-
-
-"$(INTDIR)\bgb_manager_win32.obj"	"$(INTDIR)\bgb_manager_win32.sbr" : $(SOURCE) "$(INTDIR)"
-
-
-!ENDIF 
-
 SOURCE=.\dc_manager.cpp
 
 !IF  "$(CFG)" == "BinViewer - Win32 Release"
@@ -342,6 +328,22 @@ SOURCE=.\main.cpp
 
 
 "$(INTDIR)\main.obj"	"$(INTDIR)\main.sbr" : $(SOURCE) "$(INTDIR)"
+
+
+!ENDIF 
+
+SOURCE=.\searchdlg.cpp
+
+!IF  "$(CFG)" == "BinViewer - Win32 Release"
+
+
+"$(INTDIR)\searchdlg.obj" : $(SOURCE) "$(INTDIR)"
+
+
+!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
+
+
+"$(INTDIR)\searchdlg.obj"	"$(INTDIR)\searchdlg.sbr" : $(SOURCE) "$(INTDIR)"
 
 
 !ENDIF 

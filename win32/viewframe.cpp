@@ -131,6 +131,8 @@ ViewFrame::setPosition(filesize_t pos)
 		pos = fsize - 1;
 	if (pos < 0) pos = 0; // else ‚Å‚Í NG!! (filesize == 0 ‚Ìê‡)
 
+	unselect();
+
 	m_qCurrentPos = pos;
 
 	int top_offset_by_size = m_nTopOffset / m_nLineHeight * 16,
@@ -151,7 +153,6 @@ ViewFrame::setPosition(filesize_t pos)
 	}
 	modifyVScrollInfo();
 
-	unselect();
 	select(pos, 1);
 
 	::SendMessage(::GetParent(m_hwndView), WM_USER_SETPOSITION,
@@ -398,7 +399,7 @@ ViewFrame::modifyVScrollInfo()
 			// m_nPageLineNum ‚Í”¼’[‚ÈÅ‰ºs‚ðŠÜ‚Þ‚Ì‚Å -1 ‚µ‚Ä‚¨‚­
 			sinfo.nPage = m_nPageLineNum - 1;
 			sinfo.nMax = (int)m_qMaxLine + sinfo.nPage - 1;
-			sinfo.nPos = (int)pos;
+			sinfo.nPos = (int)(pos / 16);
 		}
 		if (!sinfo.nPage) sinfo.nPage = 1;
 	}
@@ -639,6 +640,8 @@ ViewFrame::onMouseWheel(WPARAM wParam, LPARAM lParam)
 void
 ViewFrame::onLButtonDown(WPARAM wParam, LPARAM lParam)
 {
+	if (!isLoaded()) return;
+
 	setPositionByCoordinate(MAKEPOINTS(lParam));
 	updateWithoutHeader();
 }

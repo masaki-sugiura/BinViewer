@@ -2,6 +2,8 @@
 
 #include "strutils.h"
 
+const char* const hex = "0123456789ABCDEF";
+
 //	文字の性質をビットで表現した配列
 BYTE char_property[257] = {
 	// 0x00 - 0x07
@@ -398,5 +400,64 @@ lstrninc(LPCSTR str, int num)
 	if (!IsValidPtr(str)) return NULL;
 	while (num-- > 0) str = ToNextChar(str);
 	return const_cast<LPSTR>(str);
+}
+
+filesize_t
+ParseNumber(LPCSTR str)
+{
+	while (*str && IsCharSpace(*str)) str++;
+	if (!*str) return -1;
+	else if (*str == '0') {
+		str++;
+		filesize_t num = 0;
+		if (*str == 'x' || *str == 'X') {
+			// hex
+			for (;;) {
+				str++;
+				if (!IsCharXDigit(*str)) break;
+				num <<= 4;
+				num += xdigit(*str);
+			}
+		} else {
+			// octal
+			while (*str >= '0' && *str <= '7') {
+				num <<= 3;
+				num += *str - '0';
+				str++;
+			}
+		}
+		return num;
+	} else if (IsCharDigit(*str)) {
+		// decimal
+		filesize_t num = 0;
+		while (IsCharDigit(*str)) {
+			num *= 10;
+			num += *str - '0';
+			str++;
+		}
+		return num;
+	}
+	return -1;
+}
+
+void
+QuadToStr(UINT lo, UINT hi, LPSTR buf)
+{
+	buf[0]  = hex[0x0F & (hi >> 28)];
+	buf[1]  = hex[0x0F & (hi >> 24)];
+	buf[2]  = hex[0x0F & (hi >> 20)];
+	buf[3]  = hex[0x0F & (hi >> 16)];
+	buf[4]  = hex[0x0F & (hi >> 12)];
+	buf[5]  = hex[0x0F & (hi >>  8)];
+	buf[6]  = hex[0x0F & (hi >>  4)];
+	buf[7]  = hex[0x0F & (hi >>  0)];
+	buf[8]  = hex[0x0F & (lo >> 28)];
+	buf[9]  = hex[0x0F & (lo >> 24)];
+	buf[10] = hex[0x0F & (lo >> 20)];
+	buf[11] = hex[0x0F & (lo >> 16)];
+	buf[12] = hex[0x0F & (lo >> 12)];
+	buf[13] = hex[0x0F & (lo >>  8)];
+	buf[14] = hex[0x0F & (lo >>  4)];
+	buf[15] = hex[0x0F & (lo >>  0)];
 }
 

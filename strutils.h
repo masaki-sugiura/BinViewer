@@ -4,6 +4,7 @@
 #define	STRUTILS_H_INC
 
 #include "types.h"
+#include <assert.h>
 
 bool IsValidPtr(LPCSTR);
 
@@ -95,5 +96,17 @@ ToNextChar(LPCSTR ptr)
 {
 	return (LPSTR)(ptr + 1 + IsCharLeadByte(*ptr));
 }
+
+inline BYTE
+xdigit(BYTE ch)
+{
+	assert(IsCharXDigit(ch));
+	return IsCharDigit(ch) ? (ch - '0') : ((ch & 0x5F) - 'A' + 10);
+}
+
+filesize_t ParseNumber(LPCSTR str);
+void QuadToStr(UINT lo, UINT hi, LPSTR buf);
+
+extern const char* const hex;
 
 #endif

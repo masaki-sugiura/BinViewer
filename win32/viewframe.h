@@ -5,6 +5,8 @@
 
 #include "dc_manager.h"
 #include <assert.h>
+#include <exception>
+using std::exception;
 
 #define WM_USER_FIND_FINISH  (WM_USER + 1000)
 #define WM_USER_SETPOSITION  (WM_USER + 1001)
@@ -198,7 +200,7 @@ private:
 	static LRESULT CALLBACK ViewFrameWndProc(HWND, UINT, WPARAM, LPARAM);
 };
 
-class ViewFrameError {};
+class ViewFrameError : public exception {};
 class RegisterClassError : public ViewFrameError {};
 class CreateWindowError  : public ViewFrameError {};
 
