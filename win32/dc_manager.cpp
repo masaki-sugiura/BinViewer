@@ -243,7 +243,8 @@ DC_Manager::setViewPosition(int nXOffset, filesize_t qYOffset)
 	m_nXOffset = nXOffset;
 	m_qYOffset = qYOffset;
 
-	m_nYOffset = qYOffset - (qYOffset / m_nHeight) * m_nHeight;
+//	m_nYOffset = qYOffset - (qYOffset / m_nHeight) * m_nHeight;
+	m_nYOffset = (int)(qYOffset % m_nHeight);
 
 	m_bOverlapped = m_nYOffset + m_nViewHeight > m_nHeight;
 

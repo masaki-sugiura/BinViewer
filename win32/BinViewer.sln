@@ -1,0 +1,52 @@
+Microsoft Visual Studio Solution File, Format Version 8.00
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BGB_Manager_Test", "..\BGB_Manager_Test\BGB_Manager_Test.vcproj", "{8D380C19-1BA2-43BA-9BCC-6821FF77C381}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BinViewer", "BinViewer.vcproj", "{465F2E5B-630C-4454-80AB-C20B86BEC1EE}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LargeFileReader_Test", "..\LargeFileReader_Test\LargeFileReader_Test.vcproj", "{40B5AC24-B120-44BB-A7F1-ED854CE2B52C}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RingBuffer_Test", "..\RingBuffer_Test\RingBuffer_Test.vcproj", "{E844276A-2E98-4AB9-B47C-8906CCC74D84}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ViewTest", "ViewTest.vcproj", "{F9F22625-8B68-43BA-BDAF-36805263AAF7}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfiguration) = preSolution
+		Debug = Debug
+		Release = Release
+		ReleaseWithProfiling = ReleaseWithProfiling
+	EndGlobalSection
+	GlobalSection(ProjectConfiguration) = postSolution
+		{8D380C19-1BA2-43BA-9BCC-6821FF77C381}.Debug.ActiveCfg = Debug|Win32
+		{8D380C19-1BA2-43BA-9BCC-6821FF77C381}.Release.ActiveCfg = Release|Win32
+		{8D380C19-1BA2-43BA-9BCC-6821FF77C381}.ReleaseWithProfiling.ActiveCfg = Release|Win32
+		{465F2E5B-630C-4454-80AB-C20B86BEC1EE}.Debug.ActiveCfg = Debug|Win32
+		{465F2E5B-630C-4454-80AB-C20B86BEC1EE}.Debug.Build.0 = Debug|Win32
+		{465F2E5B-630C-4454-80AB-C20B86BEC1EE}.Release.ActiveCfg = Release|Win32
+		{465F2E5B-630C-4454-80AB-C20B86BEC1EE}.Release.Build.0 = Release|Win32
+		{465F2E5B-630C-4454-80AB-C20B86BEC1EE}.ReleaseWithProfiling.ActiveCfg = Release|Win32
+		{465F2E5B-630C-4454-80AB-C20B86BEC1EE}.ReleaseWithProfiling.Build.0 = Release|Win32
+		{40B5AC24-B120-44BB-A7F1-ED854CE2B52C}.Debug.ActiveCfg = Debug|Win32
+		{40B5AC24-B120-44BB-A7F1-ED854CE2B52C}.Release.ActiveCfg = Release|Win32
+		{40B5AC24-B120-44BB-A7F1-ED854CE2B52C}.ReleaseWithProfiling.ActiveCfg = Release|Win32
+		{E844276A-2E98-4AB9-B47C-8906CCC74D84}.Debug.ActiveCfg = Debug|Win32
+		{E844276A-2E98-4AB9-B47C-8906CCC74D84}.Release.ActiveCfg = Release|Win32
+		{E844276A-2E98-4AB9-B47C-8906CCC74D84}.ReleaseWithProfiling.ActiveCfg = Release|Win32
+		{F9F22625-8B68-43BA-BDAF-36805263AAF7}.Debug.ActiveCfg = Debug|Win32
+		{F9F22625-8B68-43BA-BDAF-36805263AAF7}.Release.ActiveCfg = Release|Win32
+		{F9F22625-8B68-43BA-BDAF-36805263AAF7}.ReleaseWithProfiling.ActiveCfg = Release|Win32
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal

@@ -86,6 +86,8 @@ View::~View()
 	}
 
 	unregist();
+
+	delete m_pDCManager;
 }
 
 bool

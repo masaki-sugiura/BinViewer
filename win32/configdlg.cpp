@@ -357,8 +357,8 @@ SampleView::updateSample(FontConfig& fontConfig, ColorConfig* colorConfig)
 	::DeleteObject(hbrBackground);
 	::SetTextColor(m_hdcSample, colorConfig[0].m_crFgColor);
 	::SetBkColor(m_hdcSample, colorConfig[0].m_crBkColor);
-	int addr = 0;
-	for (int y = tm.tmHeight + 1; y < height; y += tm.tmHeight + 1) {
+	int addr = 0, y;
+	for (y = tm.tmHeight + 1; y < height; y += tm.tmHeight + 1) {
 		char buf[5];
 		wsprintf(buf, "%04x", addr);
 		::ExtTextOut(m_hdcSample, a_offset, y,
