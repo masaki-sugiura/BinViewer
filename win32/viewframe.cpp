@@ -316,7 +316,8 @@ ViewFrame::invertRegion(filesize_t pos, int size, bool bSelected)
 void
 ViewFrame::select(filesize_t pos, int size, bool bRedraw)
 {
-	assert(pos >= 0 && size > 0);
+//	assert(pos >= 0 && size > 0);
+	if (pos < 0 || size <= 0) return;
 
 	// unselect previously selected region
 	unselect(false);
@@ -372,7 +373,7 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 	setCurrentLine(qNewLine, false);
 
 	// m_qCurrentPos �̕ύX
-	filesize_t qCaretLine = (m_qCurrentPos + 15) / 16;
+	filesize_t qCaretLine = m_qCurrentPos / 16;
 
 	switch (m_pDrawInfo->m_ScrollConfig.m_caretMove) {
 	case CARET_ENSURE_VISIBLE:

@@ -6,6 +6,10 @@
 #include "bgb_manager.h"
 #include "drawinfo.h"
 
+#define MAX_DATASIZE_PER_BUFFER  1024 // 1KB
+
+#define BUFFER_NUM  3
+
 #define WIDTH_PER_XPITCH  (1 + 16 + 2 + 8 * 3 + 2 + 8 * 3 + 1 + 16 + 1)
 #define HEIGHT_PER_YPITCH (MAX_DATASIZE_PER_BUFFER / 16)
 

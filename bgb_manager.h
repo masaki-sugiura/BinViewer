@@ -8,10 +8,6 @@
 #include "thread.h"
 #include "auto_ptr.h"
 
-#define MAX_DATASIZE_PER_BUFFER  1024 // 1KB
-
-#define BUFFER_NUM  4
-
 #define FIND_FORWARD   1
 #define FIND_BACKWARD -1
 
@@ -30,9 +26,10 @@ struct FindCallbackArg {
 struct BGBuffer {
 	filesize_t m_qAddress;
 	int m_nDataSize;
-	BYTE m_DataBuf[MAX_DATASIZE_PER_BUFFER];
+	int m_nBufSize;
+	BYTE* m_DataBuf;
 
-	BGBuffer();
+	BGBuffer(int bufsize);
 	virtual ~BGBuffer();
 
 	virtual int init(LargeFileReader& LFReader, filesize_t offset);
@@ -41,7 +38,7 @@ struct BGBuffer {
 
 class BGB_Manager {
 public:
-	BGB_Manager(LargeFileReader* pLFReader = NULL);
+	BGB_Manager(int bufsize, int bufcount, LargeFileReader* pLFReader);
 	virtual ~BGB_Manager();
 
 	bool loadFile(LargeFileReader* pLFReader);
@@ -79,11 +76,11 @@ public:
 
 	int getMinBufferIndex() const
 	{
-		return - ((BUFFER_NUM - 1) / 2);
+		return - (m_nBufCount / 2);
 	}
 	int getMaxBufferIndex() const
 	{
-		return (BUFFER_NUM - 1) / 2;
+		return m_nBufCount / 2;
 	}
 
 	BGBuffer* getBuffer(filesize_t offset)
@@ -99,6 +96,8 @@ public:
 	virtual bool cleanupCallback();
 
 protected:
+	int m_nBufSize;
+	int m_nBufCount;
 	LargeFileReader* m_pLFReader;
 	filesize_t m_qCurrentPos;
 	RingBuffer<BGBuffer> m_rbBuffers;

@@ -201,6 +201,10 @@ SOURCE=..\ringbuf.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\scroll.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\searchdlg.h
 # End Source File
 # Begin Source File

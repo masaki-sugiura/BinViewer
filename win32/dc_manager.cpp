@@ -61,7 +61,7 @@ Renderer::setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo)
 
 
 DCBuffer::DCBuffer(HDC hDC, const DrawInfo* pDrawInfo)
-	: BGBuffer(),
+	: BGBuffer(MAX_DATASIZE_PER_BUFFER),
 	  Renderer(hDC, pDrawInfo, WIDTH_PER_XPITCH, HEIGHT_PER_YPITCH),
 	  m_bHasSelectedRegion(false),
 	  m_nSelectedPos(-1), m_nSelectedSize(0)
@@ -401,7 +401,7 @@ Header::render()
 
 DC_Manager::DC_Manager(HDC hDC, const DrawInfo* pDrawInfo,
 					   LargeFileReader* pLFReader)
-	: BGB_Manager(pLFReader),
+	: BGB_Manager(MAX_DATASIZE_PER_BUFFER, BUFFER_NUM, pLFReader),
 	  m_pDrawInfo(pDrawInfo),
 	  m_Header(hDC, pDrawInfo)
 {

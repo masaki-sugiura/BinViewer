@@ -5,14 +5,18 @@
 
 #include <assert.h>
 
-BGBuffer::BGBuffer()
+BGBuffer::BGBuffer(int bufsize)
 	: m_qAddress(-1),
-	  m_nDataSize(0)
+	  m_nDataSize(0),
+	  m_nBufSize(bufsize)
 {
+	assert(bufsize > 0);
+	m_DataBuf = new BYTE[bufsize];
 }
 
 BGBuffer::~BGBuffer()
 {
+	delete [] m_DataBuf;
 }
 
 int
@@ -24,7 +28,7 @@ BGBuffer::init(LargeFileReader& LFReader, filesize_t offset)
 	m_qAddress = offset;
 
 	m_nDataSize = LFReader.readFrom(m_qAddress, FILE_BEGIN,
-									m_DataBuf, MAX_DATASIZE_PER_BUFFER);
+									m_DataBuf, m_nBufSize);
 	if (m_nDataSize >= 0) return m_nDataSize;
 
 	// 読み込みに失敗→バッファの無効化
@@ -55,12 +59,16 @@ BGBuffer::uninit()
 	(ファイルの先頭または終端の場合は -1, または 1 番目の要素は無効)
  */
 
-BGB_Manager::BGB_Manager(LargeFileReader* pLFReader)
-	: m_pLFReader(pLFReader),
+BGB_Manager::BGB_Manager(int bufsize, int bufcount, LargeFileReader* pLFReader)
+	: m_nBufSize(bufsize),
+	  m_nBufCount(bufcount),
+	  m_pLFReader(pLFReader),
 	  m_qCurrentPos(-1),
 	  m_bRBInit(false),
 	  m_pThread(NULL)
 {
+	assert(m_nBufSize > 0 && m_nBufCount > 2);
+	m_nBufCount |= 1;
 }
 
 BGB_Manager::~BGB_Manager()
@@ -93,7 +101,7 @@ BGB_Manager::unloadFile()
 BGBuffer*
 BGB_Manager::createBGBufferInstance()
 {
-	return new BGBuffer();
+	return new BGBuffer(m_nBufSize);
 }
 
 int
@@ -103,49 +111,85 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 
 	if (!m_bRBInit) { // 最初の呼び出し
 		// BUFFER_NUM 個のリングバッファ要素を追加
-		for (int i = 0; i < BUFFER_NUM; i++) {
-			m_rbBuffers.addElement(createBGBufferInstance(), i - 1);
+		for (int i = 0; i < m_nBufCount; i++) {
+			m_rbBuffers.addElement(createBGBufferInstance(), i);
 		}
 		m_bRBInit = true;
 	}
 
 	if (!isLoaded()) return -1;
 
-	// offset - MAX_DATASIZE_PER_BUFFER から offset + 2 * MAX_DATASIZE_PER_BUFFER - 1
+	// offset - m_nBufSize から offset + 2 * m_nBufSize - 1
 	// のデータをファイルから読み出す
 
-	// MAX_DATASIZE_PER_BUFFER バイトでアライメント
-	offset = (offset / MAX_DATASIZE_PER_BUFFER) * MAX_DATASIZE_PER_BUFFER;
+	// m_nBufSize でアライメント
+//	offset = (offset / m_nBufSize) * m_nBufSize;
+	offset &= ~(m_nBufSize - 1); // m_nBufSize == 2^n を仮定
 
 	// 現在のバッファリストに挿入するべきか、
 	// 現在のリストを(全て、または一部)破棄して読み込むべきかを調べる
+	int radius = (m_nBufCount / 2) * m_nBufSize;
+	if (m_qCurrentPos < 0 ||
+		offset >= m_qCurrentPos + 2 * radius ||
+		offset <  m_qCurrentPos - 2 * radius) {
+		// 全く新規に読み込み
+		if (m_qCurrentPos < 0) m_qCurrentPos = 0;
+		int i = - radius / m_nBufSize;
+		filesize_t start, end;
+		start = m_qCurrentPos - radius;
+		end = start + m_nBufCount * m_nBufSize;
+		while (start < end) {
+			m_rbBuffers.elementAt(i++)->init(*m_pLFReader, start);
+			start += m_nBufSize;
+		}
+	} else if (offset != m_qCurrentPos) {
+		// offset のブロックは既に読み込まれている
+		int new_top = (int)(offset - m_qCurrentPos), i;
+		filesize_t start, end;
+		if (new_top > 0) {
+			i = radius / m_nBufSize + 1;
+			start = m_qCurrentPos + radius + m_nBufSize;
+			end = start + new_top;
+		} else {
+			i = (- radius + new_top) / m_nBufSize;
+			end = m_qCurrentPos - radius;
+			start = end + new_top;
+		}
+		while (start < end) {
+			m_rbBuffers.elementAt(i++)->init(*m_pLFReader, start);
+			start += m_nBufSize;
+		}
+		m_rbBuffers.setTop(new_top / m_nBufSize);
+	}
 
+#if 0
 	if (m_qCurrentPos == offset) {
 		// 現在と同じバッファを返す
-	} else if (offset == m_qCurrentPos + MAX_DATASIZE_PER_BUFFER) {
+	} else if (offset == m_qCurrentPos + m_nBufSize) {
 		// 0, 1 番目のバッファは再利用可能
 		m_rbBuffers.setTop(1); // 0 -> -1, 1 -> 0
-		m_rbBuffers.elementAt(1)->init(*m_pLFReader, offset + MAX_DATASIZE_PER_BUFFER);
-	} else if (offset == m_qCurrentPos + 2 * MAX_DATASIZE_PER_BUFFER) {
+		m_rbBuffers.elementAt(1)->init(*m_pLFReader, offset + m_nBufSize);
+	} else if (offset == m_qCurrentPos + 2 * m_nBufSize) {
 		// 1 番目のバッファは再利用可能
 		m_rbBuffers.setTop(2); // 1 -> -1
 		m_rbBuffers.elementAt(0)->init(*m_pLFReader, offset);
-		m_rbBuffers.elementAt(1)->init(*m_pLFReader, offset + MAX_DATASIZE_PER_BUFFER);
-	} else if (offset == m_qCurrentPos - MAX_DATASIZE_PER_BUFFER) {
+		m_rbBuffers.elementAt(1)->init(*m_pLFReader, offset + m_nBufSize);
+	} else if (offset == m_qCurrentPos - m_nBufSize) {
 		// 0, -1 番目のバッファは再利用可能
 		m_rbBuffers.setTop(-1); // -1 -> 0, 0 -> 1
-		m_rbBuffers.elementAt(-1)->init(*m_pLFReader, offset - MAX_DATASIZE_PER_BUFFER);
-	} else if (offset == m_qCurrentPos + 2 * MAX_DATASIZE_PER_BUFFER) {
+		m_rbBuffers.elementAt(-1)->init(*m_pLFReader, offset - m_nBufSize);
+	} else if (offset == m_qCurrentPos + 2 * m_nBufSize) {
 		// -1 番目のバッファは再利用可能
 		m_rbBuffers.setTop(-2); // -1 -> 1
-		m_rbBuffers.elementAt(-1)->init(*m_pLFReader, offset - MAX_DATASIZE_PER_BUFFER);
+		m_rbBuffers.elementAt(-1)->init(*m_pLFReader, offset - m_nBufSize);
 		m_rbBuffers.elementAt(0)->init(*m_pLFReader, offset);
 	} else {
 		// 全てを破棄して読み込み (m_qCurrentPos == -1 の場合も含む)
-		m_rbBuffers.elementAt(-1)->init(*m_pLFReader, offset - MAX_DATASIZE_PER_BUFFER);
+		m_rbBuffers.elementAt(-1)->init(*m_pLFReader, offset - m_nBufSize);
 		m_rbBuffers.elementAt(0)->init(*m_pLFReader, offset);
-		m_rbBuffers.elementAt(1)->init(*m_pLFReader, offset + MAX_DATASIZE_PER_BUFFER);
+		m_rbBuffers.elementAt(1)->init(*m_pLFReader, offset + m_nBufSize);
 	}
+#endif
 
 	// カレントポジションの変更
 	m_qCurrentPos = offset;
@@ -153,7 +197,7 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 	// バッファに貯められているデータサイズの計算
 	// (但し 2 以上または -2 以下の要素は含めない)
 	int totalsize = 0;
-	for (int i = -1; i <= 1; i++) {
+	for (int i = 0; i < m_nBufCount; i++) {
 		BGBuffer* pbgb = m_rbBuffers.elementAt(i);
 		if (pbgb->m_qAddress >= 0)
 			totalsize += pbgb->m_nDataSize;
@@ -166,6 +210,7 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 
 struct ThreadProcArg {
 //	BGB_Manager* m_pBGB_Manager;
+	int m_nBufSizePerBlock;
 	LargeFileReader* m_pLFReader;
 	FindCallbackArg* m_pCallbackArg;
 };
@@ -187,10 +232,10 @@ FindThread::thread(thread_arg_t arg)
 	FindCallbackArg* pCallbackArg = pThreadArg->m_pCallbackArg;
 	filesize_t pos = pCallbackArg->m_qStartAddress;
 	const BYTE* data = pCallbackArg->m_pData;
-	int size = pCallbackArg->m_nBufSize;
+	int blocksize = pThreadArg->m_nBufSizePerBlock,
+		size = pCallbackArg->m_nBufSize;
 
-	int bufsize = MAX_DATASIZE_PER_BUFFER
-			* ((MAX_DATASIZE_PER_BUFFER + size - 1) / MAX_DATASIZE_PER_BUFFER);
+	int bufsize = blocksize * ((blocksize + size - 1) / blocksize);
 
 	BYTE* buf = new BYTE[bufsize];
 
@@ -295,6 +340,7 @@ BGB_Manager::findCallback(FindCallbackArg* pArg)
 
 	ThreadProcArg* pThreadArg = new ThreadProcArg;
 //	pThreadArg->m_pBGB_Manager = this;
+	pThreadArg->m_nBufSizePerBlock = m_nBufSize;
 	pThreadArg->m_pLFReader = m_pLFReader;
 	pThreadArg->m_pCallbackArg = pArg;
 
