@@ -159,7 +159,7 @@ MainWindow::MainWindow(HINSTANCE hInstance, LPCSTR lpszFileName)
 	m_hAccel = ::LoadAccelerators(hInstance,
 								  MAKEINTRESOURCE(IDR_KEYACCEL));
 
-	m_hWnd = ::CreateWindowEx(WS_EX_CLIENTEDGE,
+	m_hWnd = ::CreateWindowEx(WS_EX_CLIENTEDGE | WS_EX_ACCEPTFILES,
 							  MAINWND_CLASSNAME, "BinViewer",
 							  WS_OVERLAPPEDWINDOW,
 							  CW_USEDEFAULT, CW_USEDEFAULT,
@@ -240,6 +240,25 @@ MainWindow::onCreate(HWND hWnd)
 //	m_pBitmapViewWindow = new BitmapViewWindow(m_lfNotifier, hWnd);
 
 	return true;
+}
+
+void
+MainWindow::onDropFiles(HDROP hDrop)
+{
+	UINT nFiles = ::DragQueryFile(hDrop, 0xFFFFFFFF, NULL, 0);
+
+	for (UINT i = 0; i < nFiles; i++) {
+		UINT nSize = ::DragQueryFile(hDrop, i, NULL, 0) + 1;
+		char* buf = new char[nSize];
+
+		::DragQueryFile(hDrop, i, buf, nSize);
+
+		openFile(buf);
+
+		delete [] buf;
+	}
+
+	::DragFinish(hDrop);
 }
 
 void
@@ -401,6 +420,36 @@ MainWindow::onSetScrollConfig(ScrollConfig* pScrollConfig)
 	m_pHexView->setDrawInfo(m_pAppConfig->m_pHVDrawInfo.ptr());
 
 	SaveConfig(m_pAppConfig);
+}
+
+void
+MainWindow::onMouseWheel(short nWheelMove)
+{
+	m_pHexView->onMouseWheel(nWheelMove);
+}
+
+void
+MainWindow::onHScroll(WPARAM wParam, LPARAM lParam)
+{
+	m_pHexView->onHScroll(wParam, lParam);
+}
+
+void
+MainWindow::onVScroll(WPARAM wParam, LPARAM lParam)
+{
+	m_pHexView->onVScroll(wParam, lParam);
+}
+
+void
+MainWindow::onHorizontalMove(int nMove)
+{
+	m_pHexView->onHorizontalMove(nMove);
+}
+
+void
+MainWindow::onVerticalMove(int nMove)
+{
+	m_pHexView->onVerticalMove(nMove);
 }
 
 AppConfig*
@@ -609,7 +658,6 @@ MainWindow::MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case IDM_CONFIG:
-//			ConfigMainDlg(g_pDrawInfo).doModal(hWnd);
 			pMainWindow->onConfig();
 			break;
 
@@ -618,7 +666,6 @@ MainWindow::MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case IDM_JUMP:
-//			JumpDlg(*g_pViewFrame).doModal(hWnd);
 			pMainWindow->onJump();
 			break;
 
@@ -627,39 +674,39 @@ MainWindow::MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case IDK_LINEDOWN:
-//			m_pHexView->onVerticalMove(1);
+			pMainWindow->onVerticalMove(1);
 			break;
 
 		case IDK_LINEUP:
-//			g_pViewFrame->onVerticalMove(-1);
+			pMainWindow->onVerticalMove(-1);
 			break;
 
 		case IDK_PAGEDOWN:
 		case IDK_SPACE:
-//			g_pViewFrame->onVScroll(SB_PAGEDOWN, 0);
+			pMainWindow->onVScroll(SB_PAGEDOWN, 0);
 			break;
 
 		case IDK_PAGEUP:
 		case IDK_S_SPACE:
-//			g_pViewFrame->onVScroll(SB_PAGEUP, 0);
+			pMainWindow->onVScroll(SB_PAGEUP, 0);
 			break;
 
 		case IDK_BOTTOM:
 		case IDK_C_SPACE:
-//			g_pViewFrame->onVScroll(SB_BOTTOM, 0);
+			pMainWindow->onVScroll(SB_BOTTOM, 0);
 			break;
 
 		case IDK_TOP:
 		case IDK_C_S_SPACE:
-//			g_pViewFrame->onVScroll(SB_TOP, 0);
+			pMainWindow->onVScroll(SB_TOP, 0);
 			break;
 
 		case IDK_RIGHT:
-//			g_pViewFrame->onHorizontalMove(1);
+			pMainWindow->onHorizontalMove(1);
 			break;
 
 		case IDK_LEFT:
-//			g_pViewFrame->onHorizontalMove(-1);
+			pMainWindow->onHorizontalMove(-1);
 			break;
 		}
 		break;
@@ -676,6 +723,10 @@ MainWindow::MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		pMainWindow->onSetScrollConfig((ScrollConfig*)lParam);
 		break;
 
+	case WM_DROPFILES:
+		pMainWindow->onDropFiles((HDROP)wParam);
+		break;
+
 	case WM_PAINT:
 		pMainWindow->onPaint(hWnd);
 		break;
@@ -686,6 +737,10 @@ MainWindow::MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_SIZING:
 		pMainWindow->onResizing(hWnd, (RECT*)lParam);
+		break;
+
+	case WM_MOUSEWHEEL:
+		pMainWindow->onMouseWheel((short)HIWORD(wParam));
 		break;
 
 	case WM_CLOSE:

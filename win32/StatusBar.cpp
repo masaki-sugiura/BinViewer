@@ -89,7 +89,11 @@ StatusBar::setStatus(filesize_t newpos)
 	static const int hlen = lstrlen(STATUS_POS_HEADER);
 	static char msgbuf[40] = STATUS_POS_HEADER;
 
-	QwordToStr((UINT)newpos, (UINT)(newpos >> 32), msgbuf + hlen);
-	::SendMessage(m_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)msgbuf);
+	if (newpos >= 0) {
+		QwordToStr((UINT)newpos, (UINT)(newpos >> 32), msgbuf + hlen);
+		::SendMessage(m_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)msgbuf);
+	} else {
+		::SendMessage(m_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)"");
+	}
 }
 

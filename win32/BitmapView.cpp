@@ -305,6 +305,12 @@ BitmapViewWindow::onResize(HWND hWnd)
 	}
 }
 
+void
+BitmapViewWindow::onMouseWheel(short nMouseMove)
+{
+	m_pBitmapView->onMouseWheel(nMouseMove);
+}
+
 int
 BitmapViewWindow::registerWndClass(HINSTANCE hInst)
 {
@@ -354,6 +360,10 @@ BitmapViewWindow::BitmapViewWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 			RECT* pRect = (RECT*)lParam;
 			pRect->right = pRect->left + pBitmapViewWindow->m_uWindowWidth;
 		}
+		break;
+
+	case WM_MOUSEWHEEL:
+		pBitmapViewWindow->onMouseWheel((short)HIWORD(wParam));
 		break;
 
 	case WM_CLOSE:

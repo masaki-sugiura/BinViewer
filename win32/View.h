@@ -68,6 +68,12 @@ public:
 	void onUnloadFile();
 	void onSetCursorPos(filesize_t pos);
 
+	virtual void onMouseWheel(short nMouseMove);
+	virtual void onHScroll(WPARAM wParam, LPARAM lParam);
+	virtual void onVScroll(WPARAM wParam, LPARAM lParam);
+	virtual void onHorizontalMove(int nMove);
+	virtual void onVerticalMove(int nMove);
+
 	// View クラスが投げる例外の基底クラス
 	class ViewException {};
 	// ウィンドウクラスの登録に失敗したときに投げられる例外
@@ -91,8 +97,6 @@ protected:
 	virtual void ensureVisible(filesize_t pos, bool bRedraw);
 	virtual void setCurrentLine(filesize_t newline, bool bRedraw);
 
-	virtual void onHScroll(WPARAM wParam, LPARAM lParam);
-	virtual void onVScroll(WPARAM wParam, LPARAM lParam);
 	virtual void onLButtonDown(WPARAM wParam, LPARAM lParam);
 
 	virtual LRESULT viewWndProcMain(UINT, WPARAM, LPARAM);

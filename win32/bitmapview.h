@@ -77,6 +77,7 @@ private:
 
 	void onCreate(HWND hWnd);
 	void onResize(HWND hWnd);
+	void onMouseWheel(short nMouseMove);
 
 	static int registerWndClass(HINSTANCE hInstance);
 

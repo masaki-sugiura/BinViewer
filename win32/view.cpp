@@ -136,7 +136,8 @@ View::ensureVisible(filesize_t pos, bool bRedraw)
 {
 	filesize_t newline = pos / m_nBytesPerLine;
 	filesize_t line_diff = newline - m_smVert.getCurrentPos();
-	filesize_t valid_page_line_num = (m_pDCManager->getViewHeight() - 1) / m_pDrawInfo->getPixelsPerLine();
+	filesize_t valid_page_line_num = (m_pDCManager->getViewHeight() - m_pDrawInfo->getPixelsPerLine())
+										/ m_pDrawInfo->getPixelsPerLine();
 	if (line_diff < 0) {
 		m_smVert.setPosition(newline);
 		setCurrentLine(newline, bRedraw);
@@ -313,6 +314,45 @@ View::onHScroll(WPARAM wParam, LPARAM lParam)
 	if (wParam != SB_ENDSCROLL) {
 		m_pDCManager->setViewPositionX(m_smHorz.onScroll(LOWORD(wParam)));
 		redrawView();
+	}
+}
+
+void
+View::onMouseWheel(short nMouseMove)
+{
+	if (!m_pDCManager->isLoaded()) return;
+
+	int nLineDiff = - nMouseMove / WHEEL_DELTA;
+
+	int absNLineDiff = abs(nLineDiff);
+	for (int n = 0; n < absNLineDiff; n++) {
+		onVScroll(nLineDiff > 0 ? SB_LINEDOWN : SB_LINEUP, 0);
+	}
+}
+
+void
+View::onHorizontalMove(int nMove)
+{
+	if (!m_pLFNotifier || m_pLFNotifier->getCursorPos() < 0) {
+		return;
+	}
+
+	filesize_t newpos = m_pLFNotifier->getCursorPos() + nMove;
+	if (newpos >= 0 && newpos < m_pDCManager->getFileSize()) {
+		m_pLFNotifier->setCursorPos(newpos);
+	}
+}
+
+void
+View::onVerticalMove(int nMove)
+{
+	if (!m_pLFNotifier || m_pLFNotifier->getCursorPos() < 0) {
+		return;
+	}
+
+	filesize_t newpos = m_pLFNotifier->getCursorPos() + nMove * m_nBytesPerLine;
+	if (newpos >= 0 && newpos < m_pDCManager->getFileSize()) {
+		m_pLFNotifier->setCursorPos(newpos);
 	}
 }
 

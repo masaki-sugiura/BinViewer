@@ -73,6 +73,7 @@ private:
 	Header m_Header;
 
 	bool onCreate(HWND hWnd);
+	void onDropFiles(HDROP hDrop);
 	void onPaint(HWND hWnd);
 	void onResize(HWND hWnd);
 	void onResizing(HWND hWnd, RECT* pRect);
@@ -85,6 +86,12 @@ private:
 	void onConfig();
 	void onSetFontConfig(FontConfig* pFontConfig, ColorConfig* pColorConfig);
 	void onSetScrollConfig(ScrollConfig* pScrollConfig);
+
+	void onMouseWheel(short nWheelMove);
+	void onHScroll(WPARAM wParam, LPARAM lParam);
+	void onVScroll(WPARAM wParam, LPARAM lParam);
+	void onHorizontalMove(int nMove);
+	void onVerticalMove(int nMove);
 
 	AppConfig* loadDrawInfo(HWND hWnd);
 
