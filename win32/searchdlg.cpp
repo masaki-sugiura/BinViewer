@@ -18,7 +18,9 @@ struct GrepResult {
 SearchDlg::SearchDlg(Dialog* pParentDlg, ViewFrame& viewFrame)
 	: Dialog(IDD_SEARCH),
 	  m_pParentDlg(pParentDlg),
-	  m_ViewFrame(viewFrame)
+	  m_ViewFrame(viewFrame),
+	  m_bSearching(false),
+	  m_nStringType(0)
 {
 	assert(pParentDlg);
 }
@@ -31,8 +33,10 @@ BOOL
 SearchDlg::initDialog(HWND hDlg)
 {
 	m_bSearching = false;
-	::SendMessage(::GetDlgItem(hDlg, IDC_DT_HEX),
-				  BM_SETCHECK, BST_CHECKED, 0);
+	::SendDlgItemMessage(hDlg, m_nStringType ? IDC_DT_STRING : IDC_DT_HEX,
+						 BM_SETCHECK, BST_CHECKED, 0);
+	::SendDlgItemMessage(hDlg, IDC_SEARCHDATA,
+						 WM_SETTEXT, 0, (LPARAM)m_strSearchStr.c_str());
 	return TRUE;
 }
 
@@ -41,10 +45,16 @@ SearchDlg::destroyDialog()
 {
 	if (m_bSearching) {
 		m_ViewFrame.stopFind();
+		m_ViewFrame.waitStopFind();
 		m_ViewFrame.cleanupCallback();
 		::EnableWindow(m_pParentDlg->getParentHWND(), TRUE);
 		m_bSearching = false;
 	}
+	char buf[256];
+	::SendDlgItemMessage(m_hwndDlg, IDC_SEARCHDATA, WM_GETTEXT, 256, (LPARAM)buf);
+	m_strSearchStr = buf;
+	m_nStringType = ::SendDlgItemMessage(m_hwndDlg, IDC_DT_STRING, BM_GETCHECK, 0, 0)
+					== BST_CHECKED;
 }
 
 BOOL
@@ -98,6 +108,7 @@ SearchDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_USER_FIND_FINISH:
 		if (m_bSearching) {
+			m_ViewFrame.waitStopFind();
 			m_ViewFrame.cleanupCallback();
 			enableControls(0, TRUE);
 			::EnableWindow(m_pParentDlg->getParentHWND(), TRUE);
@@ -358,6 +369,7 @@ GrepDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_USER_GREP_NEXT:
 		{
 			FindCallbackArg* pArg = (FindCallbackArg*)lParam;
+			m_ViewFrame.waitStopFind();
 			m_ViewFrame.cleanupCallback();
 			if (!m_ViewFrame.findCallback(pArg)) {
 				delete [] pArg->m_pData;
@@ -368,6 +380,7 @@ GrepDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_USER_GREP_FINISH:
+		m_ViewFrame.waitStopFind();
 		m_ViewFrame.cleanupCallback();
 		::EnableWindow(::GetDlgItem(m_hwndDlg, IDC_JUMP), TRUE);
 		break;

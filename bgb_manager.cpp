@@ -322,7 +322,7 @@ FindThread::thread(thread_arg_t arg)
 		}
 	}
 
-	assert(ret == -1);
+//	assert(ret == -1);
 
 _exit_thread:
 	delete [] buf;
@@ -362,6 +362,14 @@ BGB_Manager::stopFind()
 	if (!m_pThread.ptr()) return false;
 
 	GetLock lock(m_lockFindCallbackData);
+
+	return m_pThread->stop();
+}
+
+bool
+BGB_Manager::waitStopFind()
+{
+	if (!m_pThread.ptr()) return false;
 
 	return m_pThread->join();
 }

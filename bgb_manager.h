@@ -93,6 +93,7 @@ public:
 	// ŽÀ‘•‚Í‚n‚rˆË‘¶
 	virtual bool findCallback(FindCallbackArg* pArg);
 	virtual bool stopFind();
+	virtual bool waitStopFind();
 	virtual bool cleanupCallback();
 
 protected:

@@ -84,6 +84,10 @@ public:
 	{
 		return m_pDC_Manager->stopFind();
 	}
+	bool waitStopFind()
+	{
+		return m_pDC_Manager->waitStopFind();
+	}
 	bool cleanupCallback()
 	{
 		return m_pDC_Manager->cleanupCallback();

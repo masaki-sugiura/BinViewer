@@ -24,6 +24,8 @@ private:
 	Dialog* m_pParentDlg;
 	ViewFrame& m_ViewFrame;
 	bool m_bSearching;
+	string m_strSearchStr;
+	int m_nStringType;
 
 	void enableControls(int dir, bool);
 
