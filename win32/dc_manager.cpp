@@ -83,6 +83,7 @@ DCBuffer::DCBuffer(int nBufSize)
 	  m_nCursorPos(-1),
 	  m_nSelectedPos(-1), m_nSelectedSize(0)
 {
+	assert(nBufSize > 0);
 }
 
 int
