@@ -61,22 +61,23 @@ END
 // Menu
 //
 
-IDR_MAINMENU MENU DISCARDABLE 
+IDM_MAINMENU MENU DISCARDABLE 
 BEGIN
     POPUP "ファイル(&F)"
     BEGIN
-        MENUITEM "ファイルを開く(&O)",          IDR_OPEN
-        MENUITEM "ファイルを閉じる(&C)",        IDR_CLOSE
+        MENUITEM "ファイルを開く(&O)",          IDM_OPEN
+        MENUITEM "ファイルを閉じる(&C)",        IDM_CLOSE
         MENUITEM SEPARATOR
-        MENUITEM "終了(&Q)",                    IDR_QUIT
+        MENUITEM "終了(&Q)",                    IDM_QUIT
     END
     POPUP "編集(&E)"
     BEGIN
-        MENUITEM "検索(&S)",                    IDR_SEARCH
+        MENUITEM "検索(&S)",                    IDM_SEARCH
         MENUITEM SEPARATOR
-        MENUITEM "指定アドレスにジャンプ(&J)",  IDR_JUMP
+        MENUITEM "指定アドレスにジャンプ(&J)",  IDM_JUMP
     END
-    MENUITEM "ヘルプ(&H)",                  IDR_HELP, HELP
+    MENUITEM "設定(&C)",                    IDM_CONFIG
+    MENUITEM "ヘルプ(&H)",                  IDM_HELP
 END
 
 
@@ -141,6 +142,47 @@ BEGIN
     PUSHBUTTON      "閉じる",IDOK,136,64,50,14
 END
 
+IDD_CONFIG_MAIN DIALOG DISCARDABLE  0, 0, 259, 217
+STYLE DS_MODALFRAME | DS_SETFOREGROUND | DS_CENTER | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "BinViewer の設定"
+FONT 9, "ＭＳ Ｐゴシック"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,97,196,50,14
+    PUSHBUTTON      "ｷｬﾝｾﾙ",IDCANCEL,149,196,50,14
+    PUSHBUTTON      "適用",IDC_APPLY,202,196,50,14,WS_DISABLED
+    CONTROL         "Tab1",IDC_CONFIG_TAB,"SysTabControl32",WS_TABSTOP,7,7,
+                    245,186
+END
+
+IDD_CONFIG_FONT DIALOG DISCARDABLE  0, 0, 240, 165
+STYLE DS_CONTROL | WS_CHILD
+FONT 9, "ＭＳ Ｐゴシック"
+BEGIN
+    COMBOBOX        IDC_CONFIG_FONT_NAME,7,18,106,141,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_CONFIG_FONT_SIZE,63,33,50,141,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    CONTROL         "プロポーショナルフォント表示(&P)",
+                    IDC_CONFIG_SHOW_PROPFONT,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,52,105,10
+    LISTBOX         IDC_PART_LIST,122,31,101,65,LBS_SORT | 
+                    LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "太字にする(&H)",IDC_CONFIG_FONT_BOLD,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,122,104,105,10
+    PUSHBUTTON      "",IDC_CONFIG_FONT_FGCOLOR,163,119,50,14,BS_BITMAP | 
+                    BS_NOTIFY
+    PUSHBUTTON      "",IDC_CONFIG_FONT_BGCOLOR,163,138,50,14,BS_BITMAP | 
+                    BS_NOTIFY
+    GROUPBOX        "サンプル",IDC_SAMPLE_VIEW,7,71,105,87
+    GROUPBOX        "フォントの個別設定",IDC_STATIC,116,7,117,151
+    LTEXT           "前景色(&F)：",IDC_STATIC,122,122,35,8
+    LTEXT           "背景色(&B)：",IDC_STATIC,122,141,35,8
+    LTEXT           "フォント変更箇所(&C)：",IDC_STATIC,122,19,100,8
+    LTEXT           "フォント名(&N)：",IDC_STATIC,7,7,45,8
+    LTEXT           "フォントサイズ(&S)：",IDC_STATIC,7,35,55,8
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -164,6 +206,22 @@ BEGIN
         RIGHTMARGIN, 186
         TOPMARGIN, 7
         BOTTOMMARGIN, 78
+    END
+
+    IDD_CONFIG_MAIN, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 252
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 210
+    END
+
+    IDD_CONFIG_FONT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 233
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 158
     END
 END
 #endif    // APSTUDIO_INVOKED

@@ -10,6 +10,7 @@
 #include "strutils.h"
 #include "viewframe.h"
 #include "searchdlg.h"
+#include "configdlg.h"
 
 #define ADDR_WIDTH   100
 #define BYTE_WIDTH    32
@@ -367,28 +368,32 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
-		case IDR_OPEN:
+		case IDM_OPEN:
 			OnLoadFile(hWnd);
 			break;
 
-		case IDR_CLOSE:
+		case IDM_CLOSE:
 			OnUnloadFile(hWnd);
 			break;
 
-		case IDR_QUIT:
+		case IDM_QUIT:
 			::DestroyWindow(hWnd);
 			break;
 
-		case IDR_HELP:
+		case IDM_HELP:
 			break;
 
-		case IDR_SEARCH:
+		case IDM_CONFIG:
+			ConfigDlg::doModal(hWnd, g_pDrawInfo.ptr());
+			break;
+
+		case IDM_SEARCH:
 			if (!SearchDlg::create(hWnd, g_pViewFrame.ptr())) {
 				::MessageBox(hWnd, "検索ダイアログの表示に失敗しました", NULL, MB_OK);
 			}
 			break;
 
-		case IDR_JUMP:
+		case IDM_JUMP:
 			{
 				// show dialog box
 				// parse string and return filesize_t pos
@@ -490,7 +495,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 //	wc.hbrBackground = (HBRUSH)(COLOR_APPWORKSPACE + 1);
 	wc.lpfnWndProc = (WNDPROC)MainWndProc;
 	wc.lpszClassName = MAINWND_CLASSNAME;
-	wc.lpszMenuName = MAKEINTRESOURCE(IDR_MAINMENU);
+	wc.lpszMenuName = MAKEINTRESOURCE(IDM_MAINMENU);
 	if (!::RegisterClass(&wc)) return -1;
 
 	HACCEL hAccel = ::LoadAccelerators(hInstance, MAKEINTRESOURCE(IDR_KEYACCEL));

@@ -43,6 +43,7 @@ ALL : "$(OUTDIR)\BinViewer.exe"
 
 CLEAN :
 	-@erase "$(INTDIR)\bgb_manager.obj"
+	-@erase "$(INTDIR)\configdlg.obj"
 	-@erase "$(INTDIR)\dc_manager.obj"
 	-@erase "$(INTDIR)\drawinfo.obj"
 	-@erase "$(INTDIR)\LargeFileReader.obj"
@@ -83,7 +84,8 @@ LINK32_OBJS= \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res"
+	"$(INTDIR)\mainwnd.res" \
+	"$(INTDIR)\configdlg.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -104,6 +106,8 @@ ALL : "$(OUTDIR)\BinViewer.exe" "$(OUTDIR)\BinViewer.bsc"
 CLEAN :
 	-@erase "$(INTDIR)\bgb_manager.obj"
 	-@erase "$(INTDIR)\bgb_manager.sbr"
+	-@erase "$(INTDIR)\configdlg.obj"
+	-@erase "$(INTDIR)\configdlg.sbr"
 	-@erase "$(INTDIR)\dc_manager.obj"
 	-@erase "$(INTDIR)\dc_manager.sbr"
 	-@erase "$(INTDIR)\drawinfo.obj"
@@ -150,7 +154,8 @@ BSC32_SBRS= \
 	"$(INTDIR)\searchdlg.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
-	"$(INTDIR)\viewframe.sbr"
+	"$(INTDIR)\viewframe.sbr" \
+	"$(INTDIR)\configdlg.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -170,7 +175,8 @@ LINK32_OBJS= \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res"
+	"$(INTDIR)\mainwnd.res" \
+	"$(INTDIR)\configdlg.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -248,6 +254,22 @@ SOURCE=..\bgb_manager.cpp
 
 "$(INTDIR)\bgb_manager.obj"	"$(INTDIR)\bgb_manager.sbr" : $(SOURCE) "$(INTDIR)"
 	$(CPP) $(CPP_PROJ) $(SOURCE)
+
+
+!ENDIF 
+
+SOURCE=.\configdlg.cpp
+
+!IF  "$(CFG)" == "BinViewer - Win32 Release"
+
+
+"$(INTDIR)\configdlg.obj" : $(SOURCE) "$(INTDIR)"
+
+
+!ELSEIF  "$(CFG)" == "BinViewer - Win32 Debug"
+
+
+"$(INTDIR)\configdlg.obj"	"$(INTDIR)\configdlg.sbr" : $(SOURCE) "$(INTDIR)"
 
 
 !ENDIF 

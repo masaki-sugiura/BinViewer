@@ -102,6 +102,10 @@ SOURCE=..\bgb_manager.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\configdlg.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\dc_manager.cpp
 # End Source File
 # Begin Source File
@@ -147,6 +151,10 @@ SOURCE=..\auto_ptr.h
 # Begin Source File
 
 SOURCE=..\bgb_manager.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\configdlg.h
 # End Source File
 # Begin Source File
 
