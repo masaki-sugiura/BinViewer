@@ -54,9 +54,22 @@ public:
 		return m_nBufSize;
 	}
 
+	int getPositionByCoordinate(int x, int y)
+	{
+		int nBytesPerLine = m_nBufSize / m_nHeight;
+		return y * nBytesPerLine + x;
+	}
+
 protected:
 	void invertRegionInBuffer(int offset, int size)
 	{
+		int nBytesPerLine = m_nBufSize / m_nHeight;
+		RECT rect;
+		rect.left = offset % nBytesPerLine;
+		rect.right = rect.left + 1;
+		rect.top = offset / nBytesPerLine;
+		rect.bottom = rect.top + 1;
+		::InvertRect(m_hDC, &rect);
 	}
 };
 
@@ -67,15 +80,7 @@ public:
 	{
 	}
 
-	void setCursor(filesize_t pos)
-	{
-	}
-
-	void select(filesize_t pos, filesize_t size)
-	{
-	}
-
-	filesize_t getPositionByCoordinate(int x, int y)
+	filesize_t getPositionByCoordinate(int x, filesize_t y)
 	{
 		return 0;
 	}
@@ -97,14 +102,15 @@ protected:
 
 class ViewFrame : public View {
 public:
-	ViewFrame(HWND hwndParent, const RECT& rctClient)
+	ViewFrame(HWND hwndParent, const RECT& rctClient, DrawInfo* pDrawInfo)
 		: View(hwndParent,
 			   WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL,
 			   WS_EX_CLIENTEDGE,
 			   rctClient,
 			   new TestDCManager(),
-			   new DrawInfo(NULL, 800, 1024, RGB(255, 255, 255)),
-			   1)
+			   pDrawInfo)
+//			   new DrawInfo(NULL, 800, 1024, RGB(255, 255, 255)),
+//			   1)
 	{
 	}
 	~ViewFrame()
@@ -130,6 +136,12 @@ protected:
 	void onVScroll(WPARAM wParam, LPARAM lParam)
 	{
 		View::onVScroll(wParam, lParam);
+		::InvalidateRect(m_hwndView, NULL, FALSE);
+		::UpdateWindow(m_hwndView);
+	}
+	void onLButtonDown(WPARAM wParam, LPARAM lParam)
+	{
+		View::onLButtonDown(wParam, lParam);
 		::InvalidateRect(m_hwndView, NULL, FALSE);
 		::UpdateWindow(m_hwndView);
 	}
@@ -256,7 +268,13 @@ OnCreate(HWND hWnd)
 	::GetClientRect(hWnd, &rctClient);
 	rctClient.bottom -= STATUSBAR_HEIGHT;
 
-	g_pViewFrame = new ViewFrame(hWnd, rctClient);
+	DrawInfo* pDrawInfo = new DrawInfo();
+	pDrawInfo->setWidth(800);
+	pDrawInfo->setHeight(1024);
+	pDrawInfo->setBkColor(RGB(255, 255, 255));
+	pDrawInfo->setPixelsPerLine(1);
+
+	g_pViewFrame = new ViewFrame(hWnd, rctClient, pDrawInfo);
 	assert(g_pViewFrame.ptr());
 
 	g_lfNotifier.registerAcceptor(g_pViewFrame.ptr());

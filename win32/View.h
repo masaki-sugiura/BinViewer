@@ -39,15 +39,14 @@ public:
 	View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 		 const RECT& rctWindow,
 		 DC_Manager* pDCManager,
-		 DrawInfo* pDrawInfo,
-		 int nPixelsPerLine);
+		 DrawInfo* pDrawInfo);
 	virtual ~View();
 
 	virtual void ensureVisible(filesize_t pos, bool bRedraw);
 	virtual void setCurrentLine(filesize_t newline, bool bRedraw);
 	virtual void setPosition(filesize_t pos, bool bRedraw);
 
-	// 
+	// ウィンドウを指定された短形に変形
 	virtual void setFrameRect(const RECT& rctFrame);
 
 	// ウィンドウサイズを行高・文字幅の整数倍に調整
@@ -63,7 +62,6 @@ public:
 protected:
 	DC_Manager* m_pDCManager;
 	DrawInfo* m_pDrawInfo;
-	int m_nPixelsPerLine;
 	int m_nBytesPerLine;
 	filesize_t m_qYOffset;
 	ScrollManager<int> m_smHorz;
@@ -77,6 +75,7 @@ protected:
 
 	virtual void onHScroll(WPARAM wParam, LPARAM lParam);
 	virtual void onVScroll(WPARAM wParam, LPARAM lParam);
+	virtual void onLButtonDown(WPARAM wParam, LPARAM lParam);
 
 	virtual LRESULT viewWndProcMain(UINT, WPARAM, LPARAM);
 

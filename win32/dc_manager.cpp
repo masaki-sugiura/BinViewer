@@ -3,26 +3,22 @@
 #include "dc_manager.h"
 #include <assert.h>
 
-DrawInfo::DrawInfo(HDC hDC, int width, int height, COLORREF crBkColor)
-	: m_hDC(hDC),
-	  m_nWidth(width),
-	  m_nHeight(height),
+DrawInfo::DrawInfo()
+	: m_hDC(NULL),
+	  m_nWidth(0),
+	  m_nHeight(0),
+	  m_nPixelsPerLine(0),
 	  m_hbrBackground(NULL)
 {
-	m_hbrBackground = ::CreateSolidBrush(crBkColor);
 }
 
 DrawInfo::~DrawInfo()
 {
-	::DeleteObject(m_hbrBackground);
+	if (m_hbrBackground) {
+		::DeleteObject(m_hbrBackground);
+	}
 }
 
-void
-DrawInfo::setBkColor(COLORREF crBkColor)
-{
-	::DeleteObject(m_hbrBackground);
-	m_hbrBackground = ::CreateSolidBrush(crBkColor);
-}
 
 Renderer::Renderer()
 	: m_hDC(NULL),
@@ -182,6 +178,15 @@ DC_Manager::DC_Manager(int nBufSize, int nBufCount)
 {
 }
 
+filesize_t
+DC_Manager::getPositionByCoordinate(int x, filesize_t y)
+{
+	filesize_t qOffset = (y / m_nHeight) * m_nBufSize;
+	DCBuffer* pBuf = getBuffer(qOffset);
+	if (!pBuf) return -1;
+	return qOffset + pBuf->getPositionByCoordinate(x, (int)(y % m_nHeight));
+}
+
 bool
 DC_Manager::setDrawInfo(DrawInfo* pDrawInfo)
 {
@@ -275,6 +280,13 @@ DC_Manager::bitBlt(HDC hdcDst, const RECT& rcPaint)
 	} else {
 		::FillRect(hdcDst, &rcPaint, (HBRUSH)(COLOR_APPWORKSPACE + 1));
 	}
+}
+
+void
+DC_Manager::setCursorByViewCoordinate(const POINTS& pt)
+{
+	setCursor(getPositionByCoordinate(m_nXOffset + pt.x,
+									  m_qYOffset + pt.y));
 }
 
 void

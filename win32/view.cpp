@@ -7,11 +7,9 @@
 View::View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 		   const RECT& rctWindow,
 		   DC_Manager* pDCManager,
-		   DrawInfo* pDrawInfo,
-		   int nPixelsPerLine)
+		   DrawInfo* pDrawInfo)
 	: m_pDCManager(pDCManager),
 	  m_pDrawInfo(pDrawInfo),
-	  m_nPixelsPerLine(nPixelsPerLine),
 	  m_qYOffset(0),
 	  m_smHorz(NULL, SB_HORZ), m_smVert(NULL, SB_VERT),
 	  m_hwndParent(hwndParent)
@@ -61,7 +59,7 @@ View::View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 		throw CreateWindowError();
 	}
 
-	m_nBytesPerLine = m_pDCManager->bufSize() * nPixelsPerLine / m_pDrawInfo->getHeight();
+	m_nBytesPerLine = m_pDCManager->bufSize() * m_pDrawInfo->getPixelsPerLine() / m_pDrawInfo->getHeight();
 
 	m_pDCManager->setViewRect(0, 0, nViewWidth, nViewHeight);
 }
@@ -118,7 +116,7 @@ View::setCurrentLine(filesize_t newline, bool bRedraw)
 		newline = 0;
 	}
 
-	m_pDCManager->setViewPositionY(newline * m_nPixelsPerLine);
+	m_pDCManager->setViewPositionY(newline * m_pDrawInfo->getPixelsPerLine());
 }
 
 void
@@ -145,11 +143,13 @@ View::adjustWindowRect(RECT& rctFrame)
 	::GetWindowRect(m_hwndView, &rctWindow);
 	::GetClientRect(m_hwndView, &rctClient);
 
+	int nPixelsPerLine = m_pDrawInfo->getPixelsPerLine();
+
 	rctFrame.left = rctFrame.top = 0;
 	rctFrame.right = rctWindow.right - rctWindow.left - rctClient.right
 					 + m_pDCManager->width();
-	rctFrame.bottom = ((rctFrame.bottom + m_nPixelsPerLine - 1) / m_nPixelsPerLine)
-					   * m_nPixelsPerLine
+	rctFrame.bottom = ((rctFrame.bottom + nPixelsPerLine - 1) / nPixelsPerLine)
+					   * nPixelsPerLine
 					+ (rctWindow.bottom - rctWindow.top - rctClient.bottom);
 }
 
@@ -170,7 +170,7 @@ View::setFrameRect(const RECT& rctFrame)
 					 (rctFrame.right - rctFrame.left),
 					 m_smHorz.getCurrentPos());
 
-	int nPageLineNum = nViewHeight / m_nPixelsPerLine;
+	int nPageLineNum = nViewHeight / m_pDrawInfo->getPixelsPerLine();
 	filesize_t size = m_pDCManager->getFileSize();
 	if (size < 0)
 		m_smVert.disable();
@@ -190,6 +190,14 @@ View::onHScroll(WPARAM wParam, LPARAM lParam)
 {
 	// •\Ž¦—Ìˆæ‚ÌXV
 	m_pDCManager->setViewPositionX(m_smHorz.onScroll(LOWORD(wParam)));
+}
+
+void
+View::onLButtonDown(WPARAM wParam, LPARAM lParam)
+{
+	if (!m_pDCManager->isLoaded()) return;
+
+	m_pDCManager->setCursorByViewCoordinate(MAKEPOINTS(lParam));
 }
 
 LRESULT CALLBACK
@@ -227,6 +235,14 @@ View::viewWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_HSCROLL:
 		This->onHScroll(wParam, lParam);
+		break;
+
+	case WM_LBUTTONDOWN:
+		This->onLButtonDown(wParam, lParam);
+		break;
+
+	case WM_DROPFILES:
+		::SendMessage(::GetParent(hWnd), uMsg, wParam, lParam);
 		break;
 
 	default:
