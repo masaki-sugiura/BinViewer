@@ -8,7 +8,8 @@
 
 class ViewFrame {
 public:
-	ViewFrame(HWND hWnd, const DrawInfo* pDrawInfo,
+	ViewFrame(HWND hWnd, RECT& rct,
+			  const DrawInfo* pDrawInfo,
 			  LargeFileReader* pLFReader = NULL);
 	~ViewFrame();
 
@@ -17,6 +18,9 @@ public:
 		initParams();
 		if (!m_pDC_Manager->loadFile(pLFReader)) return false;
 		calcMaxLine();
+		initScrollInfo();
+		::InvalidateRect(m_hwndView, NULL, FALSE);
+		::UpdateWindow(m_hwndView);
 		return true;
 	}
 
@@ -24,6 +28,9 @@ public:
 	{
 		m_pDC_Manager->unloadFile();
 		initParams();
+		initScrollInfo();
+		::InvalidateRect(m_hwndView, NULL, FALSE);
+		::UpdateWindow(m_hwndView);
 	}
 
 	bool isLoaded() const { return m_pDC_Manager->isLoaded(); }
@@ -82,8 +89,6 @@ public:
 		return m_nPrevSelectedSize;
 	}
 
-	void bitBlt(HDC hDC, const RECT& rcPaint);
-
 	void setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo)
 	{
 		assert(pDrawInfo);
@@ -111,6 +116,19 @@ public:
 
 	void setFrameRect(const RECT& rctClient);
 	const RECT& getFrameRect() const { return m_rctClient; }
+	void adjustWindowRect(RECT& rctFrame);
+
+	void updateWithoutHeader();
+
+	void onPaint(WPARAM, LPARAM);
+	void onHScroll(WPARAM, LPARAM);
+	void onVScroll(WPARAM, LPARAM);
+	void onLButtonDown(WPARAM, LPARAM);
+	void onMouseWheel(WPARAM, LPARAM);
+
+	void onJump(filesize_t);
+	void onHorizontalMove(int diff);
+	void onVerticalMove(int diff);
 
 private:
 	Auto_Ptr<DC_Manager> m_pDC_Manager;
@@ -128,6 +146,10 @@ private:
 	filesize_t m_qPrevSelectedPos;
 	int m_nPrevSelectedSize;
 
+	HWND m_hwndView;
+	HDC  m_hDC;
+	bool m_bMapScrollBarLinearly;
+
 	void initParams()
 	{
 		m_qCurrentLine = m_qMaxLine = 0;
@@ -144,9 +166,22 @@ private:
 		if (m_qMaxLine <= 0) m_qMaxLine = 1;
 	}
 
+	void initScrollInfo();
+	void modifyHScrollInfo(int width);
+	void bitBlt(const RECT& rcPaint);
+
 	void invertOneLineRegion(HDC hDC, int column, int lineno, int n_char);
 	void invertOneBufferRegion(DCBuffer* pDCBuffer, filesize_t pos, int size);
 	void invertRegion(filesize_t pos, int size);
+
+	static bool m_bRegisterClass;
+	static WORD m_wNextID;
+	static HINSTANCE m_hInstance;
+	static LRESULT CALLBACK ViewFrameWndProc(HWND, UINT, WPARAM, LPARAM);
 };
+
+class ViewFrameError {};
+class RegisterClassError : public ViewFrameError {};
+class CreateWindowError  : public ViewFrameError {};
 
 #endif

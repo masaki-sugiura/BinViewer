@@ -229,6 +229,70 @@ DCBuffer::render()
 	return m_nDataSize;
 }
 
+void
+DCBuffer::invertOneLineRegion(int column, int lineno, int n_char)
+{
+	assert(column < 16 && column + n_char <= 16);
+
+	RECT rect;
+	int nXPitch = m_pFontInfo->getXPitch(),
+		nYPitch = m_pFontInfo->getYPitch();
+
+	rect.top = lineno * nYPitch;
+	rect.bottom = rect.top + nYPitch - 1;
+
+	// 文字列表現部
+	rect.left  = (1 + 16 + 1 + 16 * 3 + 2 + 1 + column) * nXPitch;
+	rect.right = rect.left + n_char * nXPitch;
+
+	::InvertRect(m_hDC, &rect);
+
+	// データ本体
+	int column_end = column + n_char;
+	rect.left  = (1 + 16 + 1 + column * 3 + (column >= 8 ? 2 : 0)) * nXPitch;
+	rect.right = (1 + 16 + 1 + column_end * 3 + (column_end > 8 ? 2 : 0) - 1)
+				  * nXPitch;
+
+	::InvertRect(m_hDC, &rect);
+}
+
+void
+DCBuffer::invertRegion(filesize_t pos, int size)
+{
+	if (m_qAddress >= pos + size ||
+		m_qAddress + MAX_DATASIZE_PER_BUFFER <= pos)
+		return;
+
+	int offset = (int)(pos - m_qAddress);
+	if (offset < 0) offset = 0;
+	if (offset + size > MAX_DATASIZE_PER_BUFFER)
+		size = MAX_DATASIZE_PER_BUFFER - offset;
+
+	int b_x = offset & 15, b_y = offset >> 4;
+	
+	if (b_x + size <= 16) {
+		// 同一行内
+		invertOneLineRegion(b_x, b_y, size);
+	} else {
+		// 複数行
+
+		// 最初の行の最後まで選択
+		invertOneLineRegion(b_x, b_y, 16 - b_x);
+
+		// 途中の行
+		offset += size;
+		int e_x = offset & 15, e_y = offset >> 4;
+		while (++b_y < e_y) {
+			invertOneLineRegion(0, b_y, 16);
+		}
+
+		// 最終行
+		if (e_x > 0) {
+			invertOneLineRegion(0, e_y, e_x);
+		}
+	}
+}
+
 Header::Header(HDC hDC,
 			   const TextColorInfo* pTCInfo,
 			   const FontInfo* pFontInfo)

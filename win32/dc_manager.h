@@ -53,8 +53,12 @@ struct DCBuffer : public BGBuffer, public Renderer {
 	int init(LargeFileReader& LFReader, filesize_t offset);
 	void uninit();
 
+	void invertRegion(filesize_t pos, int size);
+
 protected:
 	int render();
+
+	void invertOneLineRegion(int column, int lineno, int n_char);
 };
 
 struct Header : public Renderer {

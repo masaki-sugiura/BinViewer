@@ -15,7 +15,7 @@
 #define DATA_WIDTH   160
 
 #define W_WIDTH  (ADDR_WIDTH + BYTE_WIDTH * 16 + 20 + DATA_WIDTH + 20)
-#define W_HEIGHT 760
+#define W_HEIGHT 720
 
 #define COLOR_WHITE  RGB(255, 255, 255)
 #define COLOR_BLACK  RGB(0, 0, 0)
@@ -23,9 +23,15 @@
 
 #define WM_USER_FIND_FINISH  (WM_USER + 1000)
 
+#define STATUSBAR_HEIGHT  20
+
+#define IDC_STATUSBAR  10
+
+#define MAINWND_CLASSNAME    "BinViewerClass32"
+
 // resources
 static HINSTANCE g_hInstance;
-static HWND g_hwndMain;
+static HWND g_hwndMain, g_hwndStatusBar;
 static string g_strAppName;
 static HWND g_hSearchDlg;
 
@@ -97,19 +103,6 @@ ParseNumber(LPCSTR str)
 }
 
 static void
-UpdateClientRect()
-{
-	RECT rctClient;
-	::GetClientRect(g_hwndMain, &rctClient);
-	rctClient.top = g_pViewFrame->getLineHeight();
-	::InvalidateRect(g_hwndMain, &rctClient, FALSE);
-	::UpdateWindow(g_hwndMain);
-}
-
-static void OnJump(HWND hWnd, filesize_t pos);
-static void OnMouseWheel(HWND hWnd, WPARAM wParam, LPARAM lParam);
-
-static void
 FindCallbackProc(void* arg)
 {
 	assert(arg);
@@ -118,14 +111,13 @@ FindCallbackProc(void* arg)
 
 	if (::IsWindow(g_hSearchDlg)) {
 		if (pArg->m_qFindAddress >= 0) {
-			OnJump(g_hwndMain, pArg->m_qFindAddress + pArg->m_nBufSize);
-			OnJump(g_hwndMain, pArg->m_qFindAddress);
+			g_pViewFrame->onJump(pArg->m_qFindAddress + pArg->m_nBufSize);
+			g_pViewFrame->onJump(pArg->m_qFindAddress);
 			g_pViewFrame->select(pArg->m_qFindAddress, pArg->m_nBufSize);
 		} else {
 			::MessageBeep(MB_ICONEXCLAMATION);
 			g_pViewFrame->select(pArg->m_qOrgAddress, pArg->m_nOrgSelectedSize);
 		}
-		UpdateClientRect();
 		::PostMessage(g_hSearchDlg, WM_USER_FIND_FINISH, 0, 0);
 	}
 
@@ -186,7 +178,6 @@ SearchData(HWND hDlg, int dir)
 	}
 
 	g_pViewFrame->unselect();
-	UpdateClientRect();
 
 	if (g_pViewFrame->findCallback(pFindCallbackArg)) return true;
 
@@ -275,7 +266,7 @@ SearchDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_MOUSEWHEEL:
 		if (!bSearching) {
-			OnMouseWheel(::GetParent(hDlg), wParam, lParam);
+			g_pViewFrame->onMouseWheel(wParam, lParam);
 		}
 		break;
 
@@ -291,8 +282,6 @@ SearchDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				g_pViewFrame->cleanupCallback();
 				::EnableWindow(g_hwndMain, TRUE);
 			}
-//			g_pViewFrame->unselect();
-//			UpdateClientRect();
 			g_hSearchDlg = NULL;
 		}
 		break;
@@ -386,68 +375,6 @@ AdjustWindowSize(HWND hWnd, const RECT& rctFrame)
 }
 
 static void
-InitScrollInfo(HWND hWnd)
-{
-	int nPageLineNum = g_pViewFrame->getPageLineNum();
-
-	SCROLLINFO sinfo;
-	sinfo.cbSize = sizeof(sinfo);
-	sinfo.fMask = SIF_DISABLENOSCROLL | SIF_POS | SIF_RANGE | SIF_PAGE;
-	sinfo.nPos = 0;
-	sinfo.nMin = 0;
-
-	if (g_pViewFrame->getFileSize() < 0) {
-		// ファイルが読み込まれていない状態
-		sinfo.nMax  = 1;
-		sinfo.nPage = 2;
-	} else {
-		filesize_t pos = g_pViewFrame->getPosition();
-		filesize_t qMaxLine = g_pViewFrame->getMaxLine();
-		assert(qMaxLine >= 0);
-
-		if (qMaxLine & ~0x7FFFFFFF) {
-			// スクロールバーが native に扱えるファイルサイズを越えている
-			g_bMapScrollBarLinearly = false;
-			sinfo.nMax = 0x7FFFFFFF;
-			sinfo.nPage = (DWORD)(((filesize_t)nPageLineNum << 32) / qMaxLine);
-			sinfo.nPos = (pos << 32) / qMaxLine;
-		} else {
-			g_bMapScrollBarLinearly = true;
-			// nPageLineNum は半端な最下行を含むので -1 しておく
-			sinfo.nPage = nPageLineNum - 1;
-			sinfo.nMax = (int)qMaxLine + sinfo.nPage - 1;
-			sinfo.nPos = (int)pos;
-		}
-		if (!sinfo.nPage) sinfo.nPage = 1;
-	}
-
-	::SetScrollInfo(hWnd, SB_VERT, &sinfo, TRUE);
-}
-
-static void
-ModifyHScrollInfo(HWND hWnd, int width)
-{
-	SCROLLINFO sinfo;
-	sinfo.cbSize = sizeof(sinfo);
-	sinfo.fMask = SIF_DISABLENOSCROLL | SIF_POS | SIF_RANGE | SIF_PAGE;
-	sinfo.nPos = 0;
-	sinfo.nMin = 0;
-
-	width /= g_pViewFrame->getCharWidth();
-
-	if (width >= WIDTH_PER_XPITCH) {
-		// HSCROLL を無効化
-		sinfo.nMax  = 1;
-		sinfo.nPage = 2;
-	} else {
-		sinfo.nMax  = WIDTH_PER_XPITCH - 1;
-		sinfo.nPage = width;
-	}
-
-	::SetScrollInfo(hWnd, SB_HORZ, &sinfo, TRUE);
-}
-
-static void
 EnableEditMenu(HWND hWnd, BOOL bEnable)
 {
 	HMENU hMenu = ::GetMenu(hWnd);
@@ -492,12 +419,6 @@ LoadFile(const string& filename)
 		bRet = FALSE;
 	}
 
-	InitScrollInfo(g_hwndMain);
-
-//	UpdateClientRect();
-	::InvalidateRect(g_hwndMain, NULL, FALSE);
-	::UpdateWindow(g_hwndMain);
-
 	EnableEditMenu(g_hwndMain, bRet);
 
 	return bRet;
@@ -512,22 +433,7 @@ UnloadFile()
 	g_strImageFile = "";
 	::SetWindowText(g_hwndMain, "BinViewer");
 
-	InitScrollInfo(g_hwndMain);
-
-	//	UpdateClientRect();
-	::InvalidateRect(g_hwndMain, NULL, FALSE);
-	::UpdateWindow(g_hwndMain);
-
 	EnableEditMenu(g_hwndMain, FALSE);
-}
-
-static void
-OnPaint(HWND hWnd)
-{
-	PAINTSTRUCT ps;
-	HDC hDC = ::BeginPaint(hWnd, &ps);
-	g_pViewFrame->bitBlt(hDC, ps.rcPaint);
-	::EndPaint(hWnd, &ps);
 }
 
 static void
@@ -538,11 +444,19 @@ OnResizing(HWND hWnd, RECT* prctNew)
 	::GetWindowRect(hWnd, &rctWnd);
 	::GetClientRect(hWnd, &rctClient);
 
-	int width = rctClient.right - rctClient.left
-				+ (prctNew->right - prctNew->left)
-				- (rctWnd.right - rctWnd.left);
+	rctClient.right += (prctNew->right - prctNew->left)
+					 - (rctWnd.right - rctWnd.left);
+	rctClient.bottom += (prctNew->bottom - prctNew->top)
+					  - (rctWnd.bottom - rctWnd.top)
+					  - STATUSBAR_HEIGHT;
 
-	ModifyHScrollInfo(hWnd, width);
+	g_pViewFrame->setFrameRect(rctClient);
+
+	::SetWindowPos(g_hwndStatusBar, 0,
+				   0, rctClient.bottom,
+				   rctClient.right - rctClient.left,
+				   STATUSBAR_HEIGHT,
+				   SWP_NOZORDER);
 }
 
 static void
@@ -550,269 +464,13 @@ OnResize(HWND hWnd, WPARAM fwSizeType)
 {
 	RECT rctClient;
 	::GetClientRect(hWnd, &rctClient);
+	rctClient.bottom -= STATUSBAR_HEIGHT;
 	g_pViewFrame->setFrameRect(rctClient);
-	InitScrollInfo(hWnd);
-	ModifyHScrollInfo(hWnd, rctClient.right - rctClient.left);
-}
-
-static void
-OnJump(HWND hWnd, filesize_t pos)
-{
-	if (!g_pViewFrame->isLoaded()) return;
-
-	filesize_t qMaxLine = g_pViewFrame->getMaxLine();
-
-	SCROLLINFO sinfo;
-	sinfo.cbSize = sizeof(SCROLLINFO);
-	sinfo.fMask = SIF_ALL;
-
-	::GetScrollInfo(hWnd, SB_VERT, &sinfo);
-	if (pos < 0) {
-		pos = 0;
-		sinfo.nPos = sinfo.nMin;
-	} else if (pos / 16 > qMaxLine) {
-		pos = qMaxLine * 16;
-		sinfo.nPos = sinfo.nMax;
-	} else {
-		if (!g_bMapScrollBarLinearly) {
-			// ファイルサイズが大きい場合
-			sinfo.nPos = ((pos / 16) << 32) / qMaxLine;
-		} else {
-			sinfo.nPos = (int)(pos / 16);
-		}
-	}
-	::SetScrollInfo(hWnd, SB_VERT, &sinfo, TRUE);
-
-	// prepare the correct BGBuffer
-	g_pViewFrame->setPosition(pos);
-
-	// get the region of BGBuffer to be drawn
-	UpdateClientRect();
-}
-
-static void
-OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
-{
-	if (!g_pViewFrame->isLoaded()) return;
-
-	SCROLLINFO sinfo;
-	sinfo.cbSize = sizeof(SCROLLINFO);
-	sinfo.fMask = SIF_ALL;
-
-	::GetScrollInfo(hWnd, SB_VERT, &sinfo);
-	if (sinfo.nMax <= sinfo.nPage) return;
-
-	filesize_t qCurLine = g_pViewFrame->getCurrentLine(),
-			   qMaxLine = g_pViewFrame->getMaxLine();
-	int nPageLineNum = g_pViewFrame->getPageLineNum();
-
-	switch (LOWORD(wParam)) {
-	case SB_LINEDOWN:
-		if (qCurLine < qMaxLine) {
-			qCurLine++;
-			if (!g_bMapScrollBarLinearly) {
-				// ファイルサイズが大きい場合
-				sinfo.nPos = (qCurLine << 32) / qMaxLine;
-			} else {
-				sinfo.nPos++;
-			}
-		}
-		break;
-
-	case SB_LINEUP:
-		if (qCurLine > 0) {
-			qCurLine--;
-			if (!g_bMapScrollBarLinearly) {
-				// ファイルサイズが大きい場合
-				sinfo.nPos = (qCurLine << 32) / qMaxLine;
-			} else {
-				sinfo.nPos--;
-			}
-		}
-		break;
-
-	case SB_PAGEDOWN:
-		if ((qCurLine += nPageLineNum) > qMaxLine) {
-			qCurLine = qMaxLine;
-			sinfo.nPos = sinfo.nMax;
-		} else {
-			if (!g_bMapScrollBarLinearly) {
-				// ファイルサイズが大きい場合
-				sinfo.nPos = (qCurLine << 32) / qMaxLine;
-			} else {
-				sinfo.nPos += sinfo.nPage;
-			}
-		}
-		break;
-
-	case SB_PAGEUP:
-		if ((qCurLine -= nPageLineNum) < 0) {
-			qCurLine = 0;
-			sinfo.nPos = sinfo.nMin;
-		} else {
-			if (!g_bMapScrollBarLinearly) {
-				// ファイルサイズが大きい場合
-				sinfo.nPos = (qCurLine << 32) / qMaxLine;
-			} else {
-				sinfo.nPos -= sinfo.nPage;
-			}
-		}
-		break;
-
-	case SB_TOP:
-		qCurLine = 0;
-		sinfo.nPos = sinfo.nMin;
-		break;
-
-	case SB_BOTTOM:
-		qCurLine = qMaxLine;
-		sinfo.nPos = sinfo.nMax;
-		break;
-
-	case SB_THUMBTRACK:
-	case SB_THUMBPOSITION:
-		sinfo.nPos = sinfo.nTrackPos;
-		if (!g_bMapScrollBarLinearly) {
-			// ファイルサイズが大きい場合
-			qCurLine = (sinfo.nPos * qMaxLine) >> 32;
-		} else {
-			qCurLine = sinfo.nPos;
-		}
-		break;
-
-	default:
-		return;
-	}
-	::SetScrollInfo(hWnd, SB_VERT, &sinfo, TRUE);
-
-	// prepare the correct BGBuffer
-	g_pViewFrame->setCurrentLine(qCurLine);
-
-	// get the region of BGBuffer to be drawn
-	UpdateClientRect();
-}
-
-static void
-OnHScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
-{
-	SCROLLINFO sinfo;
-	sinfo.cbSize = sizeof(SCROLLINFO);
-	sinfo.fMask = SIF_ALL;
-
-	::GetScrollInfo(hWnd, SB_HORZ, &sinfo);
-	if (sinfo.nMax <= sinfo.nPage) return;
-
-	const RECT& rctClient = g_pViewFrame->getFrameRect();
-	int cw = g_pViewFrame->getCharWidth();
-	int nXOffset = g_pViewFrame->getXOffset(),
-		nMaxXOffset = cw * WIDTH_PER_XPITCH - (rctClient.right - rctClient.left);
-
-	switch (LOWORD(wParam)) {
-	case SB_LINEDOWN:
-		if ((nXOffset += cw) >= nMaxXOffset) {
-			nXOffset = nMaxXOffset;
-			sinfo.nPos = sinfo.nMax;
-		} else {
-			sinfo.nPos++;
-		}
-		break;
-
-	case SB_LINEUP:
-		if ((nXOffset -= cw) <= 0) {
-			nXOffset = 0;
-			sinfo.nPos = 0;
-		} else {
-			sinfo.nPos--;
-		}
-		break;
-
-	case SB_PAGEDOWN:
-		if ((sinfo.nPos += sinfo.nPage) > sinfo.nMax) {
-			nXOffset = nMaxXOffset;
-			sinfo.nPos = sinfo.nMax;
-		} else {
-			nXOffset += sinfo.nPage * cw;
-		}
-		break;
-
-	case SB_PAGEUP:
-		if ((sinfo.nPos -= sinfo.nPage) < 0) {
-			nXOffset = 0;
-			sinfo.nPos = sinfo.nMin;
-		} else {
-			nXOffset -= sinfo.nPage * cw;
-		}
-		break;
-
-	case SB_TOP:
-		nXOffset = 0;
-		sinfo.nPos = sinfo.nMin;
-		break;
-
-	case SB_BOTTOM:
-		nXOffset = nMaxXOffset;
-		sinfo.nPos = sinfo.nMax;
-		break;
-
-	case SB_THUMBTRACK:
-	case SB_THUMBPOSITION:
-		sinfo.nPos = sinfo.nTrackPos;
-		nXOffset = cw * sinfo.nPos;
-		break;
-
-	default:
-		return;
-	}
-
-	::SetScrollInfo(hWnd, SB_HORZ, &sinfo, TRUE);
-
-	// prepare the correct BGBuffer
-	g_pViewFrame->setXOffset(nXOffset);
-
-	// get the region of BGBuffer to be drawn
-	::InvalidateRect(g_hwndMain, NULL, FALSE);
-	::UpdateWindow(g_hwndMain);
-}
-
-static void
-OnHorizontalMove(HWND hWnd, int diff)
-{
-	g_pViewFrame->setPosition(g_pViewFrame->getPosition() + diff);
-	UpdateClientRect();
-}
-
-static void
-OnVerticalMove(HWND hWnd, int diff)
-{
-	g_pViewFrame->setPosition(g_pViewFrame->getPosition() + diff * 16);
-	UpdateClientRect();
-}
-
-static void
-OnMouseWheel(HWND hWnd, WPARAM wParam, LPARAM lParam)
-{
-	if (!g_pViewFrame->isLoaded()) return;
-
-	int delta = (short)HIWORD(wParam);
-
-	if (delta > 0) {
-		delta /= WHEEL_DELTA;
-		for (int i = 0; i < delta; i++) {
-			OnVScroll(hWnd, SB_LINEUP, 0);
-		}
-	} else {
-		delta = - delta / WHEEL_DELTA;
-		for (int i = 0; i < delta; i++) {
-			OnVScroll(hWnd, SB_LINEDOWN, 0);
-		}
-	}
-}
-
-static void
-OnLButtonDown(HWND hWnd, WPARAM wParam, LPARAM lParam)
-{
-	g_pViewFrame->setPositionByCoordinate(MAKEPOINTS(lParam));
-	UpdateClientRect();
+	::SetWindowPos(g_hwndStatusBar, 0,
+				   0, rctClient.bottom,
+				   rctClient.right - rctClient.left,
+				   STATUSBAR_HEIGHT,
+				   SWP_NOZORDER);
 }
 
 static void
@@ -820,25 +478,38 @@ OnCreate(HWND hWnd)
 {
 	g_hwndMain = hWnd;
 
+	RECT rctClient;
+	::GetClientRect(hWnd, &rctClient);
+	rctClient.bottom -= STATUSBAR_HEIGHT;
+
 	// create default DrawInfo
 	HDC hDC = ::GetDC(hWnd);
 	g_pDrawInfo = new DrawInfo(hDC, DEFAULT_FONT_SIZE,
 							   DEFAULT_FG_COLOR, DEFAULT_BK_COLOR,
 							   DEFAULT_FG_COLOR_HEADER, DEFAULT_BK_COLOR_HEADER);
-	g_pViewFrame = new ViewFrame(hWnd, g_pDrawInfo.ptr(), NULL);
 	::ReleaseDC(hWnd, hDC);
 
-	int height = g_pViewFrame->getLineHeight();
-	RECT rctClient;
-	::GetClientRect(hWnd, &rctClient);
-	rctClient.right  = g_pViewFrame->getCharWidth() * WIDTH_PER_XPITCH;
-	rctClient.bottom = height * ((rctClient.bottom + height + 1) / height);
+	g_pViewFrame = new ViewFrame(hWnd, rctClient, g_pDrawInfo.ptr(), NULL);
+	assert(g_pViewFrame.ptr());
 
 	AdjustWindowSize(hWnd, rctClient);
 
-	// 必要？
-	InitScrollInfo(hWnd);
-	ModifyHScrollInfo(hWnd, rctClient.right - rctClient.left);
+	g_hwndStatusBar = ::CreateWindow(STATUSCLASSNAME,
+									 "this is a status bar",
+									 WS_CHILD | WS_VISIBLE |
+									  SBARS_SIZEGRIP,
+									 rctClient.left,
+									 rctClient.bottom,
+									 rctClient.right - rctClient.left,
+									 STATUSBAR_HEIGHT,
+									 hWnd,
+									 (HMENU)IDC_STATUSBAR,
+									 g_hInstance,
+									 NULL);
+	if (!g_hwndStatusBar) {
+		::SendMessage(hWnd, WM_CLOSE, 0, 0);
+		return;
+	}
 
 	if (g_strImageFile.length() == 0) {
 		EnableEditMenu(hWnd, FALSE);
@@ -901,10 +572,6 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		OnCreate(hWnd);
 		break;
 
-	case WM_PAINT:
-		OnPaint(hWnd);
-		break;
-
 	case WM_DROPFILES:
 		OnDropFiles(hWnd, wParam);
 		break;
@@ -947,48 +614,44 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				filesize_t pos = -1;
 				::DialogBoxParam(g_hInstance, MAKEINTRESOURCE(IDD_JUMP),
 								 hWnd, (DLGPROC)JumpAddrDlgProc, (LPARAM)&pos);
-				if (pos >= 0) OnJump(hWnd, pos);
+				if (pos >= 0) g_pViewFrame->onJump(pos);
 			}
 			break;
 
 		case IDK_LINEDOWN:
-//			OnVScroll(hWnd, SB_LINEDOWN, 0);
-			OnVerticalMove(hWnd, 1);
+			g_pViewFrame->onVerticalMove(1);
 			break;
 
 		case IDK_LINEUP:
-//			OnVScroll(hWnd, SB_LINEUP, 0);
-			OnVerticalMove(hWnd, -1);
+			g_pViewFrame->onVerticalMove(-1);
 			break;
 
 		case IDK_PAGEDOWN:
 		case IDK_SPACE:
-			OnVScroll(hWnd, SB_PAGEDOWN, 0);
+			g_pViewFrame->onVScroll(SB_PAGEDOWN, 0);
 			break;
 
 		case IDK_PAGEUP:
 		case IDK_S_SPACE:
-			OnVScroll(hWnd, SB_PAGEUP, 0);
+			g_pViewFrame->onVScroll(SB_PAGEUP, 0);
 			break;
 
 		case IDK_BOTTOM:
 		case IDK_C_SPACE:
-			OnVScroll(hWnd, SB_BOTTOM, 0);
+			g_pViewFrame->onVScroll(SB_BOTTOM, 0);
 			break;
 
 		case IDK_TOP:
 		case IDK_C_S_SPACE:
-			OnVScroll(hWnd, SB_TOP, 0);
+			g_pViewFrame->onVScroll(SB_TOP, 0);
 			break;
 
 		case IDK_RIGHT:
-			OnHorizontalMove(hWnd, 1);
-//			OnHScroll(hWnd, SB_LINEDOWN, 0);
+			g_pViewFrame->onHorizontalMove(1);
 			break;
 
 		case IDK_LEFT:
-			OnHorizontalMove(hWnd, -1);
-//			OnHScroll(hWnd, SB_LINEUP, 0);
+			g_pViewFrame->onHorizontalMove(-1);
 			break;
 		}
 		break;
@@ -1001,20 +664,8 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		OnResize(hWnd, wParam);
 		break;
 
-	case WM_VSCROLL:
-		OnVScroll(hWnd, wParam, lParam);
-		break;
-
-	case WM_HSCROLL:
-		OnHScroll(hWnd, wParam, lParam);
-		break;
-
 	case WM_MOUSEWHEEL:
-		OnMouseWheel(hWnd, wParam, lParam);
-		break;
-
-	case WM_LBUTTONDOWN:
-		OnLButtonDown(hWnd, wParam, lParam);
+		g_pViewFrame->onMouseWheel(wParam, lParam);
 		break;
 
 	case WM_CLOSE:
@@ -1044,16 +695,16 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	WNDCLASS wc;
 
+	// Main Window's WindowClass
 	::ZeroMemory(&wc, sizeof(WNDCLASS));
 	wc.hInstance = hInstance;
-	wc.style = CS_OWNDC | CS_SAVEBITS /* | CS_HREDRAW | CS_VREDRAW */;
+	wc.style = CS_OWNDC /* | CS_HREDRAW | CS_VREDRAW */;
 	wc.hIcon = ::LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MAINICON));
 	wc.hCursor = ::LoadCursor(NULL, IDC_ARROW);
 //	wc.hbrBackground = (HBRUSH)(COLOR_APPWORKSPACE + 1);
 	wc.lpfnWndProc = (WNDPROC)MainWndProc;
-	wc.lpszClassName = "BinViewerClass32";
+	wc.lpszClassName = MAINWND_CLASSNAME;
 	wc.lpszMenuName = MAKEINTRESOURCE(IDR_MAINMENU);
-
 	if (!::RegisterClass(&wc)) return -1;
 
 	HACCEL hAccel = ::LoadAccelerators(hInstance, MAKEINTRESOURCE(IDR_KEYACCEL));
@@ -1062,7 +713,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	g_hwndMain = ::CreateWindowEx(WS_EX_OVERLAPPEDWINDOW | WS_EX_ACCEPTFILES,
 								  wc.lpszClassName, "BinViewer",
-								  WS_OVERLAPPEDWINDOW | WS_HSCROLL | WS_VSCROLL,
+								  WS_OVERLAPPEDWINDOW,
 								  CW_USEDEFAULT, CW_USEDEFAULT,
 								  W_WIDTH, W_HEIGHT,
 								  NULL, NULL, hInstance, NULL);
