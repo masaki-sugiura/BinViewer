@@ -87,6 +87,34 @@ AdjustWindowSize(HWND hWnd, const RECT& rctFrame)
 
 	rctWnd.right  = rctWnd.left + rctClient.right  - rctClient.left + x_diff;
 	rctWnd.bottom = rctWnd.top + rctClient.bottom - rctClient.top + y_diff;
+
+	RECT rctDesktop;
+	::GetWindowRect(::GetDesktopWindow(), &rctDesktop);
+
+	int dWidth = rctDesktop.right - rctDesktop.left;
+	if (rctWnd.right > dWidth) {
+		if (rctWnd.right - rctWnd.left > dWidth) {
+			// 最大化する必要あり
+		} else {
+			// デスクトップに収まるように位置を調整
+			int over = rctWnd.right - dWidth;
+			rctWnd.left  -= over;
+			rctWnd.right -= over;
+		}
+	}
+
+	int dHeight = rctDesktop.bottom - rctDesktop.top;
+	if (rctWnd.bottom > rctDesktop.bottom - rctDesktop.top) {
+		if (rctWnd.bottom - rctWnd.top > dHeight) {
+			// 最大化する必要あり
+		} else {
+			// デスクトップに収まるように位置を調整
+			int over = rctWnd.bottom - dHeight;
+			rctWnd.top    -= over;
+			rctWnd.bottom -= over;
+		}
+	}
+
 	::SetWindowPos(hWnd, NULL,
 				   rctWnd.left, rctWnd.top,
 				   rctWnd.right - rctWnd.left,
