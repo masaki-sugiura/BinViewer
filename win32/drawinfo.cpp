@@ -23,14 +23,14 @@ TextColorInfo::setColor(COLORREF crFgColor, COLORREF crBkColor)
 	m_hbrBackground = ::CreateSolidBrush(crBkColor);
 }
 
-FontInfo::FontInfo(HDC hDC, int fontsize,
+FontInfo::FontInfo(HDC hDC, float fontsize,
 				   const char* faceName, bool bBoldFace)
 	: m_hFont(NULL)
 {
 	if (hDC) {
 		setFont(hDC, fontsize, faceName, bBoldFace);
 	} else {
-		m_nFontSize = fontsize;
+		m_fFontSize = fontsize;
 		if (faceName)
 			lstrcpy(m_pszFontFace, faceName);
 		else
@@ -45,12 +45,12 @@ FontInfo::~FontInfo()
 }
 
 void
-FontInfo::setFont(HDC hDC, int fontsize,
+FontInfo::setFont(HDC hDC, float fontsize,
 				  const char* faceName, bool bBoldFace)
 {
 	// フォントの生成
 	LOGFONT lfont;
-	lfont.lfHeight = - MulDiv(fontsize, GetDeviceCaps(hDC, LOGPIXELSY), 72);
+	lfont.lfHeight = - (int) (fontsize * GetDeviceCaps(hDC, LOGPIXELSY) / 72);
 	lfont.lfWidth  = 0;
 	lfont.lfEscapement = 0;
 	lfont.lfOrientation = 0;
@@ -86,7 +86,7 @@ FontInfo::setFont(HDC hDC, int fontsize,
 
 	if (m_hFont != NULL) ::DeleteObject(m_hFont);
 	m_hFont = hFont;
-	m_nFontSize = fontsize;
+	m_fFontSize = fontsize;
 
 	m_bBoldFace = bBoldFace;
 	// 下記の？？については SDK マニュアル参照
@@ -98,7 +98,7 @@ FontInfo::setFont(HDC hDC, int fontsize,
 	m_nYPitch = tm.tmHeight + 1;
 }
 
-DrawInfo::DrawInfo(HDC hDC, int fontsize,
+DrawInfo::DrawInfo(HDC hDC, float fontsize,
 				   const char* faceName, bool bBoldFace,
 				   COLORREF crFgColorAddr, COLORREF crBkColorAddr,
 				   COLORREF crFgColorData, COLORREF crBkColorData,

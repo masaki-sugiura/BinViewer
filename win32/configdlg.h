@@ -4,6 +4,7 @@
 #define CONFIGDLG_H_INC
 
 #include "drawinfo.h"
+#include "messages.h"
 #include <string>
 #include <exception>
 #include <map>
@@ -78,9 +79,9 @@ struct ColorConfig {
 };
 
 struct FontConfig {
-	char m_pszFontFace[LF_FACESIZE];
-	int  m_nFontSize;
-	bool m_bBoldFace;
+	char  m_pszFontFace[LF_FACESIZE];
+	float m_fFontSize;
+	bool  m_bBoldFace;
 	ColorConfig m_ColorConfig[4];
 };
 

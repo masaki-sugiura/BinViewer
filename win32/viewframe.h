@@ -4,12 +4,10 @@
 #define VIEWFRAME_H_INC
 
 #include "dc_manager.h"
+#include "messages.h"
 #include <assert.h>
 #include <exception>
 using std::exception;
-
-#define WM_USER_FIND_FINISH  (WM_USER + 1000)
-#define WM_USER_SETPOSITION  (WM_USER + 1001)
 
 static inline bool
 is_overlapped(int y_offset_line_num, int page_line_num)
@@ -178,6 +176,8 @@ private:
 		m_bOverlapped = is_overlapped(m_nTopOffset / m_nLineHeight, m_nPageLineNum);
 		modifyVScrollInfo();
 		modifyHScrollInfo(m_rctClient.right - m_rctClient.left);
+		::InvalidateRect(m_hwndView, NULL, FALSE);
+		::UpdateWindow(m_hwndView);
 	}
 
 	void calcMaxLine()

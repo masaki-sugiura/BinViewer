@@ -36,7 +36,7 @@ private:
 
 class FontInfo {
 public:
-	FontInfo(HDC hDC, int fontsize,
+	FontInfo(HDC hDC, float fontsize,
 			 const char* faceName = NULL, bool bBoldFace = false);
 	~FontInfo();
 
@@ -49,9 +49,9 @@ public:
 		return m_nYPitch;
 	}
 
-	int getFontSize() const
+	float getFontSize() const
 	{
-		return m_nFontSize;
+		return m_fFontSize;
 	}
 	const char* getFaceName() const
 	{
@@ -66,7 +66,7 @@ public:
 		return m_bProportional;
 	}
 
-	void setFont(HDC hDC, int fontsize,
+	void setFont(HDC hDC, float fontsize,
 				 const char* faceName = NULL,
 				 bool bBoldFace = false);
 	HFONT getFont() const
@@ -77,7 +77,7 @@ public:
 private:
 	int m_nXPitch, m_nYPitch;
 	HFONT  m_hFont;
-	int    m_nFontSize;
+	float  m_fFontSize;
 	bool   m_bBoldFace;
 	bool   m_bProportional;
 	char   m_pszFontFace[LF_FACESIZE];
@@ -88,7 +88,7 @@ private:
 
 class DrawInfo {
 public:
-	DrawInfo(HDC hDC, int fontsize,
+	DrawInfo(HDC hDC, float fontsize,
 			 const char* faceName, bool bBoldFace,
 			 COLORREF crFgColorAddr, COLORREF crBkColorAddr,
 			 COLORREF crFgColorData, COLORREF crBkColorData,

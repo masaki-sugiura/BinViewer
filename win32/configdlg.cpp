@@ -7,8 +7,6 @@
 #include <commctrl.h>
 #include <assert.h>
 
-#define WM_USER_ENABLE_APPLY_BUTTON  (WM_USER + 1000)
-
 ConfigDialog::ConfigDialog(DrawInfo* pDrawInfo)
 	: m_hwndParent(NULL), m_hwndDlg(NULL),
 	  m_pDrawInfo(pDrawInfo)
@@ -270,6 +268,10 @@ ConfigMainDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		::EnableWindow(::GetDlgItem(m_hwndDlg, IDC_APPLY), wParam);
 		break;
 
+	case WM_USER_SET_FONT_CONFIG:
+		::SendMessage(m_hwndParent, uMsg, wParam, lParam);
+		break;
+
 	default:
 		return FALSE;
 	}
@@ -347,6 +349,7 @@ FontConfigPage::destroyDialog()
 	if (m_icFgColor.m_hIcon) {
 		::DestroyIcon(m_icFgColor.m_hIcon);
 		::DestroyIcon(m_icBkColor.m_hIcon);
+		m_icFgColor.m_hIcon = m_icBkColor.m_hIcon = NULL;
 		::DeleteObject(m_icFgColor.m_hbmColor);
 		::DeleteObject(m_icFgColor.m_hbmMask);
 		::DeleteObject(m_icBkColor.m_hbmColor);
@@ -358,7 +361,7 @@ bool
 FontConfigPage::initFontConfig()
 {
 	lstrcpy(m_FontConfig.m_pszFontFace, m_pDrawInfo->m_FontInfo.getFaceName());
-	m_FontConfig.m_nFontSize = m_pDrawInfo->m_FontInfo.getFontSize();
+	m_FontConfig.m_fFontSize = m_pDrawInfo->m_FontInfo.getFontSize();
 	m_FontConfig.m_bBoldFace = m_pDrawInfo->m_FontInfo.isBoldFace();
 
 	m_FontConfig.m_ColorConfig[CC_HEADER].m_crFgColor
@@ -389,9 +392,8 @@ FontConfigPage::prepareFontList(bool bShowPropFonts)
 {
 	m_bShowPropFonts = bShowPropFonts;
 
-	::SendMessage(::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_NAME),
-				  CB_RESETCONTENT,
-				  0, 0);
+	::SendDlgItemMessage(m_hwndDlg, IDC_CONFIG_FONT_NAME,
+						 CB_RESETCONTENT, 0, 0);
 
 	m_mapFontName.clear();
 
@@ -524,9 +526,10 @@ FontConfigPage::addSize(int size)
 
 	HWND hwndSizeList = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_SIZE);
 	if (::SendMessage(hwndSizeList, CB_FINDSTRINGEXACT,
-					  (WPARAM)-1, (LPARAM)buf) == CB_ERR)
+					  (WPARAM)-1, (LPARAM)buf) == CB_ERR) {
 		::SendDlgItemMessage(m_hwndDlg, IDC_CONFIG_FONT_SIZE,
 							 CB_ADDSTRING, 0, (LPARAM)buf);
+	}
 }
 
 BOOL
@@ -541,6 +544,13 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				prepareFontSize();
 			}
 			break;
+		case IDC_CONFIG_FONT_SIZE:
+			if (HIWORD(wParam) == CBN_SELCHANGE ||
+				HIWORD(wParam) == CBN_EDITCHANGE) {
+				::SendMessage(m_hwndParent, WM_USER_ENABLE_APPLY_BUTTON,
+							  TRUE, 0);
+			}
+			break;
 		case IDC_CONFIG_SHOW_PROPFONT:
 			if (HIWORD(wParam) == BN_CLICKED) {
 				char faceName[LF_FACESIZE];
@@ -552,9 +562,8 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 								  sel, (LPARAM)faceName);
 				}
 				bool bShowPropFonts
-					= ::SendMessage(::GetDlgItem(m_hwndDlg, IDC_CONFIG_SHOW_PROPFONT),
-									BM_GETCHECK,
-									0, 0) == BST_CHECKED;
+					= ::SendDlgItemMessage(m_hwndDlg, IDC_CONFIG_SHOW_PROPFONT,
+										   BM_GETCHECK, 0, 0) == BST_CHECKED;
 				prepareFontList(bShowPropFonts);
 				if (sel != CB_ERR) {
 					int pos = ::SendMessage(hwndFontList,
@@ -577,14 +586,20 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			}
 			break;
 		case IDC_CONFIG_FONT_BOLD:
+			if (HIWORD(wParam) == BN_CLICKED) {
+				::SendMessage(m_hwndParent, WM_USER_ENABLE_APPLY_BUTTON, TRUE, 0);
+			}
 			break;
 		case IDC_CONFIG_FONT_FGCOLOR:
 			if (HIWORD(wParam) == BN_CLICKED) {
 				int pos = ::SendDlgItemMessage(m_hwndDlg, IDC_PART_LIST,
 											   LB_GETCURSEL, 0, 0);
 				if (pos != LB_ERR) {
-					if (chooseColor(m_FontConfig.m_ColorConfig[pos].m_crFgColor))
+					if (chooseColor(m_FontConfig.m_ColorConfig[pos].m_crFgColor)) {
+						::SendMessage(m_hwndParent, WM_USER_ENABLE_APPLY_BUTTON,
+									  TRUE, 0);
 						selectFontPageList(pos);
+					}
 				}
 			}
 			break;
@@ -593,8 +608,11 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				int pos = ::SendDlgItemMessage(m_hwndDlg, IDC_PART_LIST,
 											   LB_GETCURSEL, 0, 0);
 				if (pos != LB_ERR) {
-					if (chooseColor(m_FontConfig.m_ColorConfig[pos].m_crBkColor))
+					if (chooseColor(m_FontConfig.m_ColorConfig[pos].m_crBkColor)) {
+						::SendMessage(m_hwndParent, WM_USER_ENABLE_APPLY_BUTTON,
+									  TRUE, 0);
 						selectFontPageList(pos);
+					}
 				}
 			}
 			break;
@@ -602,46 +620,6 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 		break;
-
-#if 0
-	case WM_DRAWITEM:
-		{
-			LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT)lParam;
-			if (lpdis->itemAction != ODA_DRAWENTIRE) break;
-
-			HWND hwndButton = ::GetDlgItem(m_hwndDlg, lpdis->CtlID);
-			RECT rctClient, rctPaint;
-			::GetClientRect(hwndButton, &rctClient);
-			rctClient.left   += 6;
-			rctClient.right  -= 6;
-			rctClient.top    += 3;
-			rctClient.bottom -= 3;
-			if (!::IntersectRect(&rctPaint, &rctClient, &lpdis->rcItem))
-				break;
-
-			int pos = ::SendDlgItemMessage(m_hwndDlg, IDC_PART_LIST,
-										   LB_GETCURSEL, 0, 0);
-			COLORREF crBrush = RGB(255, 255, 255);
-			if (pos != LB_ERR) {
-				switch (lpdis->CtlID) {
-				case IDC_CONFIG_FONT_FGCOLOR:
-					crBrush = m_FontConfig.m_ColorConfig[pos].m_crFgColor;
-					break;
-				case IDC_CONFIG_FONT_BKCOLOR:
-					crBrush = m_FontConfig.m_ColorConfig[pos].m_crBkColor;
-					break;
-				default:
-					assert(0);
-					break;
-				}
-			}
-
-			HBRUSH hBrush = ::CreateSolidBrush(crBrush);
-			::FillRect(lpdis->hDC, &rctPaint, hBrush);
-			::DeleteObject(hBrush);
-		}
-		break;
-#endif
 
 	case WM_NOTIFY:
 		break;
@@ -656,10 +634,9 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 bool
 FontConfigPage::applyChanges()
 {
-	char faceName[LF_FACESIZE];
 	::GetWindowText(::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_NAME),
-					faceName, LF_FACESIZE - 1);
-	if (faceName[0] == '\0') {
+					m_FontConfig.m_pszFontFace, LF_FACESIZE - 1);
+	if (m_FontConfig.m_pszFontFace[0] == '\0') {
 		::MessageBox(m_hwndDlg, "フォント名が指定されていません。",
 					 NULL, MB_OK);
 		return false;
@@ -667,13 +644,19 @@ FontConfigPage::applyChanges()
 	char fontSize[8];
 	::GetWindowText(::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_SIZE),
 					fontSize, 7);
-	int font_size = (int)(strtod(fontSize, NULL)
-						  * ::GetDeviceCaps(m_pDrawInfo->m_hDC, LOGPIXELSY) / 72);
-	if (font_size <= 0) {
+	float font_size = strtod(fontSize, NULL);
+	if (font_size <= 0.0) {
 		::MessageBox(m_hwndDlg, "フォントサイズの指定が不正です。",
 					 NULL, MB_OK);
 		return false;
 	}
+	m_FontConfig.m_fFontSize = font_size;
+	m_FontConfig.m_bBoldFace
+		= ::SendDlgItemMessage(m_hwndDlg, IDC_CONFIG_FONT_BOLD,
+							   BM_GETCHECK, 0, 0) == BST_CHECKED;
+
+	::SendMessage(m_hwndParent, WM_USER_SET_FONT_CONFIG,
+				  0, (LPARAM)&m_FontConfig);
 
 	return true;
 }
