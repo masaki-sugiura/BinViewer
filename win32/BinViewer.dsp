@@ -174,6 +174,10 @@ SOURCE=..\lock.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\messages.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\resource.h
 # End Source File
 # Begin Source File

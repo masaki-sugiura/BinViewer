@@ -75,6 +75,7 @@ LINK32=link.exe
 LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /incremental:yes /pdb:"$(OUTDIR)\BinViewer.pdb" /debug /machine:I386 /out:"$(OUTDIR)\BinViewer.exe" 
 LINK32_OBJS= \
 	"$(INTDIR)\bgb_manager.obj" \
+	"$(INTDIR)\configdlg.obj" \
 	"$(INTDIR)\dc_manager.obj" \
 	"$(INTDIR)\drawinfo.obj" \
 	"$(INTDIR)\LargeFileReader.obj" \
@@ -84,8 +85,7 @@ LINK32_OBJS= \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res" \
-	"$(INTDIR)\configdlg.obj"
+	"$(INTDIR)\mainwnd.res"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -146,6 +146,7 @@ BSC32=bscmake.exe
 BSC32_FLAGS=/nologo /o"$(OUTDIR)\BinViewer.bsc" 
 BSC32_SBRS= \
 	"$(INTDIR)\bgb_manager.sbr" \
+	"$(INTDIR)\configdlg.sbr" \
 	"$(INTDIR)\dc_manager.sbr" \
 	"$(INTDIR)\drawinfo.sbr" \
 	"$(INTDIR)\LargeFileReader.sbr" \
@@ -154,8 +155,7 @@ BSC32_SBRS= \
 	"$(INTDIR)\searchdlg.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
-	"$(INTDIR)\viewframe.sbr" \
-	"$(INTDIR)\configdlg.sbr"
+	"$(INTDIR)\viewframe.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -166,6 +166,7 @@ LINK32=link.exe
 LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /incremental:yes /pdb:"$(OUTDIR)\BinViewer.pdb" /debug /machine:I386 /out:"$(OUTDIR)\BinViewer.exe" /pdbtype:sept 
 LINK32_OBJS= \
 	"$(INTDIR)\bgb_manager.obj" \
+	"$(INTDIR)\configdlg.obj" \
 	"$(INTDIR)\dc_manager.obj" \
 	"$(INTDIR)\drawinfo.obj" \
 	"$(INTDIR)\LargeFileReader.obj" \
@@ -175,8 +176,7 @@ LINK32_OBJS= \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res" \
-	"$(INTDIR)\configdlg.obj"
+	"$(INTDIR)\mainwnd.res"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<

@@ -181,20 +181,26 @@ BEGIN
     LTEXT           "フォント変更箇所(&C)：",IDC_STATIC,126,19,100,8
     LTEXT           "フォント名(&N)：",IDC_STATIC,7,7,45,8
     LTEXT           "フォントサイズ(&S)：",IDC_STATIC,7,35,55,8
+    LTEXT           "",IDC_CONFIG_FONT_SAMPLE,14,97,101,54
 END
 
 IDD_CONFIG_CURSOR DIALOG DISCARDABLE  0, 0, 240, 165
 STYLE DS_CONTROL | WS_CHILD
 FONT 9, "ＭＳ Ｐゴシック"
 BEGIN
-    GROUPBOX        "スクロール時のキャレットの挙動",IDC_STATIC,7,7,125,57
-    CONTROL         "スクロールしない(&F)",IDC_CONFIG_CARET_STATIC,"Button",
-                    BS_AUTORADIOBUTTON,14,20,86,10
-    CONTROL         "はみ出そうな場合はスクロール(&E)",
-                    IDC_CONFIG_CARET_ENSURE_VISIBLE,"Button",
-                    BS_AUTORADIOBUTTON,14,34,113,10
-    CONTROL         "一緒にスクロール(&S)",IDC_CONFIG_CARET_SCROLL,"Button",
-                    BS_AUTORADIOBUTTON,14,48,113,10
+    GROUPBOX        "スクロール時のキャレットの挙動",IDC_STATIC,7,7,114,46,
+                    WS_GROUP
+    CONTROL         "一緒にスクロール(&S)",IDC_CONFIG_CARET_STATIC,"Button",
+                    BS_AUTORADIOBUTTON,14,20,94,10
+    CONTROL         "スクロールしない(&F)",IDC_CONFIG_CARET_SCROLL,"Button",
+                    BS_AUTORADIOBUTTON,14,35,86,10
+    GROUPBOX        "ホイールスクロールの挙動",IDC_STATIC,7,59,114,49,
+                    WS_GROUP
+    CONTROL         "上下矢印キーと同じ(&A)",IDC_CONFIG_WHEEL_AS_ARROW_KEYS,
+                    "Button",BS_AUTORADIOBUTTON,14,73,86,10
+    CONTROL         "スクロールバーと同じ(&B)",
+                    IDC_CONFIG_WHEEL_AS_SCROLL_BAR,"Button",
+                    BS_AUTORADIOBUTTON,14,89,86,10
 END
 
 

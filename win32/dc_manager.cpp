@@ -426,6 +426,10 @@ DC_Manager::getXPositionByCoordinate(int x)
 				return 8 + i;
 			}
 		}
+	} else if (x >= nXPitch * (19 + 3 * 16 + 2 + 1) &&
+			   x < nXPitch * (19 + 3 * 16 + 2 + 1 + 16)) {
+		// string region
+		return (x - nXPitch * (19 + 3 * 16 + 2 + 1)) / nXPitch;
 	}
 
 	return -1;

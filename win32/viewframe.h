@@ -101,10 +101,14 @@ public:
 	void setDrawInfo(DrawInfo* pDrawInfo)
 	{
 		assert(pDrawInfo);
+		filesize_t pos = m_qPrevSelectedPos;
+		int size = m_nPrevSelectedSize;
+		unselect();
 		m_pDrawInfo = pDrawInfo;
 		m_nLineHeight = m_pDrawInfo->m_FontInfo.getYPitch();
 		m_nCharWidth  = m_pDrawInfo->m_FontInfo.getXPitch();
 		m_pDC_Manager->setDrawInfo(m_hDC, pDrawInfo);
+		if (pos >= 0) select(pos, size);
 		recalcPageInfo();
 	}
 

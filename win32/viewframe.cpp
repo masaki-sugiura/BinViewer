@@ -242,14 +242,6 @@ ViewFrame::bitBlt(const RECT& rcPaint)
 				::FillRect(m_hDC, &rctTemp, m_pDrawInfo->m_tciData.getBkBrush());
 			}
 		}
-#if 0
-		if (rcPaint.right > width) {
-			RECT rctTemp = rcPaint;
-			rctTemp.left  = max(rcPaint.left, width);
-			::FillRect(m_hDC, &rctTemp,
-					   m_pDrawInfo->m_tciData.getBkBrush());
-		}
-#endif
 	} else if (m_pCurBuf) {
 		m_pCurBuf->bitBlt(m_hDC,
 						  rcPaint.left, rcPaint.top,
@@ -257,14 +249,6 @@ ViewFrame::bitBlt(const RECT& rcPaint)
 						  rcPaint.bottom - rcPaint.top,
 						  rcPaint.left + m_nXOffset,
 						  m_nTopOffset + rcPaint.top - m_nLineHeight);
-#if 0
-		if (rcPaint.right > width) {
-			RECT rctTemp = rcPaint;
-			rctTemp.left  = max(rcPaint.left, width);
-			::FillRect(m_hDC, &rctTemp,
-					   m_pDrawInfo->m_tciData.getBkBrush());
-		}
-#endif
 	} else {
 		::FillRect(m_hDC, &rcPaint, (HBRUSH)(COLOR_APPWORKSPACE + 1));
 	}
@@ -277,21 +261,6 @@ ViewFrame::bitBlt(const RECT& rcPaint)
 				   rcPaint.right - rcPaint.left,
 				   min(m_nLineHeight, rcPaint.bottom - rcPaint.top),
 				   rcPaint.left + m_nXOffset, rcPaint.top);
-#if 0
-		if (rcPaint.left < width)
-			::BitBlt(m_hDC, rcPaint.left, rcPaint.top,
-					 min(rcPaint.right, width) - rcPaint.left,
-					 min(m_nLineHeight, rcPaint.bottom - rcPaint.top),
-					 m_pDC_Manager->getHeaderDC(),
-					 rcPaint.left + m_nXOffset, rcPaint.top,
-					 SRCCOPY);
-		if (rcPaint.right > width) {
-			RECT rctTemp = rcPaint;
-			rctTemp.left = width;
-			rctTemp.bottom = min(m_nLineHeight, rcPaint.bottom - rcPaint.top);
-			::FillRect(m_hDC, &rctTemp, m_pDrawInfo->m_tciHeader.getBkBrush());
-		}
-#endif
 	}
 }
 
@@ -471,7 +440,8 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 	::GetScrollInfo(m_hwndView, SB_VERT, &sinfo);
 	if (sinfo.nMax <= sinfo.nPage) return;
 
-	filesize_t qCurLine = m_qCurrentLine;
+	filesize_t qCurLine = m_qCurrentLine,
+			   qCurDiff = m_qCurrentPos - m_qCurrentLine * 16;
 
 	switch (LOWORD(wParam)) {
 	case SB_LINEDOWN:
@@ -482,6 +452,10 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 				sinfo.nPos = (qCurLine << 32) / m_qMaxLine;
 			} else {
 				sinfo.nPos++;
+			}
+		} else {
+			if (m_qCurrentLine + qCurDiff / 16 + 1 < m_qMaxLine) {
+				qCurDiff += 16;
 			}
 		}
 		break;
@@ -495,6 +469,8 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 			} else {
 				sinfo.nPos--;
 			}
+		} else {
+			if (qCurDiff - 16 >= 0) qCurDiff -= 16;
 		}
 		break;
 
@@ -528,11 +504,13 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 
 	case SB_TOP:
 		qCurLine = 0;
+		qCurDiff = 0;
 		sinfo.nPos = sinfo.nMin;
 		break;
 
 	case SB_BOTTOM:
 		qCurLine = m_qMaxLine;
+		qCurDiff = 0;
 		sinfo.nPos = sinfo.nMax;
 		break;
 
@@ -554,6 +532,16 @@ ViewFrame::onVScroll(WPARAM wParam, LPARAM lParam)
 
 	// prepare the correct BGBuffer
 	setCurrentLine(qCurLine);
+	switch (m_pDrawInfo->m_ScrollConfig.m_caretMove) {
+	case CARET_ENSURE_VISIBLE:
+//		ensureVisibleCaret();
+		break;
+	case CARET_SCROLL:
+		setPosition(qCurLine * 16 + qCurDiff);
+		break;
+	default:
+		break;
+	}
 
 	updateWithoutHeader();
 }
@@ -644,7 +632,23 @@ ViewFrame::onMouseWheel(WPARAM wParam, LPARAM lParam)
 {
 	if (!isLoaded()) return;
 
-	onVerticalMove(- (short)HIWORD(wParam) / WHEEL_DELTA);
+	int nLineDiff = - (short)HIWORD(wParam) / WHEEL_DELTA;
+
+	switch (m_pDrawInfo->m_ScrollConfig.m_wheelScroll) {
+	case WHEEL_AS_ARROW_KEYS:
+		onVerticalMove(nLineDiff);
+		break;
+	case WHEEL_AS_SCROLL_BAR:
+		{
+			int absNLineDiff = abs(nLineDiff);
+			for (int n = 0; n < absNLineDiff; n++)
+				onVScroll(nLineDiff > 0 ? SB_LINEDOWN : SB_LINEUP, 0);
+		}
+		break;
+	default:
+		assert(0);
+		break;
+	}
 }
 
 void

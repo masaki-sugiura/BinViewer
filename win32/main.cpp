@@ -290,7 +290,8 @@ OnCreate(HWND hWnd)
 							   DEFAULT_FG_COLOR_ADDRESS, DEFAULT_BK_COLOR_ADDRESS,
 							   DEFAULT_FG_COLOR_DATA, DEFAULT_BK_COLOR_DATA,
 							   DEFAULT_FG_COLOR_STRING, DEFAULT_BK_COLOR_STRING,
-							   DEFAULT_FG_COLOR_HEADER, DEFAULT_BK_COLOR_HEADER);
+							   DEFAULT_FG_COLOR_HEADER, DEFAULT_BK_COLOR_HEADER,
+							   CARET_STATIC, WHEEL_AS_ARROW_KEYS);
 
 	g_pViewFrame = new ViewFrame(hWnd, rctClient, g_pDrawInfo.ptr(), NULL);
 	assert(g_pViewFrame.ptr());
@@ -398,6 +399,15 @@ OnSetFontConfig(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		g_pViewFrame->setDrawInfo(g_pDrawInfo.ptr());
 }
 
+void
+OnSetScrollConfig(HWND hWnd, WPARAM wParam, LPARAM lParam)
+{
+	if (!lParam) return;
+
+	g_pDrawInfo->m_ScrollConfig = *(ScrollConfig*)lParam;
+	g_pViewFrame->setDrawInfo(g_pDrawInfo.ptr());
+}
+
 LRESULT CALLBACK
 MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -493,6 +503,10 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_USER_SET_FONT_CONFIG:
 		OnSetFontConfig(hWnd, wParam, lParam);
+		break;
+
+	case WM_USER_SET_SCROLL_CONFIG:
+		OnSetScrollConfig(hWnd, wParam, lParam);
 		break;
 
 	case WM_SIZING:

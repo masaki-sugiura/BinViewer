@@ -5,6 +5,7 @@
 
 #include "drawinfo.h"
 #include "messages.h"
+#include "auto_ptr.h"
 #include <string>
 #include <exception>
 #include <map>
@@ -84,6 +85,23 @@ struct Icon {
 	HBITMAP setColor(COLORREF cref);
 };
 
+class SampleView {
+public:
+	SampleView(HWND hwndSample, FontConfig& fontConfig, ColorConfig* colorConfig);
+	~SampleView();
+
+	void updateSample(FontConfig& fontConfig, ColorConfig* colorConfig);
+
+private:
+	HWND m_hwndSample;
+	RECT m_rctSample;
+	HDC  m_hdcSample;
+	HBITMAP m_hbmSample;
+	WNDPROC m_pfnOrgWndProc;
+
+	static int CALLBACK SampleViewProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+};
+
 class FontConfigPage : public ConfigPage {
 public:
 	FontConfigPage(DrawInfo* pDrawInfo);
@@ -96,6 +114,7 @@ protected:
 	Icon m_icFgColor, m_icBkColor;
 	FontConfig m_FontConfig;
 	ColorConfig m_ColorConfig[4];
+	Auto_Ptr<SampleView> m_pSampleView;
 
 	BOOL initDialog(HWND hDlg);
 	void destroyDialog();
@@ -125,6 +144,8 @@ public:
 	bool applyChanges();
 
 protected:
+	ScrollConfig m_ScrollConfig;
+
 	BOOL initDialog(HWND hDlg);
 	BOOL dialogProcMain(UINT, WPARAM, LPARAM);
 };
@@ -139,6 +160,7 @@ public:
 	bool applyChanges();
 
 protected:
+	BOOL m_bDirty;
 	RECT m_rctPage;
 	ConfigPage* m_pConfigPages[CONFIG_DIALOG_PAGE_NUM];
 

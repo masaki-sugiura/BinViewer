@@ -124,13 +124,15 @@ DrawInfo::DrawInfo(HDC hDC, float fontsize,
 				   COLORREF crFgColorAddr, COLORREF crBkColorAddr,
 				   COLORREF crFgColorData, COLORREF crBkColorData,
 				   COLORREF crFgColorStr, COLORREF crBkColorStr,
-				   COLORREF crFgColorHeader, COLORREF crBkColorHeader)
+				   COLORREF crFgColorHeader, COLORREF crBkColorHeader,
+				   CARET_MOVE caretMove, WHEEL_SCROLL wheelScroll)
 	: m_hDC(hDC),
 	  m_FontInfo(hDC, fontsize, faceName, bBoldFace),
 	  m_tciHeader("ヘッダ", crFgColorHeader, crBkColorHeader),
 	  m_tciAddress("アドレス", crFgColorAddr, crBkColorAddr),
 	  m_tciData("データ", crFgColorData, crBkColorData),
-	  m_tciString("文字列", crFgColorStr, crBkColorStr)
+	  m_tciString("文字列", crFgColorStr, crBkColorStr),
+	  m_ScrollConfig(caretMove, wheelScroll)
 {
 }
 

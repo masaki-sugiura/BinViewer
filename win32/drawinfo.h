@@ -118,6 +118,30 @@ private:
 class InvalidIndexError : public exception {
 };
 
+typedef enum {
+	CARET_STATIC = 0,
+	CARET_ENSURE_VISIBLE = 1,
+	CARET_SCROLL = 2,
+	CARET_LAST
+} CARET_MOVE;
+
+typedef enum {
+	WHEEL_AS_ARROW_KEYS = 0,
+	WHEEL_AS_SCROLL_BAR = 1,
+	WHEEL_LAST
+} WHEEL_SCROLL;
+
+struct ScrollConfig {
+	CARET_MOVE   m_caretMove;
+	WHEEL_SCROLL m_wheelScroll;
+	ScrollConfig(CARET_MOVE caretMove, WHEEL_SCROLL wheelScroll)
+		: m_caretMove(caretMove), m_wheelScroll(wheelScroll)
+	{
+//		m_caretMove = CARET_SCROLL;
+//		m_wheelScroll = WHEEL_AS_SCROLL_BAR;
+	}
+};
+
 class DrawInfo {
 public:
 	DrawInfo(HDC hDC, float fontsize,
@@ -125,11 +149,13 @@ public:
 			 COLORREF crFgColorAddr, COLORREF crBkColorAddr,
 			 COLORREF crFgColorData, COLORREF crBkColorData,
 			 COLORREF crFgColorStr, COLORREF crBkColorStr,
-			 COLORREF crFgColorHeader, COLORREF crBkColorHeader);
+			 COLORREF crFgColorHeader, COLORREF crBkColorHeader,
+			 CARET_MOVE caretMove, WHEEL_SCROLL wheelScroll);
 
 	HDC m_hDC;
 	FontInfo m_FontInfo;
 	TextColorInfo m_tciHeader, m_tciAddress, m_tciData, m_tciString;
+	ScrollConfig m_ScrollConfig;
 
 	TextColorInfo& getTextColorInfo(int index)
 	{

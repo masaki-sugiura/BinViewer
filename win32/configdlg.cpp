@@ -142,6 +142,7 @@ ConfigMainDlg::getCurrentPage() const
 bool
 ConfigMainDlg::applyChanges()
 {
+	if (!m_bDirty) return true;
 	for (int i = 0; i < CONFIG_DIALOG_PAGE_NUM; i++) {
 		ConfigPage* pPage = m_pConfigPages[i];
 		if (pPage && pPage->isShown()) {
@@ -153,6 +154,7 @@ ConfigMainDlg::applyChanges()
 			}
 		}
 	}
+	m_bDirty = FALSE;
 	return true;
 }
 
@@ -160,6 +162,8 @@ BOOL
 ConfigMainDlg::initDialog(HWND hDlg)
 {
 	if (!ConfigDialog::initDialog(hDlg)) return FALSE;
+
+	m_bDirty = FALSE;
 
 	HWND hwndTab = ::GetDlgItem(hDlg, IDC_CONFIG_TAB);
 	if (!hwndTab) return FALSE;
@@ -265,10 +269,15 @@ ConfigMainDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_USER_ENABLE_APPLY_BUTTON:
+		if (wParam) m_bDirty = TRUE;
 		::EnableWindow(::GetDlgItem(m_hwndDlg, IDC_APPLY), wParam);
 		break;
 
 	case WM_USER_SET_FONT_CONFIG:
+		::SendMessage(m_hwndParent, uMsg, wParam, lParam);
+		break;
+
+	case WM_USER_SET_SCROLL_CONFIG:
 		::SendMessage(m_hwndParent, uMsg, wParam, lParam);
 		break;
 
@@ -312,6 +321,156 @@ Icon::setColor(COLORREF cref)
 	return (HBITMAP)::SelectObject(m_hDC, hOrgBitmap);
 }
 
+SampleView::SampleView(HWND hwndSample,
+					   FontConfig& fontConfig,
+					   ColorConfig* colorConfig)
+	: m_hwndSample(hwndSample)
+{
+	::SetWindowLong(m_hwndSample, GWL_USERDATA, (LONG)this);
+	m_pfnOrgWndProc = (WNDPROC)::SetWindowLong(m_hwndSample, GWL_WNDPROC,
+											   (LONG)SampleViewProc);
+	::GetClientRect(m_hwndSample, &m_rctSample);
+	HDC hDC = ::GetDC(m_hwndSample);
+	m_hdcSample = ::CreateCompatibleDC(hDC);
+	m_hbmSample = ::CreateCompatibleBitmap(hDC,
+										   m_rctSample.right - m_rctSample.left,
+										   m_rctSample.bottom - m_rctSample.top);
+	::SelectObject(m_hdcSample, m_hbmSample);
+	::ReleaseDC(m_hwndSample, hDC);
+	updateSample(fontConfig, colorConfig);
+}
+
+SampleView::~SampleView()
+{
+	::SetWindowLong(m_hwndSample, GWL_WNDPROC, (LONG)m_pfnOrgWndProc);
+	::DeleteObject(m_hbmSample);
+	::DeleteDC(m_hdcSample);
+}
+
+void
+SampleView::updateSample(FontConfig& fontConfig, ColorConfig* colorConfig)
+{
+	LOGFONT lfont;
+	lfont.lfHeight = - (int) (fontConfig.m_fFontSize
+							  * ::GetDeviceCaps(m_hdcSample, LOGPIXELSY) / 72);
+	lfont.lfWidth  = 0;
+	lfont.lfEscapement = 0;
+	lfont.lfOrientation = 0;
+	lfont.lfWeight = fontConfig.m_bBoldFace ? FW_BOLD : FW_NORMAL;
+	lfont.lfItalic = FALSE;
+	lfont.lfUnderline = FALSE;
+	lfont.lfStrikeOut = FALSE;
+	lfont.lfCharSet = DEFAULT_CHARSET;
+	lfont.lfOutPrecision = OUT_DEFAULT_PRECIS;
+	lfont.lfClipPrecision = CLIP_DEFAULT_PRECIS;
+	lfont.lfQuality = DEFAULT_QUALITY;
+	lfont.lfPitchAndFamily = FF_DONTCARE;
+	lstrcpy(lfont.lfFaceName, fontConfig.m_pszFontFace);
+	HFONT hFont = ::CreateFontIndirect(&lfont);
+	if (!hFont) return;
+
+	HGDIOBJ hOrgFont = ::SelectObject(m_hdcSample, hFont);
+	TEXTMETRIC tm;
+	if (!::GetTextMetrics(m_hdcSample, &tm)) {
+		::SelectObject(m_hdcSample, hOrgFont);
+		::DeleteObject(hFont);
+		return;
+	}
+
+	int anXPitch[9];
+	for (int i = 0; i < 9; i++) {
+		anXPitch[i] = tm.tmAveCharWidth;
+	}
+
+	int height = m_rctSample.bottom - m_rctSample.top + tm.tmHeight + 1,
+		a_offset = tm.tmAveCharWidth / 2,
+		d_offset = tm.tmAveCharWidth * 5 + tm.tmAveCharWidth / 2,
+		s_offset = m_rctSample.right - m_rctSample.left - tm.tmAveCharWidth * 4
+					+ tm.tmAveCharWidth / 2;
+
+	HBRUSH hbrBackground = ::CreateSolidBrush(colorConfig[0].m_crBkColor);
+	RECT rcPaint = m_rctSample;
+	rcPaint.bottom = tm.tmHeight + 1;
+	::FillRect(m_hdcSample, &rcPaint, hbrBackground);
+	::DeleteObject(hbrBackground);
+	::SetTextColor(m_hdcSample, colorConfig[0].m_crFgColor);
+	::SetBkColor(m_hdcSample, colorConfig[0].m_crBkColor);
+	::ExtTextOut(m_hdcSample, a_offset, 0,
+				 0, NULL, "0000", 4, anXPitch);
+	::ExtTextOut(m_hdcSample, d_offset, 0,
+				 0, NULL, "00 01 ...", 9, anXPitch);
+	::ExtTextOut(m_hdcSample, s_offset, 0,
+				 0, NULL, "012", 3, anXPitch);
+
+	hbrBackground = ::CreateSolidBrush(colorConfig[1].m_crBkColor);
+	rcPaint.top    = tm.tmHeight + 1;
+	rcPaint.bottom = m_rctSample.bottom;
+	rcPaint.right  = tm.tmAveCharWidth * 5;
+	::FillRect(m_hdcSample, &rcPaint, hbrBackground);
+	::DeleteObject(hbrBackground);
+	::SetTextColor(m_hdcSample, colorConfig[1].m_crFgColor);
+	::SetBkColor(m_hdcSample, colorConfig[1].m_crBkColor);
+	int addr = 0;
+	for (int y = tm.tmHeight + 1; y < height; y += tm.tmHeight + 1) {
+		char buf[5];
+		wsprintf(buf, "%04x", addr);
+		::ExtTextOut(m_hdcSample, a_offset, y,
+					 0, NULL, buf, 4, anXPitch);
+		addr += 16;
+	}
+
+	hbrBackground = ::CreateSolidBrush(colorConfig[2].m_crBkColor);
+	rcPaint.left  = rcPaint.right;
+	rcPaint.right = s_offset;
+	::FillRect(m_hdcSample, &rcPaint, hbrBackground);
+	::DeleteObject(hbrBackground);
+	::SetTextColor(m_hdcSample, colorConfig[2].m_crFgColor);
+	::SetBkColor(m_hdcSample, colorConfig[2].m_crBkColor);
+	for (y = tm.tmHeight + 1; y < height; y += tm.tmHeight + 1) {
+		::ExtTextOut(m_hdcSample, d_offset, y,
+					 0, NULL, "AB CD ...", 9, anXPitch);
+	}
+
+	hbrBackground = ::CreateSolidBrush(colorConfig[3].m_crBkColor);
+	rcPaint.left  = m_rctSample.right - m_rctSample.left - tm.tmAveCharWidth * 4;
+	rcPaint.right = m_rctSample.right - m_rctSample.left;
+	::FillRect(m_hdcSample, &rcPaint, hbrBackground);
+	::DeleteObject(hbrBackground);
+	::SetTextColor(m_hdcSample, colorConfig[3].m_crFgColor);
+	::SetBkColor(m_hdcSample, colorConfig[3].m_crBkColor);
+	for (y = tm.tmHeight + 1; y < height; y += tm.tmHeight + 1) {
+		::ExtTextOut(m_hdcSample, s_offset, y,
+					 0, NULL, "...", 3, anXPitch);
+	}
+
+	::SelectObject(m_hdcSample, hOrgFont);
+	::DeleteObject(hFont);
+
+	::InvalidateRect(m_hwndSample, NULL, FALSE);
+	::UpdateWindow(m_hwndSample);
+}
+
+int CALLBACK
+SampleView::SampleViewProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	SampleView* _this = (SampleView*)::GetWindowLong(hWnd, GWL_USERDATA);
+	assert(_this);
+
+	if (uMsg == WM_PAINT) {
+		PAINTSTRUCT ps;
+		::BeginPaint(hWnd, &ps);
+		::BitBlt(ps.hdc, ps.rcPaint.left, ps.rcPaint.top,
+				 ps.rcPaint.right - ps.rcPaint.left,
+				 ps.rcPaint.bottom - ps.rcPaint.top,
+				 _this->m_hdcSample, ps.rcPaint.left, ps.rcPaint.top,
+				 SRCCOPY);
+		::EndPaint(hWnd, &ps);
+		return 0;
+	}
+
+	return ::CallWindowProc(_this->m_pfnOrgWndProc, hWnd, uMsg, wParam, lParam);
+}
+
 static inline void
 get_font_pt_from_pixel(HDC hDC, int pixel, LPSTR buf)
 {
@@ -322,7 +481,8 @@ get_font_pt_from_pixel(HDC hDC, int pixel, LPSTR buf)
 FontConfigPage::FontConfigPage(DrawInfo* pDrawInfo)
 	: ConfigPage(pDrawInfo, IDD_CONFIG_FONT, "フォント"),
 	  m_icFgColor(pDrawInfo->m_hDC),
-	  m_icBkColor(pDrawInfo->m_hDC)
+	  m_icBkColor(pDrawInfo->m_hDC),
+	  m_pSampleView(NULL)
 {
 }
 
@@ -349,12 +509,16 @@ FontConfigPage::initDialog(HWND hDlg)
 		m_ColorConfig[i] = tci.getColorConfig();
 	}
 
+	m_pSampleView = new SampleView(::GetDlgItem(hDlg, IDC_CONFIG_FONT_SAMPLE),
+								   m_FontConfig, m_ColorConfig);
+
 	return TRUE;
 }
 
 void
 FontConfigPage::destroyDialog()
 {
+	m_pSampleView = NULL;
 }
 
 void
@@ -530,13 +694,46 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				HWND hwndFontSize = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_SIZE);
 				char sizebuf[8];
 				::GetWindowText(hwndFontSize, sizebuf, 7);
-				prepareFontSize((float)strtod(sizebuf, NULL));
+				float fontsize = (float)strtod(sizebuf, NULL);
+				prepareFontSize(fontsize);
+				if (fontsize > 0.0) m_FontConfig.m_fFontSize = fontsize;
+				char fontface[LF_FACESIZE];
+				::GetWindowText(::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_NAME),
+								fontface, LF_FACESIZE);
+				if (fontface[0]) {
+					lstrcpy(m_FontConfig.m_pszFontFace, fontface);
+					m_pSampleView->updateSample(m_FontConfig, m_ColorConfig);
+				}
 			}
 			break;
 
 		case IDC_CONFIG_FONT_SIZE:
-			if (HIWORD(wParam) == CBN_SELCHANGE ||
-				HIWORD(wParam) == CBN_EDITCHANGE) {
+			{
+				char sizebuf[8] = { 0 };
+				HWND hwndFontSize = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_SIZE);
+				switch (HIWORD(wParam)) {
+				case CBN_SELCHANGE:
+					{
+						int pos = ::SendMessage(hwndFontSize, CB_GETCURSEL, 0, 0);
+						if (pos != CB_ERR) {
+							::SendMessage(hwndFontSize, CB_GETLBTEXT,
+										  pos, (LPARAM)sizebuf);
+						}
+					}
+					break;
+
+				case CBN_EDITCHANGE:
+					::GetWindowText(hwndFontSize, sizebuf, 7);
+					break;
+				}
+				if (sizebuf[0]) {
+					char* ptr;
+					float fontsize = (float)strtod(sizebuf, &ptr);
+					if (ptr != sizebuf && fontsize > 0.0) {
+						m_FontConfig.m_fFontSize = fontsize;
+						m_pSampleView->updateSample(m_FontConfig, m_ColorConfig);
+					}
+				}
 				::SendMessage(m_hwndParent, WM_USER_ENABLE_APPLY_BUTTON,
 							  TRUE, 0);
 			}
@@ -578,6 +775,10 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		case IDC_CONFIG_FONT_BOLD:
 			if (HIWORD(wParam) == BN_CLICKED) {
 				::SendMessage(m_hwndParent, WM_USER_ENABLE_APPLY_BUTTON, TRUE, 0);
+				m_FontConfig.m_bBoldFace
+					= ::SendDlgItemMessage(m_hwndDlg, IDC_CONFIG_FONT_BOLD,
+										   BM_GETCHECK, 0, 0) == BST_CHECKED;
+				m_pSampleView->updateSample(m_FontConfig, m_ColorConfig);
 			}
 			break;
 
@@ -593,6 +794,7 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 						::SendDlgItemMessage(m_hwndDlg, IDC_CONFIG_FONT_FGCOLOR,
 											 BM_SETIMAGE, IMAGE_BITMAP,
 											 (LPARAM)m_icFgColor.setColor(cref));
+						m_pSampleView->updateSample(m_FontConfig, m_ColorConfig);
 					}
 				}
 			}
@@ -610,6 +812,7 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 						::SendDlgItemMessage(m_hwndDlg, IDC_CONFIG_FONT_BKCOLOR,
 											 BM_SETIMAGE, IMAGE_BITMAP,
 											 (LPARAM)m_icBkColor.setColor(cref));
+						m_pSampleView->updateSample(m_FontConfig, m_ColorConfig);
 					}
 				}
 			}
@@ -683,14 +886,28 @@ FontConfigPage::chooseColor(COLORREF& cref)
 }
 
 CursorConfigPage::CursorConfigPage(DrawInfo* pDrawInfo)
-	: ConfigPage(pDrawInfo, IDD_CONFIG_CURSOR, "カーソル")
+	: ConfigPage(pDrawInfo, IDD_CONFIG_CURSOR, "カーソル"),
+	  m_ScrollConfig(pDrawInfo->m_ScrollConfig)
 {
+//	m_ScrollConfig = m_pDrawInfo->m_ScrollConfig;
 }
 
 BOOL
 CursorConfigPage::initDialog(HWND hDlg)
 {
 	if (!ConfigPage::initDialog(hDlg)) return FALSE;
+
+	if (m_ScrollConfig.m_caretMove == CARET_STATIC)
+		::SendDlgItemMessage(hDlg, IDC_CONFIG_CARET_STATIC, BM_SETCHECK, BST_CHECKED, 0);
+	else
+		::SendDlgItemMessage(hDlg, IDC_CONFIG_CARET_SCROLL, BM_SETCHECK, BST_CHECKED, 0);
+
+	if (m_ScrollConfig.m_wheelScroll == WHEEL_AS_ARROW_KEYS)
+		::SendDlgItemMessage(hDlg, IDC_CONFIG_WHEEL_AS_ARROW_KEYS,
+							 BM_SETCHECK, BST_CHECKED, 0);
+	else
+		::SendDlgItemMessage(hDlg, IDC_CONFIG_WHEEL_AS_SCROLL_BAR,
+							 BM_SETCHECK, BST_CHECKED, 0);
 
 	return TRUE;
 }
@@ -700,20 +917,24 @@ CursorConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg) {
 	case WM_COMMAND:
-#if 0
+		if (HIWORD(wParam) != BN_CLICKED) break;
 		switch (LOWORD(wParam)) {
-		case IDC_PART_LIST:
+		case IDC_CONFIG_CARET_STATIC:
+			m_ScrollConfig.m_caretMove = CARET_STATIC;
 			break;
-		case IDC_CONFIG_FONT_BOLD:
+		case IDC_CONFIG_CARET_SCROLL:
+			m_ScrollConfig.m_caretMove = CARET_SCROLL;
 			break;
-		case IDC_CONFIG_FONT_FGCOLOR:
+		case IDC_CONFIG_WHEEL_AS_ARROW_KEYS:
+			m_ScrollConfig.m_wheelScroll = WHEEL_AS_ARROW_KEYS;
 			break;
-		case IDC_CONFIG_FONT_BGCOLOR:
+		case IDC_CONFIG_WHEEL_AS_SCROLL_BAR:
+			m_ScrollConfig.m_wheelScroll = WHEEL_AS_SCROLL_BAR;
 			break;
 		default:
 			break;
 		}
-#endif
+		::SendMessage(m_hwndParent, WM_USER_ENABLE_APPLY_BUTTON, TRUE, 0);
 		break;
 
 	case WM_NOTIFY:
@@ -729,6 +950,10 @@ CursorConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 bool
 CursorConfigPage::applyChanges()
 {
+//	m_pDrawInfo->m_ScrollConfig = m_ScrollConfig;
+	::SendMessage(m_hwndParent, WM_USER_SET_SCROLL_CONFIG,
+				  0, (LPARAM)&m_ScrollConfig);
+
 	return true;
 }
 

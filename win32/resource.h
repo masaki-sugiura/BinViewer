@@ -29,10 +29,12 @@
 #define IDC_CONFIG_SHOW_PROPFONT        1017
 #define IDC_CONFIG_FONT_BOLD            1018
 #define IDC_CONFIG_FONT_FGCOLOR         1020
-#define IDC_CONFIG_CARET_STATIC         1021
 #define IDC_CONFIG_FONT_BKCOLOR         1021
-#define IDC_CONFIG_CARET_ENSURE_VISIBLE 1022
-#define IDC_CONFIG_CARET_SCROLL         1023
+#define IDC_CONFIG_CARET_STATIC         1021
+#define IDC_CONFIG_CARET_SCROLL         1022
+#define IDC_CONFIG_WHEEL_AS_ARROW_KEYS  1023
+#define IDC_CONFIG_WHEEL_AS_SCROLL_BAR  1024
+#define IDC_CONFIG_FONT_SAMPLE          1025
 #define IDR_OPEN                        40001
 #define IDM_OPEN                        40001
 #define IDR_CLOSE                       40002
@@ -65,7 +67,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        109
 #define _APS_NEXT_COMMAND_VALUE         40020
-#define _APS_NEXT_CONTROL_VALUE         1022
+#define _APS_NEXT_CONTROL_VALUE         1026
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
