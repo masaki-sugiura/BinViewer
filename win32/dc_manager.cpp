@@ -184,6 +184,24 @@ DC_Manager::DC_Manager(int nBufSize, int nBufCount)
 }
 
 bool
+DC_Manager::onLoadFile(LF_Acceptor* pLFAcceptor)
+{
+	return BGB_Manager::onLoadFile(pLFAcceptor);
+}
+
+void
+DC_Manager::onUnloadFile()
+{
+	BGB_Manager::onUnloadFile();
+	m_nXOffset = m_nYOffset = 0;
+	m_qYOffset = 0;
+	m_qCursorPos = m_qStartSelected = -1;
+	m_qSelectedSize = 0;
+	m_bOverlapped = false;
+	m_pCurBuf = m_pNextBuf = NULL;
+}
+
+bool
 DC_Manager::setDrawInfo(DrawInfo* pDrawInfo)
 {
 	for (int i = getMinBufferIndex(); i < getMaxBufferIndex(); i++) {

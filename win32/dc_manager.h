@@ -90,6 +90,9 @@ class DC_Manager : public BGB_Manager {
 public:
 	DC_Manager(int nBufSize, int nBufCount);
 
+	bool onLoadFile(LF_Acceptor* pLFAcceptor);
+	void onUnloadFile();
+
 	int width() const { return m_nWidth; }
 	int height() const { return m_nHeight; }
 

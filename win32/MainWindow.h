@@ -25,15 +25,22 @@ private:
 	Auto_Ptr<BitmapViewWindow> m_pBitmapViewWindow;
 	Auto_Ptr<StatusBar> m_pStatusBar;
 	HWND m_hWnd;
+	HACCEL m_hAccel;
 
 	void onCreate(HWND hWnd);
 	void onResize();
 	void onResizing(RECT* pRect);
 	void onQuit();
+	void onOpenFile();
+	void onCloseFile();
 
 	HV_DrawInfo* loadDrawInfo(HWND hWnd);
 
 	void adjustWindowSize(HWND hWnd, const RECT& rctClient);
+
+	bool getImageFileName(LPSTR buf, int bufsize);
+	bool openFile(LPCSTR pszFileName);
+	void enableMenuForOpenFile(bool bEnable);
 
 	static int registerWndClass(HINSTANCE hInstance);
 

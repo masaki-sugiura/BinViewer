@@ -4,6 +4,14 @@
 
 #define VIEW_CLASSNAME  "BinViewerViewClass32"
 
+inline void
+SToC(RECT& rctView)
+{
+	rctView.right -= rctView.left;
+	rctView.bottom -= rctView.top;
+	rctView.left = rctView.top = 0;
+}
+
 View::View(LF_Notifier& lfNotifier,
 		   HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 		   const RECT& rctWindow,
@@ -84,6 +92,7 @@ View::onLoadFile()
 	if (!m_pDCManager->onLoadFile(this)) return false;
 	RECT rctView;
 	::GetWindowRect(m_hwndView, &rctView);
+	SToC(rctView);
 	setFrameRect(rctView, false);
 	m_smHorz.setPosition(0);
 	m_smVert.setPosition(0);
@@ -95,10 +104,9 @@ void
 View::onUnloadFile()
 {
 	m_pDCManager->onUnloadFile();
-	RECT rctView;
-	::GetWindowRect(m_hwndView, &rctView);
-	setFrameRect(rctView, false);
-	setCurrentLine(0, true);
+	m_smHorz.disable();
+	m_smVert.disable();
+	redrawView();
 }
 
 void
@@ -162,32 +170,40 @@ View::adjustWindowRect(RECT& rctFrame)
 	::GetWindowRect(m_hwndView, &rctWindow);
 	::GetClientRect(m_hwndView, &rctClient);
 
+	int x_diff = rctWindow.right - rctWindow.left - rctClient.right,
+		y_diff = rctWindow.bottom - rctWindow.top - rctClient.bottom;
+
 	int nPixelsPerLine = m_pDrawInfo->getPixelsPerLine();
 
 	rctFrame.left = rctFrame.top = 0;
-	rctFrame.right = rctWindow.right - rctWindow.left - rctClient.right
-					 + m_pDCManager->width();
-	rctFrame.bottom = ((rctFrame.bottom + nPixelsPerLine - 1) / nPixelsPerLine)
+	rctFrame.right = m_pDCManager->width() + x_diff;
+	rctFrame.bottom = ((rctClient.bottom - rctClient.top + nPixelsPerLine - 1) / nPixelsPerLine)
 					   * nPixelsPerLine
-					+ (rctWindow.bottom - rctWindow.top - rctClient.bottom);
+					+ y_diff;
 }
 
 void
 View::setFrameRect(const RECT& rctFrame, bool bRedraw)
 {
-	::SetWindowPos(m_hwndView, NULL,
-				   rctFrame.left, rctFrame.top,
-				   rctFrame.right - rctFrame.left,
-				   rctFrame.bottom - rctFrame.top,
-				   SWP_NOZORDER);
-
-	RECT rctClient;
+	RECT rctWindow, rctClient;
+	::GetWindowRect(m_hwndView, &rctWindow);
 	::GetClientRect(m_hwndView, &rctClient);
 
-	int nViewWidth  = rctClient.right - rctClient.left,
-		nViewHeight = rctClient.bottom - rctClient.top;
+	SToC(rctWindow);
+
+	int x_diff = rctWindow.right - rctClient.right,
+		y_diff = rctWindow.bottom - rctClient.bottom;
+
+	int nViewWidth  = rctFrame.right - rctFrame.left - x_diff,
+		nViewHeight = rctFrame.bottom - rctFrame.top - y_diff;
 
 	m_pDCManager->setViewSize(nViewWidth, nViewHeight);
+
+	::SetWindowPos(m_hwndView, NULL,
+				   rctFrame.left, rctFrame.top,
+				   nViewWidth + x_diff,
+				   nViewHeight + y_diff,
+				   SWP_NOZORDER);
 
 	m_smHorz.setInfo(m_pDCManager->width(),
 					 nViewWidth,
@@ -211,6 +227,7 @@ View::getFrameRect(RECT& rctFrame)
 	::GetWindowRect(m_hwndView, &rctFrame);
 }
 
+// 
 void
 View::setViewSize(int width, int height)
 {
@@ -218,20 +235,19 @@ View::setViewSize(int width, int height)
 	::GetWindowRect(m_hwndView, &rctWindow);
 	::GetClientRect(m_hwndView, &rctClient);
 
-	if (width > 0) {
-		rctWindow.right = rctWindow.left + width
-						+ (rctWindow.right - rctWindow.left)
-						- (rctClient.right - rctClient.left);
-	} else {
-		width = rctClient.right - rctClient.left;
+	int x_diff = rctWindow.right - rctWindow.left - rctClient.right,
+		y_diff = rctWindow.bottom - rctWindow.top - rctClient.bottom;
+
+	if (width <= 0) {
+		width = rctClient.right;
 	}
-	if (height > 0) {
-		rctWindow.bottom = rctWindow.top + height
-						+ (rctWindow.bottom - rctWindow.top)
-						- (rctClient.bottom - rctClient.top);
-	} else {
-		height = rctClient.bottom - rctClient.top;
+	if (height <= 0) {
+		height = rctClient.bottom;
 	}
+
+	rctWindow.left = rctWindow.top = 0;
+	rctWindow.right = width + x_diff;
+	rctWindow.bottom = height + y_diff;
 
 	::SetWindowPos(m_hwndView, NULL,
 				   rctWindow.left, rctWindow.top,
