@@ -5,6 +5,7 @@
 #define _WIN32_WINNT  0x500  // to support mouse wheel
 
 #include "searchdlg.h"
+#include "messages.h"
 #include "strutils.h"
 #include "resource.h"
 #include <assert.h>
@@ -15,10 +16,10 @@ struct GrepResult {
 	int m_nSize;
 };
 
-SearchDlg::SearchDlg(SearchMainDlg* pParentDlg, ViewFrame& viewFrame)
+SearchDlg::SearchDlg(SearchMainDlg* pParentDlg, LF_Notifier& lfNotifier)
 	: Dialog(IDD_SEARCH),
 	  m_pParentDlg(pParentDlg),
-	  m_ViewFrame(viewFrame),
+	  m_lfNotifier(lfNotifier),
 	  m_bSearching(false),
 	  m_nStringType(0)
 {
@@ -116,12 +117,6 @@ SearchDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 
-	case WM_MOUSEWHEEL:
-		if (!m_bSearching) {
-			m_ViewFrame.onMouseWheel(wParam, lParam);
-		}
-		break;
-
 	case WM_CLOSE:
 		::DestroyWindow(m_hwndDlg);
 		break;
@@ -185,7 +180,7 @@ convert_hexstr_to_bytearray(BYTE* buf, int len)
 bool
 SearchDlg::prepareFindCallbackArg(FindCallbackArg*& pFindCallbackArg)
 {
-	if (!m_ViewFrame.isLoaded()) return false;
+	if (m_lfNotifier.getCursorPos() < 0) return false;
 
 	// get raw data
 	HWND hEdit = ::GetDlgItem(m_hwndDlg, IDC_SEARCHDATA);
@@ -205,8 +200,8 @@ SearchDlg::prepareFindCallbackArg(FindCallbackArg*& pFindCallbackArg)
 	pFindCallbackArg->m_pData = buf;
 	pFindCallbackArg->m_nBufSize = len;
 	pFindCallbackArg->m_qFindAddress = -1;
-	pFindCallbackArg->m_qOrgAddress = m_ViewFrame.getPosition();
-	pFindCallbackArg->m_nOrgSelectedSize = m_ViewFrame.getSelectedSize();
+	pFindCallbackArg->m_qOrgAddress = m_lfNotifier.getCursorPos();
+	pFindCallbackArg->m_nOrgSelectedSize = 1;
 
 	return true;
 }
@@ -225,8 +220,6 @@ SearchDlg::search(FIND_DIRECTION dir)
 	if (dir == FIND_FORWARD) {
 		pFindCallbackArg->m_qStartAddress += pFindCallbackArg->m_nOrgSelectedSize;
 	}
-
-	m_ViewFrame.unselect();
 
 	if (m_pParentDlg->findCallback(pFindCallbackArg)) return true;
 
@@ -247,12 +240,10 @@ SearchDlg::FindCallbackProc(FindCallbackArg* pArg)
 
 	if (pDlg->m_hwndDlg) {
 		if (pArg->m_qFindAddress >= 0) {
-			pDlg->m_ViewFrame.onJump(pArg->m_qFindAddress, pArg->m_nBufSize);
-			pDlg->m_ViewFrame.select(pArg->m_qFindAddress, pArg->m_nBufSize);
+			pDlg->m_lfNotifier.setCursorPos(pArg->m_qFindAddress);
 		} else {
 			::MessageBeep(MB_ICONEXCLAMATION);
-			pDlg->m_ViewFrame.select(pArg->m_qOrgAddress,
-									 pArg->m_nOrgSelectedSize);
+			pDlg->m_lfNotifier.setCursorPos(pArg->m_qOrgAddress);
 		}
 		::PostMessage(pDlg->m_hwndDlg, WM_USER_FIND_FINISH, 0, 0);
 	}
@@ -263,11 +254,11 @@ SearchDlg::FindCallbackProc(FindCallbackArg* pArg)
 
 GrepDlg::GrepDlg(SearchMainDlg* pParentDlg,
 				 SearchDlg* pSearchDlg,
-				 ViewFrame& viewFrame)
+				 LF_Notifier& lfNotifier)
 	: Dialog(IDD_SEARCH_GREP),
 	  m_pParentDlg(pParentDlg),
 	  m_pSearchDlg(pSearchDlg),
-	  m_ViewFrame(viewFrame)
+	  m_lfNotifier(lfNotifier)
 {
 	assert(pParentDlg && pSearchDlg);
 }
@@ -440,8 +431,7 @@ GrepDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				}
 				if (lvitem.state & LVIS_SELECTED) {
 					GrepResult* gr = (GrepResult*)lvitem.lParam;
-					m_ViewFrame.onJump(gr->m_qAddress, gr->m_nSize);
-					m_ViewFrame.select(gr->m_qAddress, gr->m_nSize);
+					m_lfNotifier.setCursorPos(gr->m_qAddress);
 				}
 			}
 			break;
@@ -460,8 +450,7 @@ GrepDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 					lvitem.iSubItem = 0;
 					ListView_GetItem(::GetDlgItem(m_hwndDlg, IDC_SEARCH_GREP_RESULT), &lvitem);
 					GrepResult* gr = (GrepResult*)lvitem.lParam;
-					m_ViewFrame.onJump(gr->m_qAddress, gr->m_nSize);
-					m_ViewFrame.select(gr->m_qAddress, gr->m_nSize);
+					m_lfNotifier.setCursorPos(gr->m_qAddress);
 				}
 				break;
 			}
@@ -479,16 +468,16 @@ GrepDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return TRUE;
 }
 
-SearchMainDlg::SearchMainDlg(ViewFrame& viewFrame)
+SearchMainDlg::SearchMainDlg(LF_Notifier& lfNotifier)
 	: Dialog(IDD_SEARCH_MAIN),
-	  m_ViewFrame(viewFrame),
+	  m_lfNotifier(lfNotifier),
 	  m_pSearchDlg(NULL),
 	  m_pGrepDlg(NULL),
 	  m_bShowGrepDialog(false),
 	  m_pThread(NULL)
 {
-	m_pSearchDlg = new SearchDlg(this, m_ViewFrame);
-	m_pGrepDlg = new GrepDlg(this, m_pSearchDlg, m_ViewFrame);
+	m_pSearchDlg = new SearchDlg(this, lfNotifier);
+	m_pGrepDlg = new GrepDlg(this, m_pSearchDlg, lfNotifier);
 }
 
 SearchMainDlg::~SearchMainDlg()
@@ -605,7 +594,7 @@ SearchMainDlg::findCallback(FindCallbackArg* pArg)
 	GetLock lock(m_lockFindCallbackData);
 
 	FindThreadProcArg* pThreadArg = new FindThreadProcArg;
-	pThreadArg->m_pLFAcceptor = &m_ViewFrame;
+	pThreadArg->m_pLFNotifier = &m_lfNotifier;
 	pThreadArg->m_pCallbackArg = pArg;
 
 	m_pThread = new FindThread(pThreadArg, new ThreadAttribute);

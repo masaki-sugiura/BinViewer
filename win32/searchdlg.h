@@ -3,14 +3,15 @@
 #ifndef SEARCHDLG_H_INC
 #define SEARCHDLG_H_INC
 
-#include "viewframe.h"
+#include "LF_Notify.h"
+#include "LargeFileReader.h"
 #include "dialog.h"
 
 class SearchMainDlg;
 
 class SearchDlg : public Dialog {
 public:
-	SearchDlg(SearchMainDlg* pParentDlg, ViewFrame& viewFrame);
+	SearchDlg(SearchMainDlg* pParentDlg, LF_Notifier& lfNotifier);
 	~SearchDlg();
 
 	bool prepareFindCallbackArg(FindCallbackArg*& pFindCallbackArg);
@@ -24,7 +25,7 @@ protected:
 
 private:
 	SearchMainDlg* m_pParentDlg;
-	ViewFrame& m_ViewFrame;
+	LF_Notifier& m_lfNotifier;
 	bool m_bSearching;
 	string m_strSearchStr;
 	int m_nStringType;
@@ -39,7 +40,7 @@ private:
 class GrepDlg : public Dialog {
 public:
 	GrepDlg(SearchMainDlg* pParentDlg, SearchDlg* pSearchDlg,
-			ViewFrame& viewFrame);
+			LF_Notifier& lfNotifier);
 	~GrepDlg();
 
 	bool grep();
@@ -52,14 +53,14 @@ protected:
 private:
 	SearchMainDlg* m_pParentDlg;
 	SearchDlg* m_pSearchDlg;
-	ViewFrame& m_ViewFrame;
+	LF_Notifier& m_lfNotifier;
 
 	static void GrepCallbackProc(FindCallbackArg* pArg);
 };
 
 class SearchMainDlg : public Dialog {
 public:
-	SearchMainDlg(ViewFrame& viewFrame);
+	SearchMainDlg(LF_Notifier& lfNotifier);
 	~SearchMainDlg();
 
 	bool findCallback(FindCallbackArg* pArg);
@@ -73,7 +74,7 @@ protected:
 	BOOL dialogProcMain(UINT, WPARAM, LPARAM);
 
 private:
-	ViewFrame& m_ViewFrame;
+	LF_Notifier& m_lfNotifier;
 	SearchDlg* m_pSearchDlg;
 	GrepDlg*   m_pGrepDlg;
 	bool m_bShowGrepDialog;

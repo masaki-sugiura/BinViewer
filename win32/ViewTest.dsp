@@ -142,6 +142,10 @@ SOURCE=.\MainWindow.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\searchdlg.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\StatusBar.cpp
 # End Source File
 # Begin Source File
@@ -218,11 +222,19 @@ SOURCE=.\MainWindow.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\messages.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\ringbuf.h
 # End Source File
 # Begin Source File
 
 SOURCE=.\scroll.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\searchdlg.h
 # End Source File
 # Begin Source File
 
@@ -252,6 +264,14 @@ SOURCE=.\View.h
 # Begin Group "Resource Files"
 
 # PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
+# Begin Source File
+
+SOURCE=.\BinViewer.exe.manifest
+# End Source File
+# Begin Source File
+
+SOURCE=.\config_p.bmp
+# End Source File
 # Begin Source File
 
 SOURCE=.\mainicon.ico

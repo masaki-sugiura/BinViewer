@@ -4,6 +4,7 @@
 
 #include "MainWindow.h"
 #include "JumpDlg.h"
+#include "SearchDlg.h"
 #include "ConfigDlg.h"
 #include "strutils.h"
 #include "resource.h"
@@ -144,8 +145,9 @@ MainWindow::MainWindow(HINSTANCE hInstance, LPCSTR lpszFileName)
 //	  m_pHVDrawInfo(NULL),
 //	  m_pHDDrawInfo(NULL),
 	  m_pAppConfig(NULL),
-	  m_pBitmapViewWindow(NULL),
 	  m_pStatusBar(NULL),
+	  m_pSearchDlg(NULL),
+	  m_pBitmapViewWindow(NULL),
 	  m_hWnd(NULL)
 {
 	// window class の登録
@@ -342,6 +344,18 @@ MainWindow::onJump()
 }
 
 void
+MainWindow::onSearch()
+{
+	if (!m_pSearchDlg.ptr()) {
+		m_pSearchDlg = new SearchMainDlg(m_lfNotifier);
+	}
+	if (!m_pSearchDlg->create(m_hWnd)) {
+		::MessageBox(m_hWnd, "検索ダイアログの表示に失敗しました", NULL, MB_OK);
+	}
+	enableMenuForSearch(false);
+}
+
+void
 MainWindow::onConfig()
 {
 	ConfigMainDlg(m_pAppConfig).doModal(m_hWnd);
@@ -525,6 +539,17 @@ MainWindow::enableMenuForOpenFile(bool bEnable)
 	::SendMessage(m_hWnd, WM_NCPAINT, 1, 0);
 }
 
+void
+MainWindow::enableMenuForSearch(bool bEnable)
+{
+	HMENU hMenu = ::GetMenu(m_hWnd);
+	assert(hMenu);
+	HMENU hFileMenu = ::GetSubMenu(hMenu, 1);
+	assert(hFileMenu);
+	::EnableMenuItem(hFileMenu, IDM_SEARCH,
+					 MF_BYCOMMAND | (bEnable ? MF_ENABLED : MF_GRAYED));
+}
+
 int
 MainWindow::registerWndClass(HINSTANCE hInstance)
 {
@@ -589,13 +614,7 @@ MainWindow::MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case IDM_SEARCH:
-#if 0
-			assert(g_pSearchDlg.ptr());
-			if (!g_pSearchDlg->create(hWnd)) {
-				::MessageBox(hWnd, "検索ダイアログの表示に失敗しました", NULL, MB_OK);
-			}
-			EnableSearchMenu(hWnd, FALSE);
-#endif
+			pMainWindow->onSearch();
 			break;
 
 		case IDM_JUMP:
@@ -643,6 +662,10 @@ MainWindow::MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 //			g_pViewFrame->onHorizontalMove(-1);
 			break;
 		}
+		break;
+
+	case WM_USER_CLOSE_SEARCH_DIALOG:
+		pMainWindow->enableMenuForSearch(true);
 		break;
 
 	case WM_USER_SET_FONT_CONFIG:

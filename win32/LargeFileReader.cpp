@@ -112,7 +112,7 @@ FindThread::thread(thread_arg_t arg)
 {
 	FindThreadProcArg* pThreadArg = (FindThreadProcArg*)arg;
 //	LargeFileReader* pLFReader = pThreadArg->m_pLFReader;
-	LF_Acceptor* pLFAcceptor = pThreadArg->m_pLFAcceptor;
+	LF_Notifier* pLFNotifier = pThreadArg->m_pLFNotifier;
 	FindCallbackArg* pCallbackArg = pThreadArg->m_pCallbackArg;
 
 	filesize_t pos = pCallbackArg->m_qStartAddress;
@@ -123,11 +123,15 @@ FindThread::thread(thread_arg_t arg)
 	int bufsize = blocksize * ((blocksize + size - 1) / blocksize);
 
 	bool bRet;
-	AutoLockReader alReaderOrg(pLFAcceptor, INFINITE, &bRet);
-	if (!bRet) {
-		if (pCallbackArg)
-			(*pCallbackArg->m_pfnCallback)(pCallbackArg);
-		return -1;
+	LargeFileReader* pOrgReader;
+	{
+		AutoLockReader<LF_Notifier> alReaderOrg(pLFNotifier, INFINITE, &bRet);
+		if (!bRet) {
+			if (pCallbackArg)
+				(*pCallbackArg->m_pfnCallback)(pCallbackArg);
+			return -1;
+		}
+		pOrgReader = alReaderOrg;
 	}
 
 	BYTE* buf = new BYTE[bufsize];
@@ -139,8 +143,8 @@ FindThread::thread(thread_arg_t arg)
 
 	if (pCallbackArg->m_nDirection == FIND_FORWARD) {
 		while (!isTerminated()) {
-			AutoLockReader alReader(pLFAcceptor, INFINITE, &bRet);
-			if (!bRet || alReader != alReaderOrg) {
+			AutoLockReader<LF_Notifier> alReader(pLFNotifier, INFINITE, &bRet);
+			if (!bRet || alReader != pOrgReader) {
 				if (pCallbackArg)
 					(*pCallbackArg->m_pfnCallback)(pCallbackArg);
 				goto _exit_thread;
@@ -191,8 +195,8 @@ FindThread::thread(thread_arg_t arg)
 				pos = 0;
 			}
 
-			AutoLockReader alReader(pLFAcceptor, INFINITE, &bRet);
-			if (!bRet || alReader != alReaderOrg) {
+			AutoLockReader<LF_Notifier> alReader(pLFNotifier, INFINITE, &bRet);
+			if (!bRet || alReader != pOrgReader) {
 				if (pCallbackArg)
 					(*pCallbackArg->m_pfnCallback)(pCallbackArg);
 				goto _exit_thread;

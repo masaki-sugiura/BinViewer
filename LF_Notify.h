@@ -89,24 +89,25 @@ private:
 	void setCursorPos(filesize_t pos);
 };
 
+template<class T>
 class AutoLockReader {
 public:
-	AutoLockReader(LF_Acceptor* pLFAcceptor, DWORD dwWaitTime, bool* pResult)
-		: m_pLFAcceptor(pLFAcceptor),
+	AutoLockReader(T* pLFProvideReader, DWORD dwWaitTime, bool* pResult)
+		: m_pLFProvideReader(pLFProvideReader),
 		  m_pLFReader(NULL)
 	{
-		if (!pLFAcceptor) {
+		if (!pLFProvideReader) {
 			if (pResult) *pResult = false;
 			return;
 		}
-		bool bRet = pLFAcceptor->tryLockReader(&m_pLFReader, dwWaitTime);
+		bool bRet = pLFProvideReader->tryLockReader(&m_pLFReader, dwWaitTime);
 		if (pResult) *pResult = bRet;
 	}
 
 	~AutoLockReader()
 	{
-		if (m_pLFAcceptor && m_pLFReader) {
-			m_pLFAcceptor->releaseReader(m_pLFReader);
+		if (m_pLFProvideReader && m_pLFReader) {
+			m_pLFProvideReader->releaseReader(m_pLFReader);
 		}
 	}
 
@@ -131,7 +132,7 @@ public:
 	}
 
 private:
-	LF_Acceptor* m_pLFAcceptor;
+	T* m_pLFProvideReader;
 	LargeFileReader* m_pLFReader;
 };
 

@@ -4,8 +4,9 @@
 #define MAINWINDOW_H_INC
 
 #include "HexView.h"
-#include "BitmapView.h"
 #include "StatusBar.h"
+#include "BitmapView.h"
+#include "SearchDlg.h"
 #include "auto_ptr.h"
 
 class HD_DrawInfo : public DrawInfo {
@@ -64,8 +65,9 @@ private:
 //	Auto_Ptr<HV_DrawInfo> m_pHVDrawInfo;
 //	Auto_Ptr<HD_DrawInfo> m_pHDDrawInfo;
 	Auto_Ptr<AppConfig> m_pAppConfig;
-	Auto_Ptr<BitmapViewWindow> m_pBitmapViewWindow;
 	Auto_Ptr<StatusBar> m_pStatusBar;
+	Auto_Ptr<SearchMainDlg> m_pSearchDlg;
+	Auto_Ptr<BitmapViewWindow> m_pBitmapViewWindow;
 	HWND m_hWnd;
 	HACCEL m_hAccel;
 	Header m_Header;
@@ -79,6 +81,7 @@ private:
 	void onCloseFile();
 	void onShowBitmapView();
 	void onJump();
+	void onSearch();
 	void onConfig();
 	void onSetFontConfig(FontConfig* pFontConfig, ColorConfig* pColorConfig);
 	void onSetScrollConfig(ScrollConfig* pScrollConfig);
@@ -90,6 +93,7 @@ private:
 	bool getImageFileName(LPSTR buf, int bufsize);
 	bool openFile(LPCSTR pszFileName);
 	void enableMenuForOpenFile(bool bEnable);
+	void enableMenuForSearch(bool bEnable);
 
 	static int registerWndClass(HINSTANCE hInstance);
 
