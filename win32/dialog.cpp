@@ -9,22 +9,24 @@
 Lock Dialog::m_lckActiveDialogs;
 int  Dialog::m_nActiveDialogNum;
 DialogMap Dialog::m_activeDialogs;
-HMODULE   Dialog::m_hmUxTheme;
-PFN_ITA   Dialog::m_pfnIsThemeActive;
-PFN_ETDT  Dialog::m_pfnEnableThemeDialogTexture;
-PFN_OTD   Dialog::m_pfnOpenThemeData;
-PFN_CTD   Dialog::m_pfnCloseThemeData;
-PFN_DTB   Dialog::m_pfnDrawThemeBackground;
-PFN_DTPB  Dialog::m_pfnDrawThemeParentBackground;
-PFN_GTBCR Dialog::m_pfnGetThemeBackgroundContentRect;
-
-typedef void (STDAPICALLTYPE *PFN_STAP)(DWORD);
+DWORD Dialog::m_dwEnableTheme = 0xFFFF0000;
 
 Dialog::Dialog(int idd)
 	: m_nDialogID(idd),
 	  m_hwndDlg(NULL), m_hwndParent(NULL),
 	  m_bModal(FALSE)
 {
+	if (m_dwEnableTheme & 0xFFFF0000) {
+		m_dwEnableTheme = 0x0000FFFF;
+		try {
+			ThemeWrapper& tw = GetTW();
+			tw.SetThemeAppProperties(STAP_ALLOW_NONCLIENT |
+									 STAP_ALLOW_CONTROLS  |
+									 STAP_ALLOW_WEBCONTENT);
+		} catch (ThemeNotSupportedError&) {
+			m_dwEnableTheme = 0;
+		}
+	}
 }
 
 Dialog::~Dialog()
@@ -90,50 +92,11 @@ Dialog::removeFromMessageLoop(Dialog* that)
 	return TRUE;
 }
 
-BOOL
-Dialog::initializeTheme()
+ThemeWrapper&
+Dialog::GetTW()
 {
-	if (m_hmUxTheme) return m_pfnEnableThemeDialogTexture != NULL;
-
-	m_hmUxTheme = ::LoadLibrary("UxTheme.dll");
-	if (!m_hmUxTheme) return FALSE;
-
-	PFN_STAP pfnSetThemeAppProperties
-		= (PFN_STAP)::GetProcAddress(m_hmUxTheme, "SetThemeAppProperties");
-	if (!pfnSetThemeAppProperties) return FALSE;
-
-	(*pfnSetThemeAppProperties)(STAP_ALLOW_NONCLIENT |
-								STAP_ALLOW_CONTROLS  |
-								STAP_ALLOW_WEBCONTENT);
-
-	m_pfnIsThemeActive
-		= (PFN_ITA)::GetProcAddress(m_hmUxTheme, "IsThemeActive");
-	m_pfnEnableThemeDialogTexture
-		= (PFN_ETDT)::GetProcAddress(m_hmUxTheme, "EnableThemeDialogTexture");
-	m_pfnOpenThemeData
-		= (PFN_OTD)::GetProcAddress(m_hmUxTheme, "OpenThemeData");
-	m_pfnCloseThemeData
-		= (PFN_CTD)::GetProcAddress(m_hmUxTheme, "CloseThemeData");
-	m_pfnDrawThemeBackground
-		= (PFN_DTB)::GetProcAddress(m_hmUxTheme, "DrawThemeBackground");
-	m_pfnDrawThemeParentBackground
-		= (PFN_DTPB)::GetProcAddress(m_hmUxTheme, "DrawThemeParentBackground");
-	m_pfnGetThemeBackgroundContentRect
-		= (PFN_GTBCR)::GetProcAddress(m_hmUxTheme, "GetThemeBackgroundContentRect");
-
-	return m_pfnIsThemeActive != NULL &&
-		   m_pfnEnableThemeDialogTexture != NULL &&
-		   m_pfnOpenThemeData != NULL &&
-		   m_pfnCloseThemeData != NULL &&
-		   m_pfnDrawThemeBackground != NULL &&
-		   m_pfnDrawThemeParentBackground != NULL &&
-		   m_pfnGetThemeBackgroundContentRect != NULL;
-}
-
-void
-Dialog::uninitializeTheme()
-{
-	if (m_hmUxTheme) ::FreeLibrary(m_hmUxTheme);
+	static ThemeWrapper theThemeWrapper;
+	return theThemeWrapper;
 }
 
 BOOL

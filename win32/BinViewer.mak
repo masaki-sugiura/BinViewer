@@ -59,15 +59,13 @@ CLEAN :
 	-@erase "$(INTDIR)\vc60.pdb"
 	-@erase "$(INTDIR)\viewframe.obj"
 	-@erase "$(OUTDIR)\BinViewer.exe"
-	-@erase "$(OUTDIR)\BinViewer.ilk"
-	-@erase "$(OUTDIR)\BinViewer.pdb"
 
 "$(OUTDIR)" :
     if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
 
 F90_PROJ=/compile_only /include:"$(INTDIR)\\" /nologo /warn:nofileopt /winapp /module:"Release/" /object:"Release/" 
 F90_OBJS=.\Release/
-CPP_PROJ=/nologo /MT /W3 /GR /GX /Zi /O2 /I "." /I ".." /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /Fp"$(INTDIR)\BinViewer.pch" /YX /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
+CPP_PROJ=/nologo /MT /W3 /GR /GX /Zi /O2 /I "." /I ".." /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D SIDEBYSIDE_COMMONCONTROLS=1 /Fp"$(INTDIR)\BinViewer.pch" /YX /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /c 
 MTL_PROJ=/nologo /D "NDEBUG" /mktyplib203 /win32 
 RSC_PROJ=/l 0x411 /fo"$(INTDIR)\mainwnd.res" /d "NDEBUG" 
 BSC32=bscmake.exe
@@ -148,7 +146,7 @@ CLEAN :
 
 F90_PROJ=/browser:"Debug/" /check:bounds /compile_only /debug:full /include:"$(INTDIR)\\" /nologo /traceback /warn:argument_checking /warn:nofileopt /winapp /module:"Debug/" /object:"Debug/" /pdbfile:"Debug/DF60.PDB" 
 F90_OBJS=.\Debug/
-CPP_PROJ=/nologo /MTd /W3 /Gm /GR /GX /ZI /Od /I "." /I ".." /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /FR"$(INTDIR)\\" /Fp"$(INTDIR)\BinViewer.pch" /YX /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /GZ /c 
+CPP_PROJ=/nologo /MTd /W3 /Gm /GR /GX /ZI /Od /I "." /I ".." /D "_DEBUG" /D "WIN32" /D "_WINDOWS" /D "_MBCS" /D SIDEBYSIDE_COMMONCONTROLS=1 /FR"$(INTDIR)\\" /Fp"$(INTDIR)\BinViewer.pch" /YX /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /FD /GZ /c 
 MTL_PROJ=/nologo /D "_DEBUG" /mktyplib203 /win32 
 RSC_PROJ=/l 0x411 /fo"$(INTDIR)\mainwnd.res" /d "_DEBUG" 
 BSC32=bscmake.exe

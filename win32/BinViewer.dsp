@@ -209,6 +209,10 @@ SOURCE=..\strutils.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\ThemeWrapper.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\thread.h
 # End Source File
 # Begin Source File

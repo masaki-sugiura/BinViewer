@@ -541,8 +541,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	::InitCommonControls();
 
-	Dialog::initializeTheme();
-
 	g_hwndMain = ::CreateWindowEx(WS_EX_ACCEPTFILES,
 								  wc.lpszClassName, "BinViewer",
 								  WS_OVERLAPPEDWINDOW,
@@ -550,7 +548,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 								  W_WIDTH, W_HEIGHT,
 								  NULL, NULL, hInstance, NULL);
 	if (!g_hwndMain) {
-		Dialog::uninitializeTheme();
 		return -1;
 	}
 
@@ -564,8 +561,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 			::DispatchMessage(&msg);
 		}
 	}
-
-	Dialog::uninitializeTheme();
 
 	return msg.wParam;
 }
