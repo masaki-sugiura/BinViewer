@@ -51,6 +51,9 @@ public:
 	int width() const { return m_nWidth; }
 	int height() const { return m_nHeight; }
 
+	int getXOffset() const { return m_nXOffset; }
+	filesize_t getYOffset() const { return m_qYOffset; }
+
 	// ‰¼‘zŠÖ”‚Å‚Í‚È‚­ABGB_Manager::getCurrentBuffer() ‚ð‰B‚·
 	DCBuffer* getCurrentBuffer(int offset = 0)
 	{
@@ -65,12 +68,51 @@ public:
 
 	void setDCInfo(HDC hDC, int width, int height, HBRUSH hbrBackground);
 
+	void setViewSize(int nViewWidth, int nViewHeight)
+	{
+		m_nViewWidth  = nViewWidth;
+		m_nViewHeight = nViewHeight;
+	}
+
+	void setViewPosition(int nXOffset, filesize_t qYOffset);
+
+	void setViewPosition(int nXOffset)
+	{
+//		setViewPosition(nXOffset, m_qYOffset);
+		m_nXOffset = nXOffset;
+	}
+	void setViewPosition(filesize_t qYOffset)
+	{
+		setViewPosition(m_nXOffset, qYOffset);
+	}
+
+	void setViewRect(int nXOffset, filesize_t qYOffset, int nWidth, int nHeight)
+	{
+		setViewSize(nWidth, nHeight);
+		setViewPosition(nXOffset, qYOffset);
+	}
+
+	void bitBlt(HDC hDCDst, const RECT& rcDst);
+
 	virtual int getXPositionByCoordinate(int x) = 0;
 
 protected:
 	HDC m_hDC;
 	int m_nWidth, m_nHeight;
+	int m_nXOffset;
+	int m_nYOffset;
+	int m_nViewWidth, m_nViewHeight;
+	filesize_t m_qYOffset;
+	bool m_bOverlapped;
+	DCBuffer* m_pCurBuf;
+	DCBuffer* m_pNextBuf;
 	HBRUSH m_hbrBackground;
+
+	bool
+	isOverlapped(int y_offset_line_num, int page_line_num)
+	{
+		return (y_offset_line_num + page_line_num >= m_nHeight / m_nWidth);
+	}
 };
 
 #endif

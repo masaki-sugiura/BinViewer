@@ -100,6 +100,10 @@ DC_Manager::DC_Manager(int nBufSize, int nBufCount)
 	: BGB_Manager(nBufSize, nBufCount),
 	  m_hDC(NULL),
 	  m_nWidth(0), m_nHeight(0),
+	  m_nXOffset(0), m_nYOffset(0),
+	  m_nViewWidth(0), m_nViewHeight(0),
+	  m_bOverlapped(false),
+	  m_pCurBuf(NULL), m_pNextBuf(NULL),
 	  m_hbrBackground(NULL)
 {
 }
@@ -111,6 +115,83 @@ DC_Manager::setDCInfo(HDC hDC, int width, int height, HBRUSH hbrBackground)
 	m_nWidth = width;
 	m_nHeight = height;
 	m_hbrBackground = hbrBackground;
+}
+
+void
+DC_Manager::setViewPosition(int nXOffset, filesize_t qYOffset)
+{
+	m_nXOffset = nXOffset;
+	m_qYOffset = qYOffset;
+
+	m_nYOffset = qYOffset - (qYOffset / m_nHeight) * m_nHeight;
+
+	m_bOverlapped = m_nYOffset + m_nViewHeight > m_nHeight;
+
+	setPosition((qYOffset / m_nHeight) * m_nBufSize);
+
+	m_pCurBuf  = getCurrentBuffer(0);
+	m_pNextBuf = getCurrentBuffer(1);
+}
+
+void
+DC_Manager::bitBlt(HDC hdcDst, const RECT& rcPaint)
+{
+	int nHeaderHeight = 0;
+
+//	int nXOffset = m_smHorz.getCurrentPos();
+	if (m_bOverlapped) {
+		int height = m_nHeight - m_nYOffset;
+
+		assert(m_pCurBuf);
+
+		if (rcPaint.bottom - nHeaderHeight <= height) {
+			m_pCurBuf->bitBlt(hdcDst,
+							  rcPaint.left, rcPaint.top,
+							  rcPaint.right - rcPaint.left,
+							  rcPaint.bottom - rcPaint.top,
+							  rcPaint.left + m_nXOffset,
+							  m_nYOffset + rcPaint.top - nHeaderHeight);
+		} else if (rcPaint.top - nHeaderHeight >= height) {
+			if (m_pNextBuf) {
+				m_pNextBuf->bitBlt(hdcDst,
+								   rcPaint.left, rcPaint.top,
+								   rcPaint.right - rcPaint.left,
+								   rcPaint.bottom - rcPaint.top,
+								   rcPaint.left + m_nXOffset,
+								   rcPaint.top - height - nHeaderHeight);
+			} else {
+				::FillRect(hdcDst, &rcPaint, m_hbrBackground);
+			}
+		} else {
+			m_pCurBuf->bitBlt(hdcDst,
+							  rcPaint.left, rcPaint.top,
+							  rcPaint.right - rcPaint.left,
+							  height - rcPaint.top + nHeaderHeight,
+							  rcPaint.left + m_nXOffset,
+							  rcPaint.top + m_nYOffset - nHeaderHeight);
+			if (m_pNextBuf) {
+				m_pNextBuf->bitBlt(hdcDst,
+								   rcPaint.left, height + nHeaderHeight,
+								   rcPaint.right - rcPaint.left,
+								   rcPaint.bottom - height,
+								   rcPaint.left + m_nXOffset, 0);
+			} else {
+				RECT rctTemp = rcPaint;
+				rctTemp.top    = height + nHeaderHeight;
+				rctTemp.bottom = rcPaint.bottom;
+				::FillRect(hdcDst, &rctTemp, m_hbrBackground);
+			}
+		}
+	} else if (m_pCurBuf) {
+		m_pCurBuf->bitBlt(hdcDst,
+						  rcPaint.left, rcPaint.top,
+						  rcPaint.right - rcPaint.left,
+						  rcPaint.bottom - rcPaint.top,
+						  rcPaint.left + m_nXOffset,
+						  m_nYOffset + rcPaint.top - nHeaderHeight);
+	} else {
+		::FillRect(hdcDst, &rcPaint, (HBRUSH)(COLOR_APPWORKSPACE + 1));
+	}
 }
 
 

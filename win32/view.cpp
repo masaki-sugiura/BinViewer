@@ -12,12 +12,9 @@ View::View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 		   COLORREF crBkColor)
 	: m_pDCManager(pDCManager),
 	  m_nPixelsPerLine(nPixelsPerLine),
-	  m_nXOffset(0), m_nTopOffset(0), m_qYOffset(0),
+	  m_qYOffset(0),
 	  m_smHorz(NULL, SB_HORZ), m_smVert(NULL, SB_VERT),
-	  m_bMapScrollBarLinearly(true),
-	  m_hwndParent(hwndParent),
-	  m_bOverlapped(false),
-	  m_pCurBuf(NULL), m_pNextBuf(NULL)
+	  m_hwndParent(hwndParent)
 {
 	static bool bRegisterClass;
 	static WORD wNextID;
@@ -41,12 +38,14 @@ View::View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 		bRegisterClass = true;
 	}
 
+	int nViewWidth  = rctWindow.right - rctWindow.left,
+		nViewHeight = rctWindow.bottom - rctWindow.top;
+
 	m_hwndView = ::CreateWindowEx(WS_EX_CLIENTEDGE,
 								  VIEW_CLASSNAME, "",
 								  WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL,
 								  rctWindow.left, rctWindow.top,
-								  rctWindow.right - rctWindow.left,
-								  rctWindow.bottom - rctWindow.top,
+								  nViewWidth, nViewHeight,
 								  hwndParent, (HMENU)wNextID++,
 								  hInstance, (LPVOID)this);
 	if (!m_hwndView) {
@@ -63,6 +62,8 @@ View::View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 	m_pDCManager->setDCInfo(m_hdcView, nWidth, nHeight, m_hbrBackground);
 
 	m_nBytesPerLine = m_pDCManager->bufSize() * nPixelsPerLine / nHeight;
+
+	m_pDCManager->setViewRect(0, 0, nViewWidth, nViewHeight);
 }
 
 View::~View()
@@ -89,67 +90,6 @@ View::onUnloadFile()
 }
 
 void
-View::bitBlt(const RECT& rcPaint)
-{
-	int nHeaderHeight = 0;
-
-	int nXOffset = m_smHorz.getCurrentPos();
-	if (m_bOverlapped) {
-		int height = m_pDCManager->height() - m_nTopOffset;
-
-		assert(m_pCurBuf);
-
-		if (rcPaint.bottom - nHeaderHeight <= height) {
-			m_pCurBuf->bitBlt(m_hdcView,
-							  rcPaint.left, rcPaint.top,
-							  rcPaint.right - rcPaint.left,
-							  rcPaint.bottom - rcPaint.top,
-							  rcPaint.left + nXOffset,
-							  m_nTopOffset + rcPaint.top - nHeaderHeight);
-		} else if (rcPaint.top - nHeaderHeight >= height) {
-			if (m_pNextBuf) {
-				m_pNextBuf->bitBlt(m_hdcView,
-								   rcPaint.left, rcPaint.top,
-								   rcPaint.right - rcPaint.left,
-								   rcPaint.bottom - rcPaint.top,
-								   rcPaint.left + nXOffset,
-								   rcPaint.top - height - nHeaderHeight);
-			} else {
-				::FillRect(m_hdcView, &rcPaint, m_hbrBackground);
-			}
-		} else {
-			m_pCurBuf->bitBlt(m_hdcView,
-							  rcPaint.left, rcPaint.top,
-							  rcPaint.right - rcPaint.left,
-							  height - rcPaint.top + nHeaderHeight,
-							  rcPaint.left + nXOffset,
-							  rcPaint.top + m_nTopOffset - nHeaderHeight);
-			if (m_pNextBuf) {
-				m_pNextBuf->bitBlt(m_hdcView,
-								   rcPaint.left, height + nHeaderHeight,
-								   rcPaint.right - rcPaint.left,
-								   rcPaint.bottom - height,
-								   rcPaint.left + nXOffset, 0);
-			} else {
-				RECT rctTemp = rcPaint;
-				rctTemp.top    = height + nHeaderHeight;
-				rctTemp.bottom = rcPaint.bottom;
-				::FillRect(m_hdcView, &rctTemp, m_hbrBackground);
-			}
-		}
-	} else if (m_pCurBuf) {
-		m_pCurBuf->bitBlt(m_hdcView,
-						  rcPaint.left, rcPaint.top,
-						  rcPaint.right - rcPaint.left,
-						  rcPaint.bottom - rcPaint.top,
-						  rcPaint.left + nXOffset,
-						  m_nTopOffset + rcPaint.top - nHeaderHeight);
-	} else {
-		::FillRect(m_hdcView, &rcPaint, (HBRUSH)(COLOR_APPWORKSPACE + 1));
-	}
-}
-
-void
 View::ensureVisible(filesize_t pos, bool bRedraw)
 {
 	filesize_t newline = pos / m_nBytesPerLine;
@@ -169,9 +109,6 @@ void
 View::setCurrentLine(filesize_t newline, bool bRedraw)
 {
 	if (!m_pDCManager->isLoaded()) {
-		m_nTopOffset = 0;
-		m_bOverlapped = false;
-		m_pCurBuf = m_pNextBuf = NULL;
 		return;
 	}
 
@@ -182,27 +119,15 @@ View::setCurrentLine(filesize_t newline, bool bRedraw)
 		newline = 0;
 	}
 
-	// DCBuffer の内容を表示領域に変更する
-	filesize_t buffer_top = m_pDCManager->setPosition(newline * m_nBytesPerLine);
-
-	m_nTopOffset = (int)(newline - buffer_top / m_nBytesPerLine) * m_nPixelsPerLine;
-	assert(m_nTopOffset < m_pDCManager->height());
-
-	// 次のバッファとオーバーラップしているかどうか
-	RECT rctClient;
-	::GetClientRect(m_hwndView, &rctClient);
-	int actual_linenum = (rctClient.bottom - rctClient.top + m_nPixelsPerLine - 1)
-							/ m_nPixelsPerLine - 1;
-	m_bOverlapped = isOverlapped(m_nTopOffset / m_nPixelsPerLine, actual_linenum);
-
-	m_pCurBuf  = m_pDCManager->getCurrentBuffer(0);
-	m_pNextBuf = m_pDCManager->getCurrentBuffer(1);
+	m_pDCManager->setViewPosition(newline * m_nPixelsPerLine);
 }
 
 void
 View::setPosition(filesize_t pos, bool bRedraw)
 {
-	if (!m_pDCManager->isLoaded()) return;
+	if (!m_pDCManager->isLoaded()) {
+		return;
+	}
 
 	filesize_t fsize = m_pDCManager->getFileSize();
 	if (fsize == 0) return;
@@ -210,6 +135,8 @@ View::setPosition(filesize_t pos, bool bRedraw)
 	if (pos >= fsize)
 		pos = fsize - 1;
 	if (pos < 0) pos = 0; // else では NG!! (filesize == 0 の場合)
+
+	setCurrentLine(pos / m_nBytesPerLine, bRedraw);
 }
 
 void
@@ -230,19 +157,21 @@ View::adjustWindowRect(RECT& rctFrame)
 void
 View::setFrameRect(const RECT& rctFrame)
 {
+	int nViewWidth  = rctFrame.right - rctFrame.left,
+		nViewHeight = rctFrame.bottom - rctFrame.top;
+
 	::SetWindowPos(m_hwndView, NULL,
 				   rctFrame.left, rctFrame.top,
-				   rctFrame.right - rctFrame.left,
-				   rctFrame.bottom - rctFrame.top,
+				   nViewWidth, nViewHeight,
 				   SWP_NOZORDER);
 
-	int nPageLineNum = (rctFrame.bottom - rctFrame.top) / m_nPixelsPerLine;
+	m_pDCManager->setViewSize(nViewWidth, nViewHeight);
 
-	// ウィンドウを広げた結果次のバッファとオーバーラップした場合に必要
-	m_bOverlapped = isOverlapped(m_nTopOffset / m_nPixelsPerLine, nPageLineNum);
 	m_smHorz.setInfo(m_pDCManager->width(),
 					 (rctFrame.right - rctFrame.left),
 					 m_smHorz.getCurrentPos());
+
+	int nPageLineNum = nViewHeight / m_nPixelsPerLine;
 	filesize_t size = m_pDCManager->getFileSize();
 	if (size < 0)
 		m_smVert.disable();
@@ -253,17 +182,15 @@ View::setFrameRect(const RECT& rctFrame)
 void
 View::onVScroll(WPARAM wParam, LPARAM lParam)
 {
-	m_qYOffset = m_smVert.onScroll(LOWORD(wParam));
-
 	// 表示領域の更新
-	setCurrentLine(m_qYOffset, false);
+	setCurrentLine(m_smVert.onScroll(LOWORD(wParam)), false);
 }
 
 void
 View::onHScroll(WPARAM wParam, LPARAM lParam)
 {
-	// prepare the correct BGBuffer
-	m_nXOffset = m_smHorz.onScroll(LOWORD(wParam));
+	// 表示領域の更新
+	m_pDCManager->setViewPosition(m_smHorz.onScroll(LOWORD(wParam)));
 }
 
 LRESULT CALLBACK
@@ -290,7 +217,7 @@ View::viewWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 			PAINTSTRUCT ps;
 			::BeginPaint(hWnd, &ps);
-			This->bitBlt(ps.rcPaint);
+			This->m_pDCManager->bitBlt(ps.hdc, ps.rcPaint);
 			::EndPaint(hWnd, &ps);
 		}
 		break;

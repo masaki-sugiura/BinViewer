@@ -51,12 +51,6 @@ public:
 	virtual void adjustWindowRect(RECT& rctFrame);
 	virtual void setFrameRect(const RECT& rctFrame);
 
-	bool
-	isOverlapped(int y_offset_line_num, int page_line_num)
-	{
-		return (y_offset_line_num + page_line_num >= m_pDCManager->height() / m_nPixelsPerLine);
-	}
-
 	// View クラスが投げる例外の基底クラス
 	class ViewException {};
 	// ウィンドウクラスの登録に失敗したときに投げられる例外
@@ -67,18 +61,12 @@ protected:
 	DC_Manager* m_pDCManager;
 	int m_nPixelsPerLine;
 	int m_nBytesPerLine;
-	int m_nXOffset;
-	int m_nTopOffset;
 	filesize_t m_qYOffset;
 	ScrollManager<int> m_smHorz;
 	ScrollManager<filesize_t> m_smVert;
-	bool m_bMapScrollBarLinearly;
 	HWND m_hwndView, m_hwndParent;
 	HDC m_hdcView;
 	HBRUSH m_hbrBackground;
-	bool m_bOverlapped;
-	DCBuffer* m_pCurBuf;
-	DCBuffer* m_pNextBuf;
 
 	bool onLoadFile();
 	void onUnloadFile();
