@@ -170,4 +170,10 @@ private:
 	bool m_bMapScrollBarLinearly;
 };
 
+template<typename T>
+inline T count(T v, int denom)
+{
+	return (v + 1) / denom;
+}
+
 #endif // SCROLL_H_INC
