@@ -91,6 +91,10 @@ DCBuffer::init(LargeFileReader& LFReader, filesize_t offset)
 	BGBuffer::init(LFReader, offset);
 	// この時点で m_DataBuf にデータが読み込まれている
 
+	m_nCursorPos = -1;
+	m_nSelectedPos = -1;
+	m_nSelectedSize = 0;
+
 	return render();
 }
 

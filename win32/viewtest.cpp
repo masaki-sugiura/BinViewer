@@ -87,7 +87,7 @@ protected:
 class TestDCManager : public DC_Manager {
 public:
 	TestDCManager()
-		: DC_Manager(32 * 1024, 3)
+		: DC_Manager(800 * 1024, 3)
 	{
 	}
 
