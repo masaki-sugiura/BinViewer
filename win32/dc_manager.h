@@ -73,7 +73,7 @@ struct DCBuffer : public BGBuffer, public Renderer {
 		return m_nSelectedPos >= 0 && m_nSelectedSize > 0;
 	}
 
-	virtual int getPositionByCoordinate(int x, int y) = 0;
+	virtual void setCursorByCoordinate(int x, int y) = 0;
 
 protected:
 	int  m_nCursorPos;
@@ -103,8 +103,6 @@ public:
 	{
 		return static_cast<DCBuffer*>(BGB_Manager::getBuffer(offset));
 	}
-
-	filesize_t getPositionByCoordinate(int x, filesize_t y);
 
 	bool setDrawInfo(DrawInfo* pDrawInfo);
 

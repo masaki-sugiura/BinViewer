@@ -54,18 +54,29 @@ public:
 		return m_nBufSize;
 	}
 
-	int getPositionByCoordinate(int x, int y)
+	void setCursorByCoordinate(int x, int y)
 	{
-		int nBytesPerLine = m_nBufSize / m_nHeight;
-		return y * nBytesPerLine + x;
+		m_nCursorPos = getOffsetByCoordinate(x, y);
+		RECT rect;
+		rect.left = x;
+		rect.right = rect.left + 1;
+		rect.top = y;
+		rect.bottom = rect.top + 1;
+		::InvertRect(m_hDC, &rect);
 	}
 
 protected:
+	int getOffsetByCoordinate(int x, int y)
+	{
+		int nBytesPerLine = m_nBufSize / m_nHeight;
+		return nBytesPerLine * y + x * nBytesPerLine / m_nWidth;
+	}
+
 	void invertRegionInBuffer(int offset, int size)
 	{
 		int nBytesPerLine = m_nBufSize / m_nHeight;
 		RECT rect;
-		rect.left = offset % nBytesPerLine;
+		rect.left = m_nWidth * (offset % nBytesPerLine) / nBytesPerLine;
 		rect.right = rect.left + 1;
 		rect.top = offset / nBytesPerLine;
 		rect.bottom = rect.top + 1;

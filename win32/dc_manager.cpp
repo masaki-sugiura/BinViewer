@@ -178,15 +178,6 @@ DC_Manager::DC_Manager(int nBufSize, int nBufCount)
 {
 }
 
-filesize_t
-DC_Manager::getPositionByCoordinate(int x, filesize_t y)
-{
-	filesize_t qOffset = (y / m_nHeight) * m_nBufSize;
-	DCBuffer* pBuf = getBuffer(qOffset);
-	if (!pBuf) return -1;
-	return qOffset + pBuf->getPositionByCoordinate(x, (int)(y % m_nHeight));
-}
-
 bool
 DC_Manager::setDrawInfo(DrawInfo* pDrawInfo)
 {
@@ -285,8 +276,21 @@ DC_Manager::bitBlt(HDC hdcDst, const RECT& rcPaint)
 void
 DC_Manager::setCursorByViewCoordinate(const POINTS& pt)
 {
-	setCursor(getPositionByCoordinate(m_nXOffset + pt.x,
-									  m_qYOffset + pt.y));
+	filesize_t qYCoord = m_qYOffset + pt.y;
+	DCBuffer* pCurBuf = getBuffer((qYCoord / m_nHeight) * m_nBufSize);
+	if (!pCurBuf) return;
+
+	for (int i = getMinBufferIndex(); i < getMaxBufferIndex(); i++) {
+		DCBuffer* pBuf = static_cast<DCBuffer*>(m_rbBuffers.elementAt(i));
+		if (!pBuf || pBuf->m_qAddress == -1) continue;
+		// 既にカーソルを持っていた場合、それを一度消去
+		if (pBuf->hasCursor()) {
+			pBuf->setCursor(-1);
+			break;
+		}
+	}
+
+	pCurBuf->setCursorByCoordinate(pt.x, (int)(qYCoord % m_nHeight));
 }
 
 void
