@@ -381,21 +381,21 @@ OnDropFiles(HWND hWnd, WPARAM wParam)
 void
 OnSetFontConfig(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
-	FontConfig* pFontConfig = (FontConfig*)lParam;
-	g_pDrawInfo->m_FontInfo.setFont(g_pDrawInfo->m_hDC,
-									pFontConfig->m_fFontSize,
-									pFontConfig->m_pszFontFace,
-									pFontConfig->m_bBoldFace);
-	g_pDrawInfo->m_tciHeader.setColor(pFontConfig->m_ColorConfig[CC_HEADER].m_crFgColor,
-									  pFontConfig->m_ColorConfig[CC_HEADER].m_crBkColor);
-	g_pDrawInfo->m_tciAddress.setColor(pFontConfig->m_ColorConfig[CC_ADDRESS].m_crFgColor,
-									   pFontConfig->m_ColorConfig[CC_ADDRESS].m_crBkColor);
-	g_pDrawInfo->m_tciData.setColor(pFontConfig->m_ColorConfig[CC_DATA].m_crFgColor,
-									pFontConfig->m_ColorConfig[CC_DATA].m_crBkColor);
-	g_pDrawInfo->m_tciString.setColor(pFontConfig->m_ColorConfig[CC_STRING].m_crFgColor,
-									  pFontConfig->m_ColorConfig[CC_STRING].m_crBkColor);
+	FontConfig*  pFontConfig  = (FontConfig*)wParam;
+	ColorConfig* pColorConfig = (ColorConfig*)lParam;
 
-	g_pViewFrame->setDrawInfo(g_pDrawInfo.ptr());
+	if (pFontConfig)
+		g_pDrawInfo->m_FontInfo.setFont(g_pDrawInfo->m_hDC, *pFontConfig);
+
+	if (pColorConfig) {
+		g_pDrawInfo->m_tciHeader.setColor(pColorConfig[TCI_HEADER]);
+		g_pDrawInfo->m_tciAddress.setColor(pColorConfig[TCI_ADDRESS]);
+		g_pDrawInfo->m_tciData.setColor(pColorConfig[TCI_DATA]);
+		g_pDrawInfo->m_tciString.setColor(pColorConfig[TCI_STRING]);
+	}
+
+	if (pFontConfig || pColorConfig)
+		g_pViewFrame->setDrawInfo(g_pDrawInfo.ptr());
 }
 
 LRESULT CALLBACK
