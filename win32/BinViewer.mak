@@ -65,9 +65,13 @@ CLEAN :
 	-@erase "$(INTDIR)\lock.sbr"
 	-@erase "$(INTDIR)\main.obj"
 	-@erase "$(INTDIR)\main.sbr"
+	-@erase "$(INTDIR)\MainWindow.obj"
+	-@erase "$(INTDIR)\MainWindow.sbr"
 	-@erase "$(INTDIR)\mainwnd.res"
 	-@erase "$(INTDIR)\searchdlg.obj"
 	-@erase "$(INTDIR)\searchdlg.sbr"
+	-@erase "$(INTDIR)\StatusBar.obj"
+	-@erase "$(INTDIR)\StatusBar.sbr"
 	-@erase "$(INTDIR)\strutils.obj"
 	-@erase "$(INTDIR)\strutils.sbr"
 	-@erase "$(INTDIR)\thread.obj"
@@ -76,8 +80,6 @@ CLEAN :
 	-@erase "$(INTDIR)\vc60.pdb"
 	-@erase "$(INTDIR)\view.obj"
 	-@erase "$(INTDIR)\view.sbr"
-	-@erase "$(INTDIR)\viewframe.obj"
-	-@erase "$(INTDIR)\viewframe.sbr"
 	-@erase "$(OUTDIR)\BinViewer.bsc"
 	-@erase "$(OUTDIR)\BinViewer.exe"
 
@@ -91,23 +93,24 @@ RSC_PROJ=/l 0x411 /fo"$(INTDIR)\mainwnd.res" /d "NDEBUG"
 BSC32=bscmake.exe
 BSC32_FLAGS=/nologo /o"$(OUTDIR)\BinViewer.bsc" 
 BSC32_SBRS= \
+	"$(INTDIR)\main.sbr" \
 	"$(INTDIR)\bgb_manager.sbr" \
 	"$(INTDIR)\BitmapView.sbr" \
 	"$(INTDIR)\configdlg.sbr" \
 	"$(INTDIR)\dc_manager.sbr" \
 	"$(INTDIR)\dialog.sbr" \
 	"$(INTDIR)\drawinfo.sbr" \
+	"$(INTDIR)\HexView.sbr" \
 	"$(INTDIR)\jumpdlg.sbr" \
 	"$(INTDIR)\LargeFileReader.sbr" \
 	"$(INTDIR)\LF_Notify.sbr" \
 	"$(INTDIR)\lock.sbr" \
-	"$(INTDIR)\main.sbr" \
+	"$(INTDIR)\MainWindow.sbr" \
 	"$(INTDIR)\searchdlg.sbr" \
+	"$(INTDIR)\StatusBar.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
-	"$(INTDIR)\view.sbr" \
-	"$(INTDIR)\viewframe.sbr" \
-	"$(INTDIR)\HexView.sbr"
+	"$(INTDIR)\view.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -117,24 +120,25 @@ BSC32_SBRS= \
 LINK32=link.exe
 LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /profile /debug /machine:I386 /out:"$(OUTDIR)\BinViewer.exe" 
 LINK32_OBJS= \
+	"$(INTDIR)\main.obj" \
+	"$(INTDIR)\mainwnd.res" \
 	"$(INTDIR)\bgb_manager.obj" \
 	"$(INTDIR)\BitmapView.obj" \
 	"$(INTDIR)\configdlg.obj" \
 	"$(INTDIR)\dc_manager.obj" \
 	"$(INTDIR)\dialog.obj" \
 	"$(INTDIR)\drawinfo.obj" \
+	"$(INTDIR)\HexView.obj" \
 	"$(INTDIR)\jumpdlg.obj" \
 	"$(INTDIR)\LargeFileReader.obj" \
 	"$(INTDIR)\LF_Notify.obj" \
 	"$(INTDIR)\lock.obj" \
-	"$(INTDIR)\main.obj" \
+	"$(INTDIR)\MainWindow.obj" \
 	"$(INTDIR)\searchdlg.obj" \
+	"$(INTDIR)\StatusBar.obj" \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
-	"$(INTDIR)\view.obj" \
-	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res" \
-	"$(INTDIR)\HexView.obj"
+	"$(INTDIR)\view.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -177,9 +181,13 @@ CLEAN :
 	-@erase "$(INTDIR)\lock.sbr"
 	-@erase "$(INTDIR)\main.obj"
 	-@erase "$(INTDIR)\main.sbr"
+	-@erase "$(INTDIR)\MainWindow.obj"
+	-@erase "$(INTDIR)\MainWindow.sbr"
 	-@erase "$(INTDIR)\mainwnd.res"
 	-@erase "$(INTDIR)\searchdlg.obj"
 	-@erase "$(INTDIR)\searchdlg.sbr"
+	-@erase "$(INTDIR)\StatusBar.obj"
+	-@erase "$(INTDIR)\StatusBar.sbr"
 	-@erase "$(INTDIR)\strutils.obj"
 	-@erase "$(INTDIR)\strutils.sbr"
 	-@erase "$(INTDIR)\thread.obj"
@@ -188,8 +196,6 @@ CLEAN :
 	-@erase "$(INTDIR)\vc60.pdb"
 	-@erase "$(INTDIR)\view.obj"
 	-@erase "$(INTDIR)\view.sbr"
-	-@erase "$(INTDIR)\viewframe.obj"
-	-@erase "$(INTDIR)\viewframe.sbr"
 	-@erase "$(OUTDIR)\BinViewer.bsc"
 	-@erase "$(OUTDIR)\BinViewer.exe"
 	-@erase "$(OUTDIR)\BinViewer.ilk"
@@ -205,23 +211,24 @@ RSC_PROJ=/l 0x411 /fo"$(INTDIR)\mainwnd.res" /d "_DEBUG"
 BSC32=bscmake.exe
 BSC32_FLAGS=/nologo /o"$(OUTDIR)\BinViewer.bsc" 
 BSC32_SBRS= \
+	"$(INTDIR)\main.sbr" \
 	"$(INTDIR)\bgb_manager.sbr" \
 	"$(INTDIR)\BitmapView.sbr" \
 	"$(INTDIR)\configdlg.sbr" \
 	"$(INTDIR)\dc_manager.sbr" \
 	"$(INTDIR)\dialog.sbr" \
 	"$(INTDIR)\drawinfo.sbr" \
+	"$(INTDIR)\HexView.sbr" \
 	"$(INTDIR)\jumpdlg.sbr" \
 	"$(INTDIR)\LargeFileReader.sbr" \
 	"$(INTDIR)\LF_Notify.sbr" \
 	"$(INTDIR)\lock.sbr" \
-	"$(INTDIR)\main.sbr" \
+	"$(INTDIR)\MainWindow.sbr" \
 	"$(INTDIR)\searchdlg.sbr" \
+	"$(INTDIR)\StatusBar.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
-	"$(INTDIR)\view.sbr" \
-	"$(INTDIR)\viewframe.sbr" \
-	"$(INTDIR)\HexView.sbr"
+	"$(INTDIR)\view.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -231,24 +238,25 @@ BSC32_SBRS= \
 LINK32=link.exe
 LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /incremental:yes /pdb:"$(OUTDIR)\BinViewer.pdb" /debug /machine:I386 /out:"$(OUTDIR)\BinViewer.exe" /pdbtype:sept 
 LINK32_OBJS= \
+	"$(INTDIR)\main.obj" \
+	"$(INTDIR)\mainwnd.res" \
 	"$(INTDIR)\bgb_manager.obj" \
 	"$(INTDIR)\BitmapView.obj" \
 	"$(INTDIR)\configdlg.obj" \
 	"$(INTDIR)\dc_manager.obj" \
 	"$(INTDIR)\dialog.obj" \
 	"$(INTDIR)\drawinfo.obj" \
+	"$(INTDIR)\HexView.obj" \
 	"$(INTDIR)\jumpdlg.obj" \
 	"$(INTDIR)\LargeFileReader.obj" \
 	"$(INTDIR)\LF_Notify.obj" \
 	"$(INTDIR)\lock.obj" \
-	"$(INTDIR)\main.obj" \
+	"$(INTDIR)\MainWindow.obj" \
 	"$(INTDIR)\searchdlg.obj" \
+	"$(INTDIR)\StatusBar.obj" \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
-	"$(INTDIR)\view.obj" \
-	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res" \
-	"$(INTDIR)\HexView.obj"
+	"$(INTDIR)\view.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -360,9 +368,19 @@ SOURCE=.\main.cpp
 "$(INTDIR)\main.obj"	"$(INTDIR)\main.sbr" : $(SOURCE) "$(INTDIR)"
 
 
+SOURCE=.\MainWindow.cpp
+
+"$(INTDIR)\MainWindow.obj"	"$(INTDIR)\MainWindow.sbr" : $(SOURCE) "$(INTDIR)"
+
+
 SOURCE=.\searchdlg.cpp
 
 "$(INTDIR)\searchdlg.obj"	"$(INTDIR)\searchdlg.sbr" : $(SOURCE) "$(INTDIR)"
+
+
+SOURCE=.\StatusBar.cpp
+
+"$(INTDIR)\StatusBar.obj"	"$(INTDIR)\StatusBar.sbr" : $(SOURCE) "$(INTDIR)"
 
 
 SOURCE=.\strutils.cpp
@@ -378,11 +396,6 @@ SOURCE=.\thread.cpp
 SOURCE=.\view.cpp
 
 "$(INTDIR)\view.obj"	"$(INTDIR)\view.sbr" : $(SOURCE) "$(INTDIR)"
-
-
-SOURCE=.\viewframe.cpp
-
-"$(INTDIR)\viewframe.obj"	"$(INTDIR)\viewframe.sbr" : $(SOURCE) "$(INTDIR)"
 
 
 SOURCE=.\mainwnd.rc

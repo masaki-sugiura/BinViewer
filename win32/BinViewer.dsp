@@ -146,7 +146,15 @@ SOURCE=.\main.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\MainWindow.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\searchdlg.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\StatusBar.cpp
 # End Source File
 # Begin Source File
 
@@ -159,10 +167,6 @@ SOURCE=.\thread.cpp
 # Begin Source File
 
 SOURCE=.\view.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\viewframe.cpp
 # End Source File
 # End Group
 # Begin Group "Header Files"
@@ -218,6 +222,10 @@ SOURCE=..\lock.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\MainWindow.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\messages.h
 # End Source File
 # Begin Source File
@@ -238,6 +246,10 @@ SOURCE=.\searchdlg.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\StatusBar.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\strutils.h
 # End Source File
 # Begin Source File
@@ -255,10 +267,6 @@ SOURCE=.\types.h
 # Begin Source File
 
 SOURCE=.\View.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\viewframe.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"
