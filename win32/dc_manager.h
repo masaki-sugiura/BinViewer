@@ -54,7 +54,7 @@ protected:
 	virtual int render() = 0;
 };
 
-struct DCBuffer : public BGBuffer<MAX_DATASIZE_PER_BUFFER>, public Renderer {
+struct DCBuffer : public BGBuffer, public Renderer {
 	DCBuffer(HDC hDC, const DrawInfo* pDrawInfo);
 
 	int init(LargeFileReader& LFReader, filesize_t offset);
@@ -89,21 +89,20 @@ protected:
 	int render();
 };
 
-class DC_Manager : public BGB_Manager<MAX_DATASIZE_PER_BUFFER> {
+class DC_Manager : public BGB_Manager {
 public:
-	DC_Manager(HDC hDC, const DrawInfo* pDrawInfo,
-			   LargeFileReader* pLFReader = NULL);
+	DC_Manager(HDC hDC, const DrawInfo* pDrawInfo);
 
 	// 仮想関数ではなく、BGB_Manager::getCurrentBuffer() を隠す
 	DCBuffer* getCurrentBuffer(int offset = 0)
 	{
-		return static_cast<DCBuffer*>(BGB_Manager<MAX_DATASIZE_PER_BUFFER>::getCurrentBuffer(offset));
+		return static_cast<DCBuffer*>(BGB_Manager::getCurrentBuffer(offset));
 	}
 
 	// 仮想関数ではなく、BGB_Manager::getBuffer() を隠す
 	DCBuffer* getBuffer(filesize_t offset)
 	{
-		return static_cast<DCBuffer*>(BGB_Manager<MAX_DATASIZE_PER_BUFFER>::getBuffer(offset));
+		return static_cast<DCBuffer*>(BGB_Manager::getBuffer(offset));
 	}
 
 	int getXPositionByCoordinate(int x);
@@ -116,7 +115,7 @@ protected:
 	const DrawInfo* m_pDrawInfo;
 	Header m_Header;
 
-	BGBuffer<MAX_DATASIZE_PER_BUFFER>* createBGBufferInstance();
+	BGBuffer* createBGBufferInstance();
 };
 
 #endif

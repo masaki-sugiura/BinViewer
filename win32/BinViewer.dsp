@@ -98,6 +98,10 @@ LINK32=link.exe
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat;f90;for;f;fpp"
 # Begin Source File
 
+SOURCE=..\bgb_manager.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\BitmapView.cpp
 # End Source File
 # Begin Source File
@@ -123,6 +127,10 @@ SOURCE=.\jumpdlg.cpp
 # Begin Source File
 
 SOURCE=.\LargeFileReader.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\LF_Notify.cpp
 # End Source File
 # Begin Source File
 
@@ -187,6 +195,10 @@ SOURCE=.\jumpdlg.h
 # Begin Source File
 
 SOURCE=..\LargeFileReader.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\LF_Notify.h
 # End Source File
 # Begin Source File
 

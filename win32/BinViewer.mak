@@ -41,6 +41,8 @@ ALL : "$(OUTDIR)\BinViewer.exe" "$(OUTDIR)\BinViewer.bsc"
 
 
 CLEAN :
+	-@erase "$(INTDIR)\bgb_manager.obj"
+	-@erase "$(INTDIR)\bgb_manager.sbr"
 	-@erase "$(INTDIR)\BitmapView.obj"
 	-@erase "$(INTDIR)\BitmapView.sbr"
 	-@erase "$(INTDIR)\configdlg.obj"
@@ -55,6 +57,8 @@ CLEAN :
 	-@erase "$(INTDIR)\jumpdlg.sbr"
 	-@erase "$(INTDIR)\LargeFileReader.obj"
 	-@erase "$(INTDIR)\LargeFileReader.sbr"
+	-@erase "$(INTDIR)\LF_Notify.obj"
+	-@erase "$(INTDIR)\LF_Notify.sbr"
 	-@erase "$(INTDIR)\lock.obj"
 	-@erase "$(INTDIR)\lock.sbr"
 	-@erase "$(INTDIR)\main.obj"
@@ -95,7 +99,9 @@ BSC32_SBRS= \
 	"$(INTDIR)\searchdlg.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
-	"$(INTDIR)\viewframe.sbr"
+	"$(INTDIR)\viewframe.sbr" \
+	"$(INTDIR)\LF_Notify.sbr" \
+	"$(INTDIR)\bgb_manager.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -118,7 +124,9 @@ LINK32_OBJS= \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res"
+	"$(INTDIR)\mainwnd.res" \
+	"$(INTDIR)\LF_Notify.obj" \
+	"$(INTDIR)\bgb_manager.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -137,6 +145,8 @@ ALL : "$(OUTDIR)\BinViewer.exe" "$(OUTDIR)\BinViewer.bsc"
 
 
 CLEAN :
+	-@erase "$(INTDIR)\bgb_manager.obj"
+	-@erase "$(INTDIR)\bgb_manager.sbr"
 	-@erase "$(INTDIR)\BitmapView.obj"
 	-@erase "$(INTDIR)\BitmapView.sbr"
 	-@erase "$(INTDIR)\configdlg.obj"
@@ -151,6 +161,8 @@ CLEAN :
 	-@erase "$(INTDIR)\jumpdlg.sbr"
 	-@erase "$(INTDIR)\LargeFileReader.obj"
 	-@erase "$(INTDIR)\LargeFileReader.sbr"
+	-@erase "$(INTDIR)\LF_Notify.obj"
+	-@erase "$(INTDIR)\LF_Notify.sbr"
 	-@erase "$(INTDIR)\lock.obj"
 	-@erase "$(INTDIR)\lock.sbr"
 	-@erase "$(INTDIR)\main.obj"
@@ -193,7 +205,9 @@ BSC32_SBRS= \
 	"$(INTDIR)\searchdlg.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
-	"$(INTDIR)\viewframe.sbr"
+	"$(INTDIR)\viewframe.sbr" \
+	"$(INTDIR)\LF_Notify.sbr" \
+	"$(INTDIR)\bgb_manager.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -216,7 +230,9 @@ LINK32_OBJS= \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res"
+	"$(INTDIR)\mainwnd.res" \
+	"$(INTDIR)\LF_Notify.obj" \
+	"$(INTDIR)\bgb_manager.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -266,6 +282,12 @@ LINK32_OBJS= \
 
 
 !IF "$(CFG)" == "BinViewer - Win32 Release" || "$(CFG)" == "BinViewer - Win32 Debug"
+SOURCE=..\bgb_manager.cpp
+
+"$(INTDIR)\bgb_manager.obj"	"$(INTDIR)\bgb_manager.sbr" : $(SOURCE) "$(INTDIR)"
+	$(CPP) $(CPP_PROJ) $(SOURCE)
+
+
 SOURCE=.\BitmapView.cpp
 
 "$(INTDIR)\BitmapView.obj"	"$(INTDIR)\BitmapView.sbr" : $(SOURCE) "$(INTDIR)"
@@ -299,6 +321,12 @@ SOURCE=.\jumpdlg.cpp
 SOURCE=.\LargeFileReader.cpp
 
 "$(INTDIR)\LargeFileReader.obj"	"$(INTDIR)\LargeFileReader.sbr" : $(SOURCE) "$(INTDIR)"
+
+
+SOURCE=..\LF_Notify.cpp
+
+"$(INTDIR)\LF_Notify.obj"	"$(INTDIR)\LF_Notify.sbr" : $(SOURCE) "$(INTDIR)"
+	$(CPP) $(CPP_PROJ) $(SOURCE)
 
 
 SOURCE=.\lock.cpp

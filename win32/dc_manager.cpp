@@ -61,7 +61,7 @@ Renderer::setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo)
 
 
 DCBuffer::DCBuffer(HDC hDC, const DrawInfo* pDrawInfo)
-	: BGBuffer<MAX_DATASIZE_PER_BUFFER>(),
+	: BGBuffer(MAX_DATASIZE_PER_BUFFER),
 	  Renderer(hDC, pDrawInfo, WIDTH_PER_XPITCH, HEIGHT_PER_YPITCH),
 	  m_bHasSelectedRegion(false),
 	  m_nSelectedPos(-1), m_nSelectedSize(0)
@@ -106,7 +106,7 @@ TranslateToString(LPBYTE dst, const BYTE* src, int size)
 int
 DCBuffer::init(LargeFileReader& LFReader, filesize_t offset)
 {
-	BGBuffer<MAX_DATASIZE_PER_BUFFER>::init(LFReader, offset);
+	BGBuffer::init(LFReader, offset);
 	// この時点で m_DataBuf にデータが読み込まれている
 
 	return render();
@@ -117,7 +117,7 @@ DCBuffer::uninit()
 {
 	if (m_bHasSelectedRegion) // 選択を解除
 		invertRegionInBuffer(m_nSelectedPos, m_nSelectedSize);
-	BGBuffer<MAX_DATASIZE_PER_BUFFER>::uninit();
+	BGBuffer::uninit();
 //	render(); // 背景色で塗りつぶし
 }
 
@@ -188,7 +188,7 @@ DCBuffer::render()
 		yoffset = i * nYPitch;
 		linebuf[2] = 0;
 		while (j < 8) {
-			BYTE data = m_DataBuf[idx_top + j++];
+			BYTE data = m_pDataBuf[idx_top + j++];
 			linebuf[0] = hex[(data >> 4) & 0x0F];
 			linebuf[1] = hex[(data >> 0) & 0x0F];
 			::ExtTextOut(m_hDC, xoffset, yoffset, ETO_OPAQUE, NULL,
@@ -199,7 +199,7 @@ DCBuffer::render()
 					 "-", 1, m_anXPitch);
 		xoffset += nXPitch * 2;
 		while (j < 16) {
-			BYTE data = m_DataBuf[idx_top + j++];
+			BYTE data = m_pDataBuf[idx_top + j++];
 			linebuf[0] = hex[(data >> 4) & 0x0F];
 			linebuf[1] = hex[(data >> 0) & 0x0F];
 			::ExtTextOut(m_hDC, xoffset, yoffset, ETO_OPAQUE, NULL,
@@ -213,7 +213,7 @@ DCBuffer::render()
 		yoffset = linenum * nYPitch;
 		linebuf[2] = 0;
 		while (j < 8) {
-			BYTE data = m_DataBuf[idx_top + j];
+			BYTE data = m_pDataBuf[idx_top + j];
 			linebuf[0] = hex[(data >> 4) & 0x0F];
 			linebuf[1] = hex[(data >> 0) & 0x0F];
 			::ExtTextOut(m_hDC, xoffset, yoffset, ETO_OPAQUE, NULL,
@@ -225,7 +225,7 @@ DCBuffer::render()
 					 "-", 1, m_anXPitch);
 		xoffset += nXPitch * 2;
 		while (j < 16) {
-			BYTE data = m_DataBuf[idx_top + j];
+			BYTE data = m_pDataBuf[idx_top + j];
 			linebuf[0] = hex[(data >> 4) & 0x0F];
 			linebuf[1] = hex[(data >> 0) & 0x0F];
 			::ExtTextOut(m_hDC, xoffset, yoffset, ETO_OPAQUE, NULL,
@@ -241,12 +241,12 @@ _data_end:
 	xoffset = nXPitch * (1 + 16 + 2 + 8 * 3 + 2 + 8 * 3 + 1);
 	m_pDrawInfo->m_tciString.setColorToDC(m_hDC);
 	for (i = 0; i < linenum; i++) {
-		TranslateToString((BYTE*)strbuf, m_DataBuf + (i << 4), 16);
+		TranslateToString((BYTE*)strbuf, m_pDataBuf + (i << 4), 16);
 		::ExtTextOut(m_hDC, xoffset, i * nYPitch, ETO_OPAQUE, NULL,
 					 strbuf, 16, m_anXPitch);
 	}
 	if (m_nDataSize & 0x0F) {
-		TranslateToString((BYTE*)strbuf, m_DataBuf + (linenum << 4),
+		TranslateToString((BYTE*)strbuf, m_pDataBuf + (linenum << 4),
 						  m_nDataSize & 0x0F);
 		::ExtTextOut(m_hDC, xoffset, linenum * nYPitch, ETO_OPAQUE, NULL,
 					 strbuf, m_nDataSize & 0x0F, m_anXPitch);
@@ -401,9 +401,8 @@ Header::render()
 	return 0; // dummy
 }
 
-DC_Manager::DC_Manager(HDC hDC, const DrawInfo* pDrawInfo,
-					   LargeFileReader* pLFReader)
-	: BGB_Manager<MAX_DATASIZE_PER_BUFFER>(BUFFER_NUM, pLFReader),
+DC_Manager::DC_Manager(HDC hDC, const DrawInfo* pDrawInfo)
+	: BGB_Manager(MAX_DATASIZE_PER_BUFFER, BUFFER_NUM),
 	  m_pDrawInfo(pDrawInfo),
 	  m_Header(hDC, pDrawInfo)
 {
@@ -471,7 +470,7 @@ DC_Manager::setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo)
 	}
 }
 
-BGBuffer<MAX_DATASIZE_PER_BUFFER>*
+BGBuffer*
 DC_Manager::createBGBufferInstance()
 {
 	return new DCBuffer(m_Header.m_hDC, m_pDrawInfo);

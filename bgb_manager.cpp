@@ -1,10 +1,10 @@
 // $Id$
 
-//#include "bgb_manager.h"
+#include "bgb_manager.h"
 #include "thread.h"
 
-template<int nBufSize> int
-BGBuffer<nBufSize>::init(LargeFileReader& LFReader, filesize_t offset)
+int
+BGBuffer::init(LargeFileReader& LFReader, filesize_t offset)
 {
 	// 既に読み込み済みかどうか
 	if (m_qAddress == offset) return m_nDataSize;
@@ -12,7 +12,7 @@ BGBuffer<nBufSize>::init(LargeFileReader& LFReader, filesize_t offset)
 	m_qAddress = offset;
 
 	m_nDataSize = LFReader.readFrom(m_qAddress, FILE_BEGIN,
-									m_DataBuf, nBufSize);
+									m_pDataBuf, m_nBufSize);
 	if (m_nDataSize >= 0) return m_nDataSize;
 
 	// 読み込みに失敗→バッファの無効化
@@ -22,8 +22,8 @@ BGBuffer<nBufSize>::init(LargeFileReader& LFReader, filesize_t offset)
 	return -1;
 }
 
-template<int nBufSize> void
-BGBuffer<nBufSize>::uninit()
+void
+BGBuffer::uninit()
 {
 	m_qAddress = -1;
 	m_nDataSize = 0;
@@ -100,8 +100,8 @@ BGBuffer<nBufSize>::uninit()
 	[k : m_qCPos + (k - m) * BSIZE ～ m_pCPos + (k - m + 1) * BSIZE - 1]
  */
 
-template<int nBufSize> int
-BGB_Manager<nBufSize>::fillBGBuffer(filesize_t offset)
+int
+BGB_Manager::fillBGBuffer(filesize_t offset)
 {
 	assert(offset >= 0);
 
@@ -117,9 +117,9 @@ BGB_Manager<nBufSize>::fillBGBuffer(filesize_t offset)
 
 	// offset を nBufSize でアライメント
 //	offset = (offset / nBufSize) * nBufSize;
-	offset &= ~(nBufSize - 1); // nBufSize == 2^n を仮定
+	offset &= ~(m_nBufSize - 1); // nBufSize == 2^n を仮定
 
-	int radius = (m_nBufCount / 2) * nBufSize;
+	int radius = (m_nBufCount / 2) * m_nBufSize;
 
 	// offset - radius * nBufSize から offset + (radius + 1) * nBufSize - 1
 	// のデータをファイルから読み出す
@@ -127,20 +127,20 @@ BGB_Manager<nBufSize>::fillBGBuffer(filesize_t offset)
 	// 全てを新規に読み込むべきか、
 	// 現在のリストを一部破棄して読み込むべきかを調べる
 	if (m_qCurrentPos < 0 ||
-		offset >= m_qCurrentPos + radius + nBufSize ||
+		offset >= m_qCurrentPos + radius + m_nBufSize ||
 		offset <  m_qCurrentPos - radius) {
 		// 全く新規に読み込み
 		m_qCurrentPos = offset;
-		int i = - radius / nBufSize;
+		int i = - radius / m_nBufSize;
 		filesize_t start, end;
 		start = m_qCurrentPos - radius;
-		end = start + m_nBufCount * nBufSize;
+		end = start + m_nBufCount * m_nBufSize;
 		while (start < end) {
 			if (start >= 0) { // 終端を越えて描画するためファイル終端を判定してはいけない！！
-				m_rbBuffers.elementAt(i)->init(*m_pLFReader, start);
+				m_rbBuffers.elementAt(i)->init(*getReader(), start);
 			}
 			i++;
-			start += nBufSize;
+			start += m_nBufSize;
 		}
 	} else if (offset != m_qCurrentPos) {
 		// offset のブロックは既に読み込まれている
@@ -148,23 +148,23 @@ BGB_Manager<nBufSize>::fillBGBuffer(filesize_t offset)
 		filesize_t start, end;
 		if (new_top > 0) {
 			// case 1)
-			i = radius / nBufSize + 1;
-			start = m_qCurrentPos + radius + nBufSize;
+			i = radius / m_nBufSize + 1;
+			start = m_qCurrentPos + radius + m_nBufSize;
 			end = start + new_top;
 		} else {
 			// case 2)
-			i = (- radius + new_top) / nBufSize;
+			i = (- radius + new_top) / m_nBufSize;
 			end = m_qCurrentPos - radius;
 			start = end + new_top;
 		}
 		while (start < end) {
 			if (start >= 0) {
-				m_rbBuffers.elementAt(i)->init(*m_pLFReader, start);
+				m_rbBuffers.elementAt(i)->init(*getReader(), start);
 			}
 			i++;
-			start += nBufSize;
+			start += m_nBufSize;
 		}
-		m_rbBuffers.setTop(new_top / nBufSize);
+		m_rbBuffers.setTop(new_top / m_nBufSize);
 	}
 
 	// カレントポジションの変更
@@ -173,7 +173,7 @@ BGB_Manager<nBufSize>::fillBGBuffer(filesize_t offset)
 	// バッファに貯められているデータサイズの計算
 	int totalsize = 0;
 	for (int i = 0; i < m_nBufCount; i++) {
-		BGBuffer<nBufSize>* pbgb = m_rbBuffers.elementAt(i);
+		BGBuffer* pbgb = m_rbBuffers.elementAt(i);
 		if (pbgb->m_qAddress >= 0)
 			totalsize += pbgb->m_nDataSize;
 	}
