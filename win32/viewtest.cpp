@@ -318,7 +318,7 @@ OnCreate(HWND hWnd)
 	// BitmapView
 	g_pBitmapViewWindow = new BitmapViewWindow(g_lfNotifier, hWnd);
 
-	g_pLFReader = new LargeFileReader("C:\\temp\\gt4.mpg");
+	g_pLFReader = new LargeFileReader("C:\\temp\\Kokumaro.1440x1152.yuv420.mpg");
 
 	g_lfNotifier.loadFile(g_pLFReader.ptr());
 }
@@ -422,9 +422,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	::InitCommonControls();
 
 	try {
-		LF_Notifier lfNotifier;
-
-		MainWindow mainWnd(hInstance, lfNotifier);
+		MainWindow mainWnd(hInstance, __argv[1]);
 
 		mainWnd.show(nCmdShow);
 

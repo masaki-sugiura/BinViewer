@@ -7,19 +7,17 @@
 #include "BitmapView.h"
 #include "auto_ptr.h"
 
-class MainWindow : public LF_Acceptor {
+class MainWindow {
 public:
-	MainWindow(HINSTANCE hInstance, LF_Notifier& lfNotify);
+	MainWindow(HINSTANCE hInstance, LPCSTR lpszFileName);
 	~MainWindow();
-
-	bool onLoadFile();
-	void onUnloadFile();
 
 	bool show(int nCmdShow);
 
 	int doModal();
 
 private:
+	LF_Notifier m_lfNotifier;
 	Auto_Ptr<HexView> m_pHexView;
 	Auto_Ptr<LargeFileReader> m_pLFReader;
 	Auto_Ptr<HV_DrawInfo> m_pHVDrawInfo;

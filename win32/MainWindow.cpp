@@ -16,9 +16,8 @@
 #define STATUSBAR_HEIGHT  20
 #define STATUS_POS_HEADER    "カーソルの現在位置： 0x"
 
-MainWindow::MainWindow(HINSTANCE hInstance, LF_Notifier& lfNotifier)
-	: LF_Acceptor(lfNotifier),
-	  m_pHexView(NULL),
+MainWindow::MainWindow(HINSTANCE hInstance, LPCSTR lpszFileName)
+	: m_pHexView(NULL),
 	  m_pLFReader(NULL),
 	  m_pHVDrawInfo(NULL),
 	  m_pBitmapViewWindow(NULL),
@@ -40,20 +39,14 @@ MainWindow::MainWindow(HINSTANCE hInstance, LF_Notifier& lfNotifier)
 	if (!m_hWnd) {
 		throw CreateWindowError();
 	}
+
+	if (lpszFileName) {
+		m_pLFReader = new LargeFileReader(lpszFileName);
+		m_lfNotifier.loadFile(m_pLFReader.ptr());
+	}
 }
 
 MainWindow::~MainWindow()
-{
-}
-
-bool
-MainWindow::onLoadFile()
-{
-	return true;
-}
-
-void
-MainWindow::onUnloadFile()
 {
 }
 
