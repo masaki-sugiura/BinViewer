@@ -5,8 +5,29 @@
 
 #include "bgb_manager.h"
 
+class DrawInfo {
+public:
+	DrawInfo(HDC hDC, int width, int height, COLORREF crBkColor);
+	virtual ~DrawInfo();
+
+	HDC getDC() const { return m_hDC; }
+	int getWidth() const { return m_nWidth; }
+	int getHeight() const { return m_nHeight; }
+	HBRUSH getBkBrush() const { return m_hbrBackground; }
+
+	void setDC(HDC hDC) { m_hDC = hDC; }
+	void setBkColor(COLORREF crBkColor);
+
+protected:
+	HDC m_hDC;
+	int m_nWidth;
+	int m_nHeight;
+	HBRUSH m_hbrBackground;
+};
+
+
 struct Renderer {
-	Renderer(HDC hDC, int width, int height, HBRUSH hbrBackground);
+	Renderer();
 	virtual ~Renderer();
 
 	virtual int render() = 0;
@@ -14,7 +35,7 @@ struct Renderer {
 	virtual void bitBlt(HDC hDC, int x, int y, int cx, int cy,
 						int sx, int sy) const = 0;
 
-	void prepareDC(HDC hDC, int width, int height, HBRUSH hbrBackground);
+	virtual bool prepareDC(DrawInfo* pDrawInfo);
 
 	HDC m_hDC;
 	HBITMAP m_hBitmap;
@@ -23,9 +44,7 @@ struct Renderer {
 };
 
 struct DCBuffer : public BGBuffer, public Renderer {
-	DCBuffer(int nBufSize,
-			 HDC hDC, int nWidth, int nHeight,
-			 HBRUSH hbrBackground);
+	DCBuffer(int nBufSize);
 
 	int init(LargeFileReader& LFReader, filesize_t offset);
 	void uninit();
@@ -33,12 +52,17 @@ struct DCBuffer : public BGBuffer, public Renderer {
 	void bitBlt(HDC hDC, int x, int y, int cx, int cy,
 				int sx, int sy) const;
 
-	void invertRegion(filesize_t pos, int size, bool bSelected);
+	void setCursor(int offset);
+	void select(int offset, int size);
 
-	bool hasSelectedRegion() const { return m_bHasSelectedRegion; }
+	bool hasCursor() const { return m_nCursorPos >= 0; }
+	bool hasSelectedRegion() const
+	{
+		return m_nSelectedPos >= 0 && m_nSelectedSize > 0;
+	}
 
 protected:
-	bool m_bHasSelectedRegion;
+	int  m_nCursorPos;
 	int  m_nSelectedPos, m_nSelectedSize;
 
 	virtual void invertRegionInBuffer(int offset, int size) = 0;
@@ -66,7 +90,7 @@ public:
 		return static_cast<DCBuffer*>(BGB_Manager::getBuffer(offset));
 	}
 
-	void setDCInfo(HDC hDC, int width, int height, HBRUSH hbrBackground);
+	bool setDrawInfo(DrawInfo* pDrawInfo);
 
 	void setViewSize(int nViewWidth, int nViewHeight)
 	{
@@ -76,12 +100,12 @@ public:
 
 	void setViewPosition(int nXOffset, filesize_t qYOffset);
 
-	void setViewPosition(int nXOffset)
+	void setViewPositionX(int nXOffset)
 	{
 //		setViewPosition(nXOffset, m_qYOffset);
 		m_nXOffset = nXOffset;
 	}
-	void setViewPosition(filesize_t qYOffset)
+	void setViewPositionY(filesize_t qYOffset)
 	{
 		setViewPosition(m_nXOffset, qYOffset);
 	}
@@ -94,19 +118,24 @@ public:
 
 	void bitBlt(HDC hDCDst, const RECT& rcDst);
 
-	virtual int getXPositionByCoordinate(int x) = 0;
+	virtual void setCursor(filesize_t pos);
+	virtual void select(filesize_t pos, filesize_t size);
+
+	virtual filesize_t getPositionByCoordinate(int x, int y) = 0;
 
 protected:
-	HDC m_hDC;
+	DrawInfo* m_pDrawInfo;
 	int m_nWidth, m_nHeight;
 	int m_nXOffset;
 	int m_nYOffset;
 	int m_nViewWidth, m_nViewHeight;
 	filesize_t m_qYOffset;
+	filesize_t m_qCursorPos;
+	filesize_t m_qStartSelected;
+	filesize_t m_qSelectedSize;
 	bool m_bOverlapped;
 	DCBuffer* m_pCurBuf;
 	DCBuffer* m_pNextBuf;
-	HBRUSH m_hbrBackground;
 
 	bool
 	isOverlapped(int y_offset_line_num, int page_line_num)

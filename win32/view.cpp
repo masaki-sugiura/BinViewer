@@ -7,10 +7,10 @@
 View::View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 		   const RECT& rctWindow,
 		   DC_Manager* pDCManager,
-		   int nWidth, int nHeight,
-		   int nPixelsPerLine,
-		   COLORREF crBkColor)
+		   DrawInfo* pDrawInfo,
+		   int nPixelsPerLine)
 	: m_pDCManager(pDCManager),
+	  m_pDrawInfo(pDrawInfo),
 	  m_nPixelsPerLine(nPixelsPerLine),
 	  m_qYOffset(0),
 	  m_smHorz(NULL, SB_HORZ), m_smVert(NULL, SB_VERT),
@@ -55,20 +55,19 @@ View::View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 	m_smHorz.setHWND(m_hwndView);
 	m_smVert.setHWND(m_hwndView);
 
-	m_hdcView = ::GetDC(m_hwndView);
+	m_pDrawInfo->setDC(::GetDC(m_hwndView));
 
-	m_hbrBackground = ::CreateSolidBrush(crBkColor);
+	if (!m_pDCManager->setDrawInfo(m_pDrawInfo)) {
+		throw CreateWindowError();
+	}
 
-	m_pDCManager->setDCInfo(m_hdcView, nWidth, nHeight, m_hbrBackground);
-
-	m_nBytesPerLine = m_pDCManager->bufSize() * nPixelsPerLine / nHeight;
+	m_nBytesPerLine = m_pDCManager->bufSize() * nPixelsPerLine / m_pDrawInfo->getHeight();
 
 	m_pDCManager->setViewRect(0, 0, nViewWidth, nViewHeight);
 }
 
 View::~View()
 {
-	::DeleteObject(m_hbrBackground);
 	::SetWindowLong(m_hwndView, GWL_USERDATA, 0);
 }
 
@@ -94,7 +93,7 @@ View::ensureVisible(filesize_t pos, bool bRedraw)
 {
 	filesize_t newline = pos / m_nBytesPerLine;
 	filesize_t line_diff = newline - m_smVert.getCurrentPos();
-	filesize_t valid_page_line_num = m_smVert.getGripWidth() - 1;
+	filesize_t valid_page_line_num = m_smVert.getGripWidth();
 	if (line_diff < 0) {
 		m_smVert.setPosition(newline);
 		setCurrentLine(newline, bRedraw);
@@ -119,7 +118,7 @@ View::setCurrentLine(filesize_t newline, bool bRedraw)
 		newline = 0;
 	}
 
-	m_pDCManager->setViewPosition(newline * m_nPixelsPerLine);
+	m_pDCManager->setViewPositionY(newline * m_nPixelsPerLine);
 }
 
 void
@@ -190,7 +189,7 @@ void
 View::onHScroll(WPARAM wParam, LPARAM lParam)
 {
 	// •\Ž¦—Ìˆæ‚ÌXV
-	m_pDCManager->setViewPosition(m_smHorz.onScroll(LOWORD(wParam)));
+	m_pDCManager->setViewPositionX(m_smHorz.onScroll(LOWORD(wParam)));
 }
 
 LRESULT CALLBACK

@@ -3,12 +3,33 @@
 #include "dc_manager.h"
 #include <assert.h>
 
-Renderer::Renderer(HDC hDC, int width, int height, HBRUSH hbrBackground)
-	: m_hDC(::CreateCompatibleDC(hDC))
+DrawInfo::DrawInfo(HDC hDC, int width, int height, COLORREF crBkColor)
+	: m_hDC(hDC),
+	  m_nWidth(width),
+	  m_nHeight(height),
+	  m_hbrBackground(NULL)
 {
-	assert(hDC);
+	m_hbrBackground = ::CreateSolidBrush(crBkColor);
+}
 
-	prepareDC(hDC, width, height, hbrBackground);
+DrawInfo::~DrawInfo()
+{
+	::DeleteObject(m_hbrBackground);
+}
+
+void
+DrawInfo::setBkColor(COLORREF crBkColor)
+{
+	::DeleteObject(m_hbrBackground);
+	m_hbrBackground = ::CreateSolidBrush(crBkColor);
+}
+
+Renderer::Renderer()
+	: m_hDC(NULL),
+	  m_hBitmap(NULL),
+	  m_nWidth(0), m_nHeight(0),
+	  m_hbrBackground(NULL)
+{
 }
 
 Renderer::~Renderer()
@@ -17,27 +38,53 @@ Renderer::~Renderer()
 	::DeleteDC(m_hDC);
 }
 
-void
-Renderer::prepareDC(HDC hDC, int width, int height, HBRUSH hbrBackground)
+bool
+Renderer::prepareDC(DrawInfo* pDrawInfo)
 {
-	if (m_hBitmap != NULL) ::DeleteObject(m_hBitmap);
+	if (pDrawInfo == NULL ||
+		pDrawInfo->getDC() == NULL  ||
+		pDrawInfo->getWidth() <= 0  ||
+		pDrawInfo->getHeight() <= 0 ||
+		pDrawInfo->getBkBrush() == NULL) {
+		return false;
+	}
 
-	m_nWidth  = width;
-	m_nHeight = height;
+	if (m_hBitmap != NULL) {
+		::DeleteObject(m_hBitmap);
+	}
+	if (m_hDC != NULL) {
+		::DeleteDC(m_hDC);
+	}
 
-	m_hBitmap = ::CreateCompatibleBitmap(hDC, width, height);
-	::SelectObject(m_hDC, (HGDIOBJ)m_hBitmap);
+	m_nWidth  = pDrawInfo->getWidth();
+	m_nHeight = pDrawInfo->getHeight();
 
-	m_hbrBackground = hbrBackground;
+	m_hDC = ::CreateCompatibleDC(pDrawInfo->getDC());
+	if (m_hDC == NULL) {
+		return false;
+	}
+
+	m_hBitmap = ::CreateCompatibleBitmap(pDrawInfo->getDC(),
+										 pDrawInfo->getWidth(),
+										 pDrawInfo->getHeight());
+	if (m_hBitmap == NULL) {
+		return false;
+	}
+
+	HGDIOBJ hOrgBitmap = ::SelectObject(m_hDC, (HGDIOBJ)m_hBitmap);
+	if (hOrgBitmap == NULL) {
+		return false;
+	}
+
+	m_hbrBackground = pDrawInfo->getBkBrush();
+
+	return true;
 }
 
 
-DCBuffer::DCBuffer(int nBufSize,
-				   HDC hDC, int nWidth, int nHeight,
-				   HBRUSH hbrBackground)
-	: BGBuffer(nBufSize),
-	  Renderer(hDC, nWidth, nHeight, hbrBackground),
-	  m_bHasSelectedRegion(false),
+DCBuffer::DCBuffer(int nBufSize)
+	: BGBuffer(nBufSize), Renderer(),
+	  m_nCursorPos(-1),
 	  m_nSelectedPos(-1), m_nSelectedSize(0)
 {
 }
@@ -54,8 +101,14 @@ DCBuffer::init(LargeFileReader& LFReader, filesize_t offset)
 void
 DCBuffer::uninit()
 {
-	if (m_bHasSelectedRegion) // 選択を解除
-		invertRegionInBuffer(m_nSelectedPos, m_nSelectedSize);
+	if (hasCursor()) {
+		// カーソルを消去
+		setCursor(-1);
+	}
+	if (hasSelectedRegion()) {
+		// 選択を解除
+		select(-1, 0);
+	}
 	BGBuffer::uninit();
 //	render(); // 背景色で塗りつぶし
 }
@@ -76,45 +129,75 @@ DCBuffer::bitBlt(HDC hDC, int x, int y, int cx, int cy,
 }
 
 void
-DCBuffer::invertRegion(filesize_t pos, int size, bool bSelected)
+DCBuffer::setCursor(int offset)
 {
-//	if (m_bHasSelectedRegion == bSelected) return;
+	if (offset < 0) {
+		// カーソルの消去
+		if (hasCursor()) {
+			invertRegionInBuffer(m_nCursorPos, 1);
+			m_nCursorPos = offset;
+		}
+	} else {
+		// カーソルのセット
+		if (!hasCursor() && offset < m_nDataSize) {
+			m_nCursorPos = offset;
+			invertRegionInBuffer(m_nCursorPos, 1);
+		}
+	}
+}
 
-	if (m_qAddress >= pos + size ||
-		m_qAddress + m_nBufSize <= pos)
-		return;
-
-	m_bHasSelectedRegion = bSelected;
-
-	int offset = (int)(pos - m_qAddress);
-
-	if (offset < 0) offset = 0;
-	if (offset + size > m_nBufSize)
-		size = m_nBufSize - offset;
-
-	invertRegionInBuffer(offset, size);
+void
+DCBuffer::select(int offset, int size)
+{
+	if (offset < 0) {
+		// 選択領域の消去
+		if (hasSelectedRegion()) {
+			invertRegionInBuffer(m_nSelectedPos, m_nSelectedSize);
+			m_nSelectedPos = offset;
+			m_nSelectedSize = size;
+		}
+	} else {
+		// 選択領域のセット
+		if (!hasSelectedRegion() &&
+			offset + size <= m_nDataSize) {
+			m_nSelectedPos = offset;
+			m_nSelectedSize = size;
+			invertRegionInBuffer(m_nSelectedPos, m_nSelectedSize);
+		}
+	}
 }
 
 
 DC_Manager::DC_Manager(int nBufSize, int nBufCount)
 	: BGB_Manager(nBufSize, nBufCount),
-	  m_hDC(NULL),
 	  m_nWidth(0), m_nHeight(0),
 	  m_nXOffset(0), m_nYOffset(0),
 	  m_nViewWidth(0), m_nViewHeight(0),
+	  m_qYOffset(0),
+	  m_qCursorPos(-1),
+	  m_qStartSelected(-1),
+	  m_qSelectedSize(0),
 	  m_bOverlapped(false),
-	  m_pCurBuf(NULL), m_pNextBuf(NULL),
-	  m_hbrBackground(NULL)
+	  m_pCurBuf(NULL), m_pNextBuf(NULL)
 {
 }
 
-void
-DC_Manager::setDCInfo(HDC hDC, int width, int height, HBRUSH hbrBackground)
+bool
+DC_Manager::setDrawInfo(DrawInfo* pDrawInfo)
 {
-	m_hDC = hDC;
-	m_nWidth = width;
-	m_nHeight = height;
-	m_hbrBackground = hbrBackground;
+	for (int i = getMinBufferIndex(); i < getMaxBufferIndex(); i++) {
+		DCBuffer* pBuf = static_cast<DCBuffer*>(m_rbBuffers.elementAt(i));
+		if (!pBuf) continue;
+		if (!pBuf->prepareDC(pDrawInfo)) {
+			return false;
+		}
+	}
+
+	m_pDrawInfo = pDrawInfo;
+	m_nWidth = pDrawInfo->getWidth();
+	m_nHeight = pDrawInfo->getHeight();
+
+	return true;
 }
 
 void
@@ -160,7 +243,7 @@ DC_Manager::bitBlt(HDC hdcDst, const RECT& rcPaint)
 								   rcPaint.left + m_nXOffset,
 								   rcPaint.top - height - nHeaderHeight);
 			} else {
-				::FillRect(hdcDst, &rcPaint, m_hbrBackground);
+				::FillRect(hdcDst, &rcPaint, m_pDrawInfo->getBkBrush());
 			}
 		} else {
 			m_pCurBuf->bitBlt(hdcDst,
@@ -179,7 +262,7 @@ DC_Manager::bitBlt(HDC hdcDst, const RECT& rcPaint)
 				RECT rctTemp = rcPaint;
 				rctTemp.top    = height + nHeaderHeight;
 				rctTemp.bottom = rcPaint.bottom;
-				::FillRect(hdcDst, &rctTemp, m_hbrBackground);
+				::FillRect(hdcDst, &rctTemp, m_pDrawInfo->getBkBrush());
 			}
 		}
 	} else if (m_pCurBuf) {
@@ -194,4 +277,57 @@ DC_Manager::bitBlt(HDC hdcDst, const RECT& rcPaint)
 	}
 }
 
+void
+DC_Manager::setCursor(filesize_t pos)
+{
+	if (pos < 0 || !isLoaded()) return;
+
+	filesize_t fsize = getFileSize();
+	if (fsize <= pos) return;
+
+	for (int i = getMinBufferIndex(); i < getMaxBufferIndex(); i++) {
+		DCBuffer* pBuf = static_cast<DCBuffer*>(m_rbBuffers.elementAt(i));
+		if (!pBuf || pBuf->m_qAddress == -1) continue;
+		// 既にカーソルを持っていた場合、それを一度消去
+		if (pBuf->hasCursor()) {
+			pBuf->setCursor(-1);
+		}
+		if (pBuf->m_qAddress <= pos &&
+			pos < pBuf->m_qAddress + pBuf->m_nDataSize) {
+			pBuf->setCursor((int)(pos - pBuf->m_qAddress));
+			return;
+		}
+	}
+}
+
+void
+DC_Manager::select(filesize_t pos, filesize_t size)
+{
+	if (pos < 0 || size <= 0 || !isLoaded()) return;
+
+	filesize_t fsize = getFileSize();
+	if (fsize <= pos) return;
+
+	if (pos + size > fsize) {
+		size = fsize - pos;
+	}
+
+	for (int i = getMinBufferIndex(); i < getMaxBufferIndex(); i++) {
+		DCBuffer* pBuf = static_cast<DCBuffer*>(m_rbBuffers.elementAt(i));
+		if (!pBuf || pBuf->m_qAddress == -1) {
+			continue;
+		}
+		// 選択領域を持っていた場合、一度それを消去
+		if (pBuf->hasSelectedRegion()) {
+			pBuf->select(-1, 0);
+		}
+		if (pBuf->m_qAddress >= pos + size ||
+			pBuf->m_qAddress + pBuf->m_nDataSize <= pos) {
+			continue;
+		}
+		filesize_t qHead = max(pBuf->m_qAddress, pos),
+				   qTail = min(pBuf->m_qAddress + pBuf->m_nDataSize, pos + size);
+		pBuf->select((int)(qHead - pBuf->m_qAddress), (int)(qTail - qHead));
+	}
+}
 

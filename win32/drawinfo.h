@@ -10,6 +10,8 @@
 using std::exception;
 using std::string;
 
+#include "dc_manager.h"
+
 class InvalidFontError : public exception {
 };
 
@@ -142,17 +144,16 @@ struct ScrollConfig {
 	}
 };
 
-class DrawInfo {
+class HV_DrawInfo : public DrawInfo {
 public:
-	DrawInfo(HDC hDC, float fontsize,
-			 const char* faceName, bool bBoldFace,
-			 COLORREF crFgColorAddr, COLORREF crBkColorAddr,
-			 COLORREF crFgColorData, COLORREF crBkColorData,
-			 COLORREF crFgColorStr, COLORREF crBkColorStr,
-			 COLORREF crFgColorHeader, COLORREF crBkColorHeader,
-			 CARET_MOVE caretMove, WHEEL_SCROLL wheelScroll);
+	HV_DrawInfo(HDC hDC, float fontsize,
+				const char* faceName, bool bBoldFace,
+				COLORREF crFgColorAddr, COLORREF crBkColorAddr,
+				COLORREF crFgColorData, COLORREF crBkColorData,
+				COLORREF crFgColorStr, COLORREF crBkColorStr,
+				COLORREF crFgColorHeader, COLORREF crBkColorHeader,
+				CARET_MOVE caretMove, WHEEL_SCROLL wheelScroll);
 
-	HDC m_hDC;
 	FontInfo m_FontInfo;
 	TextColorInfo m_tciHeader, m_tciAddress, m_tciData, m_tciString;
 	ScrollConfig m_ScrollConfig;
@@ -179,8 +180,8 @@ public:
 	}
 
 private:
-	DrawInfo(const DrawInfo&);
-	DrawInfo& operator=(const DrawInfo&);
+	HV_DrawInfo(const HV_DrawInfo&);
+	HV_DrawInfo& operator=(const HV_DrawInfo&);
 };
 
 #endif

@@ -33,10 +33,8 @@ static string g_strAppName;
 
 class TestDCBuffer : public DCBuffer {
 public:
-	TestDCBuffer(int nBufSize,
-				 HDC hDC, int nWidth, int nHeight,
-				 HBRUSH hbrBackground)
-		: DCBuffer(nBufSize, hDC, nWidth, nHeight, hbrBackground)
+	TestDCBuffer(int nBufSize)
+		: DCBuffer(nBufSize)
 	{}
 
 	int render()
@@ -69,7 +67,15 @@ public:
 	{
 	}
 
-	int getXPositionByCoordinate(int x)
+	void setCursor(filesize_t pos)
+	{
+	}
+
+	void select(filesize_t pos, filesize_t size)
+	{
+	}
+
+	filesize_t getPositionByCoordinate(int x, int y)
 	{
 		return 0;
 	}
@@ -77,10 +83,15 @@ public:
 protected:
 	BGBuffer* createBGBufferInstance()
 	{
-		if (m_hDC == NULL || m_nWidth == 0 || m_nHeight == 0 || m_hbrBackground == NULL) {
+		if (m_pDrawInfo == NULL) {
 			return NULL;
 		}
-		return new TestDCBuffer(m_nBufSize, m_hDC, m_nWidth, m_nHeight, m_hbrBackground);
+		TestDCBuffer* pBuf = new TestDCBuffer(m_nBufSize);
+		if (!pBuf->prepareDC(m_pDrawInfo)) {
+			delete pBuf;
+			return NULL;
+		}
+		return pBuf;
 	}
 };
 
@@ -92,11 +103,13 @@ public:
 			   WS_EX_CLIENTEDGE,
 			   rctClient,
 			   new TestDCManager(),
-			   800, 1024, 1, RGB(255, 255, 255))
+			   new DrawInfo(NULL, 800, 1024, RGB(255, 255, 255)),
+			   1)
 	{
 	}
 	~ViewFrame()
 	{
+		delete m_pDrawInfo;
 		delete m_pDCManager;
 	}
 
