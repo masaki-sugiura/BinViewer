@@ -19,6 +19,7 @@ struct Renderer {
 	HDC m_hDC;
 	HBITMAP m_hBitmap;
 	int m_nWidth, m_nHeight;
+	HBRUSH m_hbrBackground;
 };
 
 struct DCBuffer : public BGBuffer, public Renderer {
@@ -39,7 +40,6 @@ struct DCBuffer : public BGBuffer, public Renderer {
 protected:
 	bool m_bHasSelectedRegion;
 	int  m_nSelectedPos, m_nSelectedSize;
-	HBRUSH m_hbrBackground;
 
 	virtual void invertRegionInBuffer(int offset, int size) = 0;
 };
@@ -71,8 +71,6 @@ protected:
 	HDC m_hDC;
 	int m_nWidth, m_nHeight;
 	HBRUSH m_hbrBackground;
-
-	BGBuffer* createBGBufferInstance();
 };
 
 #endif

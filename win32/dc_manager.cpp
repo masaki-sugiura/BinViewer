@@ -113,12 +113,4 @@ DC_Manager::setDCInfo(HDC hDC, int width, int height, HBRUSH hbrBackground)
 	m_hbrBackground = hbrBackground;
 }
 
-BGBuffer*
-DC_Manager::createBGBufferInstance()
-{
-	if (m_hDC == NULL || m_nWidth == 0 || m_nHeight == 0 || m_hbrBackground == NULL) {
-		return NULL;
-	}
-	return new DCBuffer(m_nBufSize, m_hDC, m_nWidth, m_nHeight, m_hbrBackground);
-}
 

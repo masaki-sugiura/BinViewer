@@ -5,6 +5,7 @@
 
 #include "ringbuf.h"
 #include "LF_Notify.h"
+#include "LargeFileReader.h"
 #include "thread.h"
 #include "auto_ptr.h"
 
@@ -81,6 +82,7 @@ public:
 
 	filesize_t getFileSize() const
 	{
+		if (!m_pLFAcceptor) return -1;
 		LargeFileReader* pLFReader;
 		bool bRet = m_pLFAcceptor->tryLockReader(&pLFReader, INFINITE);
 		if (!bRet) return -1;
@@ -128,6 +130,9 @@ public:
 		fillBGBuffer(offset);
 		return getCurrentBuffer();
 	}
+
+	int bufSize() const { return m_nBufSize; }
+	int bufCount() const { return m_nBufCount; }
 
 protected:
 	int m_nBufSize, m_nBufCount;

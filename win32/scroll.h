@@ -10,7 +10,9 @@ template<class SIZE_TYPE>
 class ScrollManager {
 public:
 	ScrollManager(HWND hWnd, int axis)
-		: m_hWnd(hWnd), m_nAxis(axis)
+		: m_hWnd(hWnd), m_nAxis(axis),
+		  m_stCurrentPos(0), m_stMaxPos(0), m_stGripWidth(0),
+		  m_bMapScrollBarLinearly(true)
 	{
 		// disable scroll bar initially
 //		disable();
@@ -43,12 +45,12 @@ public:
 			m_bMapScrollBarLinearly = false;
 			sinfo.nMax  = 0x7FFFFFFF;
 			sinfo.nPage = (DWORD)(((__int64)stGripWidth << 32) / stMaxPos);
-			sinfo.nPos  = ((__int64)stCurrPos << 32) / stMaxPos;
+			sinfo.nPos  = (DWORD)(((__int64)stCurrPos << 32) / stMaxPos);
 		} else {
 			m_bMapScrollBarLinearly = true;
-			sinfo.nMax  = stMaxPos - 1;
-			sinfo.nPage = stGripWidth;
-			sinfo.nPos  = stCurrPos;
+			sinfo.nMax  = (DWORD)(stMaxPos - 1);
+			sinfo.nPage = (DWORD)stGripWidth;
+			sinfo.nPos  = (DWORD)stCurrPos;
 		}
 		if (sinfo.nMax <= 0)  sinfo.nMax  = 1;
 		if (sinfo.nPage == 0) sinfo.nPage = 1;
@@ -66,9 +68,9 @@ public:
 		sinfo.cbSize = sizeof(sinfo);
 		sinfo.fMask  = SIF_POS;
 		if (m_bMapScrollBarLinearly)
-			sinfo.nPos = pos;
+			sinfo.nPos = (DWORD)pos;
 		else
-			sinfo.nPos = ((__int64)pos << 32) / m_stMaxPos;
+			sinfo.nPos = (DWORD)(((__int64)pos << 32) / m_stMaxPos);
 
 		::SetScrollInfo(m_hWnd, m_nAxis, &sinfo, TRUE);
 	}
@@ -83,12 +85,12 @@ public:
 
 		switch (cmd) {
 		case SB_LINEDOWN:
-			if (m_stCurrentPos < m_stMaxPos) {
+			if (m_stCurrentPos + m_stGripWidth < m_stMaxPos) {
 				m_stCurrentPos++;
 				if (m_bMapScrollBarLinearly) {
 					sinfo.nPos++;
 				} else {
-					sinfo.nPos = ((__int64)m_stCurrentPos << 32) / m_stMaxPos;
+					sinfo.nPos = (DWORD)(((__int64)m_stCurrentPos << 32) / m_stMaxPos);
 				}
 			}
 			break;
@@ -99,20 +101,20 @@ public:
 				if (m_bMapScrollBarLinearly) {
 					sinfo.nPos--;
 				} else {
-					sinfo.nPos = ((__int64)m_stCurrentPos << 32) / m_stMaxPos;
+					sinfo.nPos = (DWORD)(((__int64)m_stCurrentPos << 32) / m_stMaxPos);
 				}
 			}
 			break;
 
 		case SB_PAGEDOWN:
-			if ((m_stCurrentPos += m_stGripWidth) > m_stMaxPos) {
-				m_stCurrentPos = m_stMaxPos;
-				sinfo.nPos = sinfo.nMax;
+			if ((m_stCurrentPos += m_stGripWidth) > m_stMaxPos - m_stGripWidth) {
+				m_stCurrentPos = m_stMaxPos - m_stGripWidth;
+				sinfo.nPos = sinfo.nMax - sinfo.nPage;
 			} else {
 				if (m_bMapScrollBarLinearly) {
 					sinfo.nPos += sinfo.nPage;
 				} else {
-					sinfo.nPos = ((__int64)m_stCurrentPos << 32) / m_stMaxPos;
+					sinfo.nPos = (DWORD)(((__int64)m_stCurrentPos << 32) / m_stMaxPos);
 				}
 			}
 			break;
@@ -125,7 +127,7 @@ public:
 				if (m_bMapScrollBarLinearly) {
 					sinfo.nPos -= sinfo.nPage;
 				} else {
-					sinfo.nPos = ((__int64)m_stCurrentPos << 32) / m_stMaxPos;
+					sinfo.nPos = (DWORD)(((__int64)m_stCurrentPos << 32) / m_stMaxPos);
 				}
 			}
 			break;
@@ -136,8 +138,8 @@ public:
 			break;
 
 		case SB_BOTTOM:
-			m_stCurrentPos = m_stMaxPos;
-			sinfo.nPos = sinfo.nMax;
+			m_stCurrentPos = m_stMaxPos - m_stGripWidth;
+			sinfo.nPos = sinfo.nMax - sinfo.nPage;
 			break;
 
 		case SB_THUMBTRACK:
@@ -149,9 +151,9 @@ public:
 				m_stCurrentPos = sinfo.nTrackPos;
 			}
 			if (m_bMapScrollBarLinearly)
-				sinfo.nPos = m_stCurrentPos;
+				sinfo.nPos = (DWORD)m_stCurrentPos;
 			else
-				sinfo.nPos = ((__int64)m_stCurrentPos << 32) / m_stMaxPos;
+				sinfo.nPos = (DWORD)(((__int64)m_stCurrentPos << 32) / m_stMaxPos);
 			break;
 		}
 		::SetScrollInfo(m_hWnd, m_nAxis, &sinfo, TRUE);
@@ -162,6 +164,7 @@ public:
 	SIZE_TYPE getCurrentPos() const { return m_stCurrentPos; }
 	SIZE_TYPE getMaxPos() const { return m_stMaxPos; }
 	SIZE_TYPE getGripWidth() const { return m_stGripWidth; }
+	bool isMapScrollBarLinearly() const { return m_bMapScrollBarLinearly; }
 
 private:
 	HWND m_hWnd;
