@@ -15,6 +15,8 @@
 class BV_DrawInfo : public DrawInfo {
 public:
 	BV_DrawInfo();
+
+	void initDrawInfo();
 };
 
 class BV_DCBuffer : public DCBuffer {

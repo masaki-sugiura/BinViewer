@@ -272,6 +272,31 @@ View::setViewSize(int width, int height)
 	m_pDCManager->setViewSize(width, height);
 }
 
+bool
+View::setDrawInfo(DrawInfo* pDrawInfo)
+{
+	m_pDrawInfo = pDrawInfo;
+
+	if (!m_pDCManager->setDrawInfo(pDrawInfo)) {
+		return false;
+	}
+
+	initScrollInfo();
+
+#if 0
+	if (m_pLFNotifier) {
+		filesize_t pos = m_pLFNotifier->getCursorPos();
+		if (pos >= 0) {
+			m_pLFNotifier->setCursorPos(pos);
+		}
+	}
+#endif
+
+	redrawView();
+
+	return true;
+}
+
 void
 View::onVScroll(WPARAM wParam, LPARAM lParam)
 {

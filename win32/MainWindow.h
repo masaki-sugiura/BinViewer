@@ -16,6 +16,8 @@ public:
 
 	FontInfo m_FontInfo;
 	TextColorInfo m_tciHeader;
+
+	void initDrawInfo();
 };
 
 struct AppConfig {

@@ -53,7 +53,7 @@ public:
 	// クライアント領域を指定サイズに変更
 	virtual void setViewSize(int width, int height);
 
-	virtual bool setDrawInfo(DrawInfo* pDrawInfo) = 0;
+	virtual bool setDrawInfo(DrawInfo* pDrawInfo);
 
 	// ウィンドウサイズを行高・文字幅の整数倍に調整
 	void adjustWindowRect(RECT& rctFrame);

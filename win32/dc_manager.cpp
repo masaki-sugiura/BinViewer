@@ -168,6 +168,23 @@ DCBuffer::select(int offset, int size)
 	}
 }
 
+void
+DCBuffer::repaint()
+{
+	render();
+	if (hasCursor()) {
+		int offset = m_nCursorPos;
+		m_nCursorPos = -1;
+		setCursor(offset);
+	}
+	if (hasSelectedRegion()) {
+		int offset = m_nSelectedPos, size = m_nSelectedSize;
+		m_nSelectedPos = -1;
+		m_nSelectedSize = 0;
+		select(offset, size);
+	}
+}
+
 
 DC_Manager::DC_Manager(int nBufSize, int nBufCount)
 	: BGB_Manager(nBufSize, nBufCount),
@@ -204,12 +221,13 @@ DC_Manager::onUnloadFile()
 bool
 DC_Manager::setDrawInfo(DrawInfo* pDrawInfo)
 {
-	for (int i = getMinBufferIndex(); i < getMaxBufferIndex(); i++) {
+	for (int i = getMinBufferIndex(); i <= getMaxBufferIndex(); i++) {
 		DCBuffer* pBuf = static_cast<DCBuffer*>(m_rbBuffers.elementAt(i));
 		if (!pBuf) continue;
 		if (!pBuf->prepareDC(pDrawInfo)) {
 			return false;
 		}
+		pBuf->repaint();
 	}
 
 	m_pDrawInfo = pDrawInfo;

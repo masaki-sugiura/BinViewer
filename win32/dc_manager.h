@@ -41,6 +41,8 @@ struct DCBuffer : public BGBuffer, public Renderer {
 		return m_nSelectedPos >= 0 && m_nSelectedSize > 0;
 	}
 
+	void repaint();
+
 	// return: cursor offset bytes
 	virtual int setCursorByCoordinate(int x, int y) = 0;
 	virtual int getPositionByCoordinate(int x, int y) const = 0;

@@ -4,6 +4,12 @@
 
 BV_DrawInfo::BV_DrawInfo()
 {
+	initDrawInfo();
+}
+
+void
+BV_DrawInfo::initDrawInfo()
+{
 	setWidth(BV_WIDTH);
 	setHeight(BV_HEIGHT);
 	setPixelsPerLine(1);
@@ -192,20 +198,11 @@ BitmapView::~BitmapView()
 bool
 BitmapView::setDrawInfo(DrawInfo* pDrawInfo)
 {
-	BV_DrawInfo* pBVDrawInfo = dynamic_cast<BV_DrawInfo*>(pDrawInfo);
-	if (!pBVDrawInfo) {
+	if (!dynamic_cast<BV_DrawInfo*>(pDrawInfo)) {
 		return false;
 	}
 
-	if (!m_pDCManager->setDrawInfo(pDrawInfo)) {
-		return false;
-	}
-
-	m_pDrawInfo = pBVDrawInfo;
-
-	redrawView();
-
-	return true;
+	return View::setDrawInfo(pDrawInfo);
 }
 
 LRESULT

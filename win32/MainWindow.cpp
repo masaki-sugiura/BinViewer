@@ -31,12 +31,17 @@ HD_DrawInfo::HD_DrawInfo(HDC hDC, float fontsize,
 	  m_tciHeader("ƒwƒbƒ_", crFgColor, crBkColor)
 {
 	setDC(hDC);
-	setWidth(m_FontInfo.getXPitch() * (STRING_END_OFFSET + 1));
-	setHeight(m_FontInfo.getYPitch());
-	setBkColor(crBkColor);
-	setPixelsPerLine(m_FontInfo.getYPitch());
+	initDrawInfo();
 }
 
+void
+HD_DrawInfo::initDrawInfo()
+{
+	setWidth(m_FontInfo.getXPitch() * (STRING_END_OFFSET + 1));
+	setHeight(m_FontInfo.getYPitch());
+	setBkColor(m_tciHeader.getBkColor());
+	setPixelsPerLine(m_FontInfo.getYPitch());
+}
 
 Header::Header()
 	: m_pDrawInfo(NULL)
@@ -60,7 +65,7 @@ Header::prepareDC(DrawInfo* pDrawInfo)
 	m_pDrawInfo = pHDDrawInfo;
 
 	::SelectObject(m_hDC, (HGDIOBJ)pHDDrawInfo->m_FontInfo.getFont());
-	::SetBkColor(m_hDC, pHDDrawInfo->m_tciHeader.getBkColor());
+	pHDDrawInfo->m_tciHeader.setColorToDC(m_hDC);
 
 	int nXPitch = pHDDrawInfo->m_FontInfo.getXPitch();
 	for (int i = 0; i < sizeof(m_anXPitch) / sizeof(m_anXPitch[0]); i++) {
@@ -361,6 +366,8 @@ MainWindow::onSetFontConfig(FontConfig* pFontConfig, ColorConfig* pColorConfig)
 	}
 
 	if (pFontConfig || pColorConfig) {
+		pHVDrawInfo->initDrawInfo();
+		pHDDrawInfo->initDrawInfo();
 		m_pHexView->setDrawInfo(pHVDrawInfo);
 		m_pHexView->redrawView();
 		m_Header.setDrawInfo(pHDDrawInfo);

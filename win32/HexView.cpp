@@ -50,6 +50,12 @@ HV_DrawInfo::HV_DrawInfo(HDC hDC, float fontsize,
 	  m_tciString("•¶Žš—ñ", crFgColorStr, crBkColorStr),
 	  m_ScrollConfig(caretMove, wheelScroll)
 {
+	initDrawInfo();
+}
+
+void
+HV_DrawInfo::initDrawInfo()
+{
 	setWidth(m_FontInfo.getXPitch() * (STRING_END_OFFSET + 1));
 	setHeight(m_FontInfo.getYPitch() * (1024 / 16));
 	setBkColor(RGB(128, 128, 128));
@@ -381,20 +387,11 @@ HexView::~HexView()
 bool
 HexView::setDrawInfo(DrawInfo* pDrawInfo)
 {
-	HV_DrawInfo* pHVDrawInfo = dynamic_cast<HV_DrawInfo*>(pDrawInfo);
-	if (!pHVDrawInfo) {
+	if (!dynamic_cast<HV_DrawInfo*>(pDrawInfo)) {
 		return false;
 	}
 
-	if (!m_pDCManager->setDrawInfo(pDrawInfo)) {
-		return false;
-	}
-
-	m_pDrawInfo = pHVDrawInfo;
-
-	redrawView();
-
-	return true;
+	return View::setDrawInfo(pDrawInfo);
 }
 
 LRESULT

@@ -64,6 +64,8 @@ public:
 		return const_cast<HV_DrawInfo*>(this)->getTextColorInfo(index);
 	}
 
+	void initDrawInfo();
+
 private:
 	HV_DrawInfo(const HV_DrawInfo&);
 	HV_DrawInfo& operator=(const HV_DrawInfo&);
