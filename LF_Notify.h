@@ -40,17 +40,35 @@ private:
 
 class LF_Acceptor {
 public:
-	LF_Acceptor(LF_Notifier& lfNotifier);
+	LF_Acceptor();
 	virtual ~LF_Acceptor();
 
 //	LargeFileReader* getReader() const { return m_pLFReader; }
 	bool tryLockReader(LargeFileReader** ppLFReader, DWORD dwWaitTime)
 	{
-		return m_lfNotifier.tryLockReader(ppLFReader, dwWaitTime);
+		GetLock lock(m_lckData);
+		if (!m_pLFNotifier) return false;
+		return m_pLFNotifier->tryLockReader(ppLFReader, dwWaitTime);
 	}
 	void releaseReader(LargeFileReader* pLFReader)
 	{
-		m_lfNotifier.releaseReader(pLFReader);
+		GetLock lock(m_lckData);
+		if (m_pLFNotifier) {
+			m_pLFNotifier->releaseReader(pLFReader);
+		}
+	}
+
+	void setNotifier(LF_Notifier* pLFNotifier);
+	bool registTo(LF_Notifier& lfNotifier)
+	{
+		return lfNotifier.registerAcceptor(this);
+	}
+	void unregist()
+	{
+		GetLock lock(m_lckData);
+		if (m_pLFNotifier) {
+			m_pLFNotifier->unregisterAcceptor(this);
+		}
 	}
 
 	virtual bool onLoadFile() = 0;
@@ -58,8 +76,10 @@ public:
 
 	virtual void onSetCursorPos(filesize_t pos) = 0;
 
+	friend class LF_Notifier;
+
 protected:
-	LF_Notifier& m_lfNotifier;
+	LF_Notifier* m_pLFNotifier;
 
 private:
 	Lock m_lckData;
@@ -67,8 +87,6 @@ private:
 	bool loadFile();
 	void unloadFile();
 	void setCursorPos(filesize_t pos);
-
-	friend LF_Notifier;
 };
 
 class AutoLockReader {

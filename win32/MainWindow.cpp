@@ -19,6 +19,37 @@
 #define STATUSBAR_HEIGHT  20
 #define STATUS_POS_HEADER    "カーソルの現在位置： 0x"
 
+#define COLOR_BLACK      RGB(0, 0, 0)
+#define COLOR_GRAY       RGB(128, 128, 128)
+#define COLOR_LIGHTGRAY  RGB(192, 192, 192)
+#define COLOR_WHITE      RGB(255, 255, 255)
+#define COLOR_YELLOW     RGB(255, 255, 0)
+
+#define DEFAULT_FONT_SIZE  12
+#define DEFAULT_FG_COLOR_ADDRESS COLOR_WHITE
+#define DEFAULT_BK_COLOR_ADDRESS COLOR_GRAY
+#define DEFAULT_FG_COLOR_DATA    COLOR_BLACK
+#define DEFAULT_BK_COLOR_DATA    COLOR_WHITE
+#define DEFAULT_FG_COLOR_STRING  COLOR_BLACK
+#define DEFAULT_BK_COLOR_STRING  COLOR_LIGHTGRAY
+#define DEFAULT_FG_COLOR_HEADER  COLOR_BLACK
+#define DEFAULT_BK_COLOR_HEADER  COLOR_YELLOW
+
+
+HD_DrawInfo::HD_DrawInfo(HDC hDC, float fontsize,
+						 const char* faceName, bool bBoldFace,
+						 COLORREF crFgColor, COLORREF crBkColor)
+	: m_FontInfo(hDC, fontsize, faceName, bBoldFace),
+	  m_tciHeader("ヘッダ", crFgColor, crBkColor)
+{
+	setDC(hDC);
+	setWidth(m_FontInfo.getXPitch() * (STRING_END_OFFSET + 1));
+	setHeight(m_FontInfo.getYPitch());
+	setBkColor(crBkColor);
+	setPixelsPerLine(m_FontInfo.getYPitch());
+}
+
+
 Header::Header()
 	: m_pDrawInfo(NULL)
 {
@@ -27,8 +58,8 @@ Header::Header()
 bool
 Header::prepareDC(DrawInfo* pDrawInfo)
 {
-	HV_DrawInfo* pHVDrawInfo = dynamic_cast<HV_DrawInfo*>(pDrawInfo);
-	if (!pHVDrawInfo) {
+	HD_DrawInfo* pHDDrawInfo = dynamic_cast<HD_DrawInfo*>(pDrawInfo);
+	if (!pHDDrawInfo) {
 		return false;
 	}
 
@@ -36,14 +67,14 @@ Header::prepareDC(DrawInfo* pDrawInfo)
 		return false;
 	}
 
-	m_hbrBackground = pHVDrawInfo->m_tciHeader.getBkBrush();
+	m_hbrBackground = pHDDrawInfo->m_tciHeader.getBkBrush();
 
-	m_pDrawInfo = pHVDrawInfo;
+	m_pDrawInfo = pHDDrawInfo;
 
-	::SelectObject(m_hDC, (HGDIOBJ)m_pDrawInfo->m_FontInfo.getFont());
-	::SetBkColor(m_hDC, pHVDrawInfo->m_tciHeader.getBkColor());
+	::SelectObject(m_hDC, (HGDIOBJ)pHDDrawInfo->m_FontInfo.getFont());
+	::SetBkColor(m_hDC, pHDDrawInfo->m_tciHeader.getBkColor());
 
-	int nXPitch = m_pDrawInfo->m_FontInfo.getXPitch();
+	int nXPitch = pHDDrawInfo->m_FontInfo.getXPitch();
 	for (int i = 0; i < sizeof(m_anXPitch) / sizeof(m_anXPitch[0]); i++) {
 		m_anXPitch[i] = nXPitch;
 	}
@@ -110,6 +141,7 @@ MainWindow::MainWindow(HINSTANCE hInstance, LPCSTR lpszFileName)
 	: m_pHexView(NULL),
 	  m_pLFReader(NULL),
 	  m_pHVDrawInfo(NULL),
+	  m_pHDDrawInfo(NULL),
 	  m_pBitmapViewWindow(NULL),
 	  m_pStatusBar(NULL),
 	  m_hWnd(NULL)
@@ -169,7 +201,7 @@ MainWindow::doModal()
 void
 MainWindow::onCreate(HWND hWnd)
 {
-	m_pHVDrawInfo = loadDrawInfo(hWnd);
+	loadDrawInfo(hWnd);
 
 	RECT rctClient;
 	::GetClientRect(hWnd, &rctClient);
@@ -183,15 +215,16 @@ MainWindow::onCreate(HWND hWnd)
 	rctClient.top = m_pHVDrawInfo->getPixelsPerLine();
 	rctClient.bottom -= (rctBar.bottom - rctBar.top);
 
-	m_pHexView = new HexView(m_lfNotifier, hWnd, rctClient, m_pHVDrawInfo.ptr());
+	m_pHexView = new HexView(hWnd, rctClient, m_pHVDrawInfo.ptr());
+	m_pHexView->registTo(m_lfNotifier);
 
 	adjustWindowSize(hWnd, rctClient);
 
-	m_Header.prepareDC(m_pHVDrawInfo.ptr());
+	m_Header.prepareDC(m_pHDDrawInfo.ptr());
 	m_Header.render();
 
-	// BitmapView
-	m_pBitmapViewWindow = new BitmapViewWindow(m_lfNotifier, hWnd);
+	// BitmapView is created on demand
+//	m_pBitmapViewWindow = new BitmapViewWindow(m_lfNotifier, hWnd);
 }
 
 void
@@ -254,6 +287,7 @@ MainWindow::onQuit()
 	m_pBitmapViewWindow = NULL;
 	m_pStatusBar = NULL;
 	m_pHexView = NULL;
+	m_pHDDrawInfo = NULL;
 	m_pHVDrawInfo = NULL;
 }
 
@@ -277,36 +311,32 @@ MainWindow::onCloseFile()
 	enableMenuForOpenFile(false);
 }
 
-HV_DrawInfo*
+void
+MainWindow::onShowBitmapView()
+{
+	if (!m_pBitmapViewWindow.ptr()) {
+		m_pBitmapViewWindow = new BitmapViewWindow(m_lfNotifier, m_hWnd);
+	}
+
+	m_pBitmapViewWindow->show();
+}
+
+void
 MainWindow::loadDrawInfo(HWND hWnd)
 {
-#define COLOR_BLACK      RGB(0, 0, 0)
-#define COLOR_GRAY       RGB(128, 128, 128)
-#define COLOR_LIGHTGRAY  RGB(192, 192, 192)
-#define COLOR_WHITE      RGB(255, 255, 255)
-#define COLOR_YELLOW     RGB(255, 255, 0)
-
-#define DEFAULT_FONT_SIZE  12
-#define DEFAULT_FG_COLOR_ADDRESS COLOR_WHITE
-#define DEFAULT_BK_COLOR_ADDRESS COLOR_GRAY
-#define DEFAULT_FG_COLOR_DATA    COLOR_BLACK
-#define DEFAULT_BK_COLOR_DATA    COLOR_WHITE
-#define DEFAULT_FG_COLOR_STRING  COLOR_BLACK
-#define DEFAULT_BK_COLOR_STRING  COLOR_LIGHTGRAY
-#define DEFAULT_FG_COLOR_HEADER  COLOR_BLACK
-#define DEFAULT_BK_COLOR_HEADER  COLOR_YELLOW
-
 	HDC hDC = ::GetDC(hWnd);
-	HV_DrawInfo* pDrawInfo = new HV_DrawInfo(hDC, DEFAULT_FONT_SIZE,
-											 "FixedSys", false,
-											 DEFAULT_FG_COLOR_ADDRESS, DEFAULT_BK_COLOR_ADDRESS,
-											 DEFAULT_FG_COLOR_DATA, DEFAULT_BK_COLOR_DATA,
-											 DEFAULT_FG_COLOR_STRING, DEFAULT_BK_COLOR_STRING,
-											 DEFAULT_FG_COLOR_HEADER, DEFAULT_BK_COLOR_HEADER,
-											 CARET_STATIC, WHEEL_AS_ARROW_KEYS);
-//	::ReleaseDC(hWnd, hDC);
+	m_pHVDrawInfo = new HV_DrawInfo(hDC, DEFAULT_FONT_SIZE,
+									"FixedSys", false,
+									DEFAULT_FG_COLOR_ADDRESS, DEFAULT_BK_COLOR_ADDRESS,
+									DEFAULT_FG_COLOR_DATA, DEFAULT_BK_COLOR_DATA,
+									DEFAULT_FG_COLOR_STRING, DEFAULT_BK_COLOR_STRING,
+									CARET_STATIC, WHEEL_AS_ARROW_KEYS);
 
-	return pDrawInfo;
+	m_pHDDrawInfo = new HD_DrawInfo(hDC, DEFAULT_FONT_SIZE,
+									"FixedSys", false,
+									DEFAULT_FG_COLOR_HEADER, DEFAULT_BK_COLOR_HEADER);
+
+	//	::ReleaseDC(hWnd, hDC);
 }
 
 void
@@ -454,8 +484,6 @@ MainWindow::MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			pMainWindow->onCreate(hWnd);
 			return 0;
 		}
-	case WM_NCCREATE:
-		return TRUE;
 	}
 
 	MainWindow*
@@ -501,7 +529,7 @@ MainWindow::MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case IDM_BITMAPVIEW:
-			pMainWindow->m_pBitmapViewWindow->show();
+			pMainWindow->onShowBitmapView();
 			break;
 
 		case IDK_LINEDOWN:

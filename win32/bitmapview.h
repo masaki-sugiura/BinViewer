@@ -49,8 +49,7 @@ protected:
 
 class BitmapView : public View {
 public:
-	BitmapView(LF_Notifier& lfNotifier,
-			   HWND hwndParent, const RECT& rctWindow, BV_DrawInfo* pDrawInfo);
+	BitmapView(HWND hwndParent, const RECT& rctWindow, BV_DrawInfo* pDrawInfo);
 	~BitmapView();
 
 	bool setDrawInfo(DrawInfo* pDrawInfo);

@@ -174,9 +174,8 @@ BV_DCManager::createBGBufferInstance()
 	return pBuf;
 }
 
-BitmapView::BitmapView(LF_Notifier& lfNotifier,
-					   HWND hwndParent, const RECT& rctWindow, BV_DrawInfo* pDrawInfo)
-	: View(lfNotifier, hwndParent,
+BitmapView::BitmapView(HWND hwndParent, const RECT& rctWindow, BV_DrawInfo* pDrawInfo)
+	: View(hwndParent,
 		   WS_CHILD | WS_VISIBLE | WS_VSCROLL,
 		   0,//WS_EX_CLIENTEDGE,
 		   rctWindow,
@@ -254,6 +253,7 @@ BitmapViewWindow::~BitmapViewWindow()
 bool
 BitmapViewWindow::show()
 {
+	m_pBitmapView->registTo(m_lfNotify);
 	::ShowWindow(m_hWnd, SW_SHOW);
 	onResize(m_hWnd);
 	return true;
@@ -263,6 +263,7 @@ bool
 BitmapViewWindow::hide()
 {
 	::ShowWindow(m_hWnd, SW_HIDE);
+	m_pBitmapView->unregist();
 	return true;
 }
 
@@ -280,7 +281,7 @@ BitmapViewWindow::onCreate(HWND hWnd)
 	rctClient.right = BV_WIDTH;
 
 	m_pBVDrawInfo = new BV_DrawInfo();
-	m_pBitmapView = new BitmapView(m_lfNotify, hWnd, rctClient, m_pBVDrawInfo.ptr());
+	m_pBitmapView = new BitmapView(hWnd, rctClient, m_pBVDrawInfo.ptr());
 
 	m_pBitmapView->getFrameRect(rctClient);
 
@@ -360,11 +361,13 @@ BitmapViewWindow::BitmapViewWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 
 	case WM_CLOSE:
 		::DestroyWindow(hWnd);
+//		pBitmapViewWindow->hide();
 		break;
 
 	case WM_SYSCOMMAND:
 		if ((wParam & 0xFFF0) == SC_CLOSE) {
-			::ShowWindow(hWnd, SW_HIDE);
+//			::ShowWindow(hWnd, SW_HIDE);
+			pBitmapViewWindow->hide();
 			break;
 		}
 		// through down.

@@ -8,7 +8,7 @@
 
 StatusBar::StatusBar(LF_Notifier& lfNotifier,
 					 HWND hwndParent, const RECT& rctBar)
-	: LF_Acceptor(lfNotifier),
+	: LF_Acceptor(),
 	  m_hwndParent(hwndParent),
 	  m_hwndStatusBar(NULL)
 {
@@ -36,10 +36,16 @@ StatusBar::StatusBar(LF_Notifier& lfNotifier,
 	::GetTextExtentPoint32(hDC, status, lstrlen(status), &tsize);
 	::SendMessage(m_hwndStatusBar, SB_SETPARTS, 1, (LPARAM)&tsize.cx);
 	::ReleaseDC(m_hwndStatusBar, hDC);
+
+	if (!registTo(lfNotifier)) {
+		::DestroyWindow(m_hwndStatusBar);
+		throw CreateStatusBarError();
+	}
 }
 
 StatusBar::~StatusBar()
 {
+	unregist();
 }
 
 bool

@@ -4,42 +4,7 @@
 #define DC_MANAGER_H_INC
 
 #include "bgb_manager.h"
-
-class DrawInfo {
-public:
-	DrawInfo();
-	virtual ~DrawInfo();
-
-	HDC getDC() const { return m_hDC; }
-	int getWidth() const { return m_nWidth; }
-	int getHeight() const { return m_nHeight; }
-	int getPixelsPerLine() const { return m_nPixelsPerLine; }
-	COLORREF getBkColor() const { return m_crBkColor; }
-	HBRUSH getBkBrush() const { return m_hbrBackground; }
-
-	void setDC(HDC hDC) { m_hDC = hDC; }
-	void setWidth(int width) { m_nWidth = width; }
-	void setHeight(int height) { m_nHeight = height; }
-	void setPixelsPerLine(int nPixelsPerLine)
-	{
-		m_nPixelsPerLine = nPixelsPerLine;
-	}
-	void setBkColor(COLORREF crBkColor)
-	{
-		::DeleteObject(m_hbrBackground);
-		m_hbrBackground = ::CreateSolidBrush(crBkColor);
-		m_crBkColor = crBkColor;
-	}
-
-protected:
-	HDC m_hDC;
-	int m_nWidth;
-	int m_nHeight;
-	int m_nPixelsPerLine;
-	COLORREF m_crBkColor;
-	HBRUSH m_hbrBackground;
-};
-
+#include "DrawInfo.h"
 
 struct Renderer {
 	Renderer();

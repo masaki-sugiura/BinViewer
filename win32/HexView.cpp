@@ -38,6 +38,24 @@ TranslateToString(LPBYTE dst, const BYTE* src, int size)
 	}
 }
 
+HV_DrawInfo::HV_DrawInfo(HDC hDC, float fontsize,
+						 const char* faceName, bool bBoldFace,
+						 COLORREF crFgColorAddr, COLORREF crBkColorAddr,
+						 COLORREF crFgColorData, COLORREF crBkColorData,
+						 COLORREF crFgColorStr, COLORREF crBkColorStr,
+						 CARET_MOVE caretMove, WHEEL_SCROLL wheelScroll)
+	: m_FontInfo(hDC, fontsize, faceName, bBoldFace),
+	  m_tciAddress("アドレス", crFgColorAddr, crBkColorAddr),
+	  m_tciData("データ", crFgColorData, crBkColorData),
+	  m_tciString("文字列", crFgColorStr, crBkColorStr),
+	  m_ScrollConfig(caretMove, wheelScroll)
+{
+	setWidth(m_FontInfo.getXPitch() * (STRING_END_OFFSET + 1));
+	setHeight(m_FontInfo.getYPitch() * (1024 / 16));
+	setBkColor(RGB(128, 128, 128));
+	setPixelsPerLine(m_FontInfo.getYPitch());
+}
+
 HV_DCBuffer::HV_DCBuffer(int nBufSize)
 	: DCBuffer(nBufSize),
 	  m_pHVDrawInfo(NULL)
@@ -346,9 +364,8 @@ HV_DCManager::createBGBufferInstance()
 	return pBuf;
 }
 
-HexView::HexView(LF_Notifier& lfNotifier,
-				 HWND hwndParent, const RECT& rctWindow, HV_DrawInfo* pDrawInfo)
-	: View(lfNotifier, hwndParent,
+HexView::HexView(HWND hwndParent, const RECT& rctWindow, HV_DrawInfo* pDrawInfo)
+	: View(hwndParent,
 		   WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL,
 		   0,//WS_EX_CLIENTEDGE,
 		   rctWindow,

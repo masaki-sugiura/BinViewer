@@ -26,6 +26,7 @@
 #include "auto_ptr.h"
 #include "scroll.h"
 #include "dc_manager.h"
+#include "DrawInfo.h"
 
 class BGB_Manager;
 
@@ -36,8 +37,7 @@ struct Metrics {
 
 class View : public LF_Acceptor {
 public:
-	View(LF_Notifier& lfNotifier,
-		 HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
+	View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 		 const RECT& rctWindow,
 		 DC_Manager* pDCManager,
 		 DrawInfo* pDrawInfo);

@@ -10,24 +10,40 @@
 using std::exception;
 using std::string;
 
-#include "dc_manager.h"
+class DrawInfo {
+public:
+	DrawInfo();
+	virtual ~DrawInfo();
 
-#define DATA_HEX_WIDTH				2
-#define DATA_CENTER_WIDTH			3
+	HDC getDC() const { return m_hDC; }
+	int getWidth() const { return m_nWidth; }
+	int getHeight() const { return m_nHeight; }
+	int getPixelsPerLine() const { return m_nPixelsPerLine; }
+	COLORREF getBkColor() const { return m_crBkColor; }
+	HBRUSH getBkBrush() const { return m_hbrBackground; }
 
-#define ADDRESS_REGION_START_OFFSET	0
-#define ADDRESS_START_OFFSET		0
-#define ADDRESS_END_OFFSET			(ADDRESS_START_OFFSET + 16)
-#define ADDRESS_REGION_END_OFFSET	(ADDRESS_END_OFFSET + 1)
-#define DATA_REGION_START_OFFSET	ADDRESS_REGION_END_OFFSET
-#define DATA_FORMAR_START_OFFSET	(DATA_REGION_START_OFFSET + 1)
-#define DATA_FORMAR_END_OFFSET		(DATA_FORMAR_START_OFFSET + (DATA_HEX_WIDTH + 1) * 8 - 1)
-#define DATA_LATTER_START_OFFSET	(DATA_FORMAR_END_OFFSET + DATA_CENTER_WIDTH)
-#define DATA_LATTER_END_OFFSET		(DATA_LATTER_START_OFFSET + (DATA_HEX_WIDTH + 1) * 8 - 1)
-#define DATA_REGION_END_OFFSET		(DATA_LATTER_END_OFFSET + 1)
-#define STRING_REGION_START_OFFSET	DATA_REGION_END_OFFSET
-#define STRING_START_OFFSET			STRING_REGION_START_OFFSET
-#define STRING_END_OFFSET			(STRING_START_OFFSET + 16)
+	void setDC(HDC hDC) { m_hDC = hDC; }
+	void setWidth(int width) { m_nWidth = width; }
+	void setHeight(int height) { m_nHeight = height; }
+	void setPixelsPerLine(int nPixelsPerLine)
+	{
+		m_nPixelsPerLine = nPixelsPerLine;
+	}
+	void setBkColor(COLORREF crBkColor)
+	{
+		::DeleteObject(m_hbrBackground);
+		m_hbrBackground = ::CreateSolidBrush(crBkColor);
+		m_crBkColor = crBkColor;
+	}
+
+protected:
+	HDC m_hDC;
+	int m_nWidth;
+	int m_nHeight;
+	int m_nPixelsPerLine;
+	COLORREF m_crBkColor;
+	HBRUSH m_hbrBackground;
+};
 
 class InvalidFontError : public exception {
 };
@@ -129,14 +145,6 @@ private:
 	FontInfo& operator=(const FontInfo&);
 };
 
-#define TCI_HEADER  0
-#define TCI_ADDRESS 1
-#define TCI_DATA    2
-#define TCI_STRING  3
-
-class InvalidIndexError : public exception {
-};
-
 typedef enum {
 	CARET_STATIC = 0,
 	CARET_ENSURE_VISIBLE = 1,
@@ -159,46 +167,6 @@ struct ScrollConfig {
 //		m_caretMove = CARET_SCROLL;
 //		m_wheelScroll = WHEEL_AS_SCROLL_BAR;
 	}
-};
-
-class HV_DrawInfo : public DrawInfo {
-public:
-	HV_DrawInfo(HDC hDC, float fontsize,
-				const char* faceName, bool bBoldFace,
-				COLORREF crFgColorAddr, COLORREF crBkColorAddr,
-				COLORREF crFgColorData, COLORREF crBkColorData,
-				COLORREF crFgColorStr, COLORREF crBkColorStr,
-				COLORREF crFgColorHeader, COLORREF crBkColorHeader,
-				CARET_MOVE caretMove, WHEEL_SCROLL wheelScroll);
-
-	FontInfo m_FontInfo;
-	TextColorInfo m_tciHeader, m_tciAddress, m_tciData, m_tciString;
-	ScrollConfig m_ScrollConfig;
-
-	TextColorInfo& getTextColorInfo(int index)
-	{
-		switch (index) {
-		case TCI_HEADER:
-			return m_tciHeader;
-		case TCI_ADDRESS:
-			return m_tciAddress;
-		case TCI_DATA:
-			return m_tciData;
-		case TCI_STRING:
-			return m_tciString;
-		default:
-			assert(0);
-			throw InvalidIndexError();
-		}
-	}
-	const TextColorInfo& getTextColorInfo(int index) const
-	{
-		return const_cast<HV_DrawInfo*>(this)->getTextColorInfo(index);
-	}
-
-private:
-	HV_DrawInfo(const HV_DrawInfo&);
-	HV_DrawInfo& operator=(const HV_DrawInfo&);
 };
 
 #endif

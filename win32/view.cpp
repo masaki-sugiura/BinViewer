@@ -12,12 +12,11 @@ SToC(RECT& rctView)
 	rctView.left = rctView.top = 0;
 }
 
-View::View(LF_Notifier& lfNotifier,
-		   HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
+View::View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 		   const RECT& rctWindow,
 		   DC_Manager* pDCManager,
 		   DrawInfo* pDrawInfo)
-	: LF_Acceptor(lfNotifier),
+	: LF_Acceptor(),
 	  m_pDCManager(pDCManager),
 	  m_pDrawInfo(pDrawInfo),
 	  m_qYOffset(0),
@@ -70,6 +69,7 @@ View::View(LF_Notifier& lfNotifier,
 	m_pDrawInfo->setDC(::GetDC(m_hwndView));
 
 	if (!m_pDCManager->setDrawInfo(m_pDrawInfo)) {
+		::DestroyWindow(m_hwndView);
 		throw CreateWindowError();
 	}
 
@@ -84,6 +84,8 @@ View::~View()
 	if (m_hwndView) {
 		::DestroyWindow(m_hwndView);
 	}
+
+	unregist();
 }
 
 bool
@@ -294,10 +296,12 @@ View::onLButtonDown(WPARAM wParam, LPARAM lParam)
 {
 	if (!m_pDCManager->isLoaded()) return;
 
-	filesize_t pos = m_pDCManager->getPositionByViewCoordinate(MAKEPOINTS(lParam));
-	if (pos < 0) return;
+	if (m_pLFNotifier) {
+		filesize_t pos = m_pDCManager->getPositionByViewCoordinate(MAKEPOINTS(lParam));
+		if (pos < 0) return;
 
-	m_lfNotifier.setCursorPos(pos);
+		m_pLFNotifier->setCursorPos(pos);
+	}
 }
 
 LRESULT CALLBACK

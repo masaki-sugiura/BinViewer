@@ -8,6 +8,16 @@
 #include "StatusBar.h"
 #include "auto_ptr.h"
 
+class HD_DrawInfo : public DrawInfo {
+public:
+	HD_DrawInfo(HDC hDC, float fontsize,
+				const char* faceName, bool bBoldFace,
+				COLORREF crFgColor, COLORREF crBkColor);
+
+	FontInfo m_FontInfo;
+	TextColorInfo m_tciHeader;
+};
+
 struct Header : public Renderer {
 	Header();
 
@@ -19,7 +29,7 @@ struct Header : public Renderer {
 	int render();
 
 protected:
-	HV_DrawInfo* m_pDrawInfo;
+	HD_DrawInfo* m_pDrawInfo;
 	int m_anXPitch[16];
 };
 
@@ -37,6 +47,7 @@ private:
 	Auto_Ptr<HexView> m_pHexView;
 	Auto_Ptr<LargeFileReader> m_pLFReader;
 	Auto_Ptr<HV_DrawInfo> m_pHVDrawInfo;
+	Auto_Ptr<HD_DrawInfo> m_pHDDrawInfo;
 	Auto_Ptr<BitmapViewWindow> m_pBitmapViewWindow;
 	Auto_Ptr<StatusBar> m_pStatusBar;
 	HWND m_hWnd;
@@ -50,8 +61,9 @@ private:
 	void onQuit();
 	void onOpenFile();
 	void onCloseFile();
+	void onShowBitmapView();
 
-	HV_DrawInfo* loadDrawInfo(HWND hWnd);
+	void loadDrawInfo(HWND hWnd);
 
 	void adjustWindowSize(HWND hWnd, const RECT& rctClient);
 
