@@ -50,37 +50,15 @@ ViewFrame::setFrameRect(const RECT& rctClient)
 }
 
 void
-ViewFrame::setPosition(filesize_t pos)
+ViewFrame::setCurrentLine(filesize_t newline)
 {
 	if (!m_pDC_Manager->isLoaded()) return;
 
-	filesize_t fsize = this->getFileSize();
-	if (fsize == 0) return;
+	if (newline > m_qMaxLine)
+		newline = m_qMaxLine;
+	else if (newline < 0) newline = 0;
 
-	if (pos >= fsize)
-		pos = fsize - 1;
-	if (pos < 0) pos = 0; // else では NG!! (filesize == 0 の場合)
-
-	filesize_t prev_buffer_top = 0;
-	if (m_pCurBuf) prev_buffer_top = m_pCurBuf->m_qAddress;
-
-	unselect();
-	select(pos, 1);
-	// この時点でリングバッファの状態が変化する
-
-	m_qCurrentPos = pos;
-	filesize_t line_diff = pos / 16 - m_qCurrentLine;
-	if (line_diff <= -1) {
-		// 上にジャンプ/スクロール
-		m_qCurrentLine = pos / 16;
-	} else if (line_diff < m_nPageLineNum) {
-		// スクロールは発生しない
-	} else {
-		// 下にジャンプ/スクロール
-		m_qCurrentLine = pos / 16 - m_nPageLineNum + 1;
-	}
-	if (m_qCurrentLine < 0) m_qCurrentLine = 0;
-	if (m_qCurrentLine > m_qMaxLine) m_qCurrentLine = m_qMaxLine;
+	m_qCurrentLine = newline;
 
 	filesize_t buffer_top = m_pDC_Manager->setPosition(m_qCurrentLine * 16);
 
@@ -92,6 +70,38 @@ ViewFrame::setPosition(filesize_t pos)
 
 	m_pCurBuf  = m_pDC_Manager->getCurrentBuffer(0);
 	m_pNextBuf = m_pDC_Manager->getCurrentBuffer(1);
+}
+
+void
+ViewFrame::setPosition(filesize_t pos)
+{
+	if (!m_pDC_Manager->isLoaded()) return;
+
+	filesize_t fsize = this->getFileSize();
+	if (fsize == 0) return;
+
+	if (pos >= fsize)
+		pos = fsize - 1;
+	if (pos < 0) pos = 0; // else では NG!! (filesize == 0 の場合)
+
+	m_qCurrentPos = pos;
+
+	int top_offset_by_size = m_nTopOffset / m_nLineHeight * 16;
+	if (!m_pCurBuf ||
+		pos < m_pCurBuf->m_qAddress + top_offset_by_size ||
+		pos >= m_pCurBuf->m_qAddress + top_offset_by_size + m_nPageLineNum * 16) {
+		// 最初の描画またはカーソルが表示領域をはみ出る
+		filesize_t newline = pos / 16;
+		int line_diff = pos / 16 - m_qCurrentLine;
+		if (line_diff >= m_nPageLineNum) {
+			// 下にジャンプ/スクロール
+			newline = newline - m_nPageLineNum + 1;
+		}
+		setCurrentLine(newline);
+	}
+
+	unselect();
+	select(pos, 1);
 }
 
 void
@@ -234,8 +244,20 @@ ViewFrame::invertOneLineRegion(HDC hDC, int column, int lineno, int n_char)
 }
 
 void
-ViewFrame::invertOneBufferRegion(HDC hDC, int offset, int size)
+ViewFrame::invertOneBufferRegion(DCBuffer* pDCBuffer, filesize_t pos, int size)
 {
+	assert(pDCBuffer);
+
+	if (pDCBuffer->m_qAddress >= pos + size ||
+		pDCBuffer->m_qAddress + MAX_DATASIZE_PER_BUFFER <= pos)
+		return;
+
+	int offset = (int)(pos - pDCBuffer->m_qAddress);
+	if (offset < 0) offset = 0;
+	if (offset + size > MAX_DATASIZE_PER_BUFFER)
+		size = MAX_DATASIZE_PER_BUFFER - offset;
+	HDC hDC = pDCBuffer->m_hDC;
+
 	int b_x = offset & 15, b_y = offset >> 4;
 	
 	if (b_x + size <= 16) {
@@ -264,42 +286,10 @@ ViewFrame::invertOneBufferRegion(HDC hDC, int offset, int size)
 void
 ViewFrame::invertRegion(filesize_t pos, int size)
 {
-	// xor with the select color
-	DCBuffer* dcbuf = m_pDC_Manager->getBuffer(pos);
-	assert(dcbuf);
-
-	int offset = (int)(pos - dcbuf->m_qAddress);
-	assert(offset >= 0);
-
-	if (offset + size <= MAX_DATASIZE_PER_BUFFER) {
-		// 同一バッファ内
-		invertOneBufferRegion(dcbuf->m_hDC, offset, size);
-	} else {
-		// 複数のバッファにまたがる
-		int first_buf_size = MAX_DATASIZE_PER_BUFFER - offset;
-
-		// 最初のバッファ
-		invertOneBufferRegion(dcbuf->m_hDC, offset, first_buf_size);
-
-		// 途中のバッファ
-		pos  += first_buf_size;
-		size -= first_buf_size;
-
-		assert(!(pos % MAX_DATASIZE_PER_BUFFER));
-
-		while (size >= MAX_DATASIZE_PER_BUFFER) {
-			dcbuf = m_pDC_Manager->getBuffer(pos);
-			assert(dcbuf);
-			invertOneBufferRegion(dcbuf->m_hDC, 0, MAX_DATASIZE_PER_BUFFER);
-			pos  += MAX_DATASIZE_PER_BUFFER;
-			size -= MAX_DATASIZE_PER_BUFFER;
-		}
-
-		// 最後のバッファ
-		if (size > 0) {
-			dcbuf = m_pDC_Manager->getBuffer(pos);
-			assert(dcbuf);
-			invertOneBufferRegion(dcbuf->m_hDC, 0, size);
+	for (int i = -1; i < 2; i++) {
+		DCBuffer* pDCBuffer = m_pDC_Manager->getCurrentBuffer(i);
+		if (pDCBuffer) {
+			invertOneBufferRegion(pDCBuffer, pos, size);
 		}
 	}
 }

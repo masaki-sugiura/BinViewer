@@ -586,17 +586,17 @@ OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	::GetScrollInfo(hWnd, SB_VERT, &sinfo);
 	if (sinfo.nMax <= sinfo.nPage) return;
 
-	filesize_t qPosition = g_pViewFrame->getPosition(),
+	filesize_t qCurLine = g_pViewFrame->getCurrentLine(),
 			   qMaxLine = g_pViewFrame->getMaxLine();
 	int nPageLineNum = g_pViewFrame->getPageLineNum();
 
 	switch (LOWORD(wParam)) {
 	case SB_LINEDOWN:
-		if ((qPosition / 16) < qMaxLine) {
-			qPosition += 16;
+		if (qCurLine < qMaxLine) {
+			qCurLine++;
 			if (!g_bMapScrollBarLinearly) {
 				// ファイルサイズが大きい場合
-				sinfo.nPos = ((qPosition / 16) << 32) / qMaxLine;
+				sinfo.nPos = (qCurLine << 32) / qMaxLine;
 			} else {
 				sinfo.nPos++;
 			}
@@ -604,11 +604,11 @@ OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case SB_LINEUP:
-		if ((qPosition / 16) > 0) {
-			qPosition -= 16;
+		if (qCurLine > 0) {
+			qCurLine--;
 			if (!g_bMapScrollBarLinearly) {
 				// ファイルサイズが大きい場合
-				sinfo.nPos = ((qPosition / 16) << 32) / qMaxLine;
+				sinfo.nPos = (qCurLine << 32) / qMaxLine;
 			} else {
 				sinfo.nPos--;
 			}
@@ -616,13 +616,13 @@ OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case SB_PAGEDOWN:
-		if (((qPosition += 16 * nPageLineNum) / 16) > qMaxLine) {
-			qPosition = qMaxLine * 16;
+		if ((qCurLine += nPageLineNum) > qMaxLine) {
+			qCurLine = qMaxLine;
 			sinfo.nPos = sinfo.nMax;
 		} else {
 			if (!g_bMapScrollBarLinearly) {
 				// ファイルサイズが大きい場合
-				sinfo.nPos = ((qPosition / 16) << 32) / qMaxLine;
+				sinfo.nPos = (qCurLine << 32) / qMaxLine;
 			} else {
 				sinfo.nPos += sinfo.nPage;
 			}
@@ -630,13 +630,13 @@ OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case SB_PAGEUP:
-		if (((qPosition -= nPageLineNum * 16) / 16) < 0) {
-			qPosition = 0;
+		if ((qCurLine -= nPageLineNum) < 0) {
+			qCurLine = 0;
 			sinfo.nPos = sinfo.nMin;
 		} else {
 			if (!g_bMapScrollBarLinearly) {
 				// ファイルサイズが大きい場合
-				sinfo.nPos = ((qPosition / 16) << 32) / qMaxLine;
+				sinfo.nPos = (qCurLine << 32) / qMaxLine;
 			} else {
 				sinfo.nPos -= sinfo.nPage;
 			}
@@ -644,12 +644,12 @@ OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case SB_TOP:
-		qPosition = 0;
+		qCurLine = 0;
 		sinfo.nPos = sinfo.nMin;
 		break;
 
 	case SB_BOTTOM:
-		qPosition = qMaxLine * 16;
+		qCurLine = qMaxLine;
 		sinfo.nPos = sinfo.nMax;
 		break;
 
@@ -658,9 +658,9 @@ OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		sinfo.nPos = sinfo.nTrackPos;
 		if (!g_bMapScrollBarLinearly) {
 			// ファイルサイズが大きい場合
-			qPosition = (sinfo.nPos * qMaxLine * 16) >> 32;
+			qCurLine = (sinfo.nPos * qMaxLine) >> 32;
 		} else {
-			qPosition = sinfo.nPos * 16;
+			qCurLine = sinfo.nPos;
 		}
 		break;
 
@@ -670,7 +670,7 @@ OnVScroll(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	::SetScrollInfo(hWnd, SB_VERT, &sinfo, TRUE);
 
 	// prepare the correct BGBuffer
-	g_pViewFrame->setPosition(qPosition);
+	g_pViewFrame->setCurrentLine(qCurLine);
 
 	// get the region of BGBuffer to be drawn
 	UpdateClientRect();
@@ -762,6 +762,13 @@ static void
 OnHorizontalMove(HWND hWnd, int diff)
 {
 	g_pViewFrame->setPosition(g_pViewFrame->getPosition() + diff);
+	UpdateClientRect();
+}
+
+static void
+OnVerticalMove(HWND hWnd, int diff)
+{
+	g_pViewFrame->setPosition(g_pViewFrame->getPosition() + diff * 16);
 	UpdateClientRect();
 }
 
@@ -929,11 +936,13 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case IDK_LINEDOWN:
-			OnVScroll(hWnd, SB_LINEDOWN, 0);
+//			OnVScroll(hWnd, SB_LINEDOWN, 0);
+			OnVerticalMove(hWnd, 1);
 			break;
 
 		case IDK_LINEUP:
-			OnVScroll(hWnd, SB_LINEUP, 0);
+//			OnVScroll(hWnd, SB_LINEUP, 0);
+			OnVerticalMove(hWnd, -1);
 			break;
 
 		case IDK_PAGEDOWN:

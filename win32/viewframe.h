@@ -37,6 +37,7 @@ public:
 	{
 		return m_qCurrentLine;
 	}
+	void setCurrentLine(filesize_t newline);
 
 	filesize_t getMaxLine() const
 	{
@@ -140,7 +141,7 @@ private:
 	}
 
 	void invertOneLineRegion(HDC hDC, int column, int lineno, int n_char);
-	void invertOneBufferRegion(HDC hDC, int offset, int size);
+	void invertOneBufferRegion(DCBuffer* pDCBuffer, filesize_t pos, int size);
 	void invertRegion(filesize_t pos, int size);
 };
 
