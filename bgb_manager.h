@@ -8,26 +8,62 @@
 #include "thread.h"
 #include "auto_ptr.h"
 
+#include <assert.h>
+
+template<int nBufSize>
 struct BGBuffer {
 	filesize_t m_qAddress;
 	int m_nDataSize;
-	int m_nBufSize;
-	BYTE* m_DataBuf;
+	BYTE m_DataBuf[nBufSize];
 
-	BGBuffer(int bufsize);
-	virtual ~BGBuffer();
+	BGBuffer()
+		: m_qAddress(-1),
+		  m_nDataSize(0)
+	{}
+	virtual ~BGBuffer() {}
 
 	virtual int init(LargeFileReader& LFReader, filesize_t offset);
 	virtual void uninit();
+
+private:
+	BGBuffer(const BGBuffer&);
+	BGBuffer& operator=(const BGBuffer&);
 };
 
+template<int nBufSize>
 class BGB_Manager {
 public:
-	BGB_Manager(int bufsize, int bufcount, LargeFileReader* pLFReader);
-	virtual ~BGB_Manager();
+	BGB_Manager(int bufcount, LargeFileReader* pLFReader)
+		: m_nBufCount(bufcount),
+		  m_pLFReader(pLFReader),
+		  m_qCurrentPos(-1),
+		  m_bRBInit(false)
+	{
+		assert(m_nBufCount > 2);
+		m_nBufCount |= 1;
+	}
+	virtual ~BGB_Manager() {}
 
-	bool loadFile(LargeFileReader* pLFReader);
-	void unloadFile();
+	bool loadFile(LargeFileReader* pLFReader)
+	{
+		m_pLFReader = pLFReader;
+		m_qCurrentPos = -1; // 最初の呼び出しで fillBGBuffer() で init() を呼ぶのに必要
+		return isLoaded();
+	}
+	void unloadFile()
+	{
+		m_pLFReader = NULL;
+		m_qCurrentPos = -1;
+
+		// リングバッファの要素を全て無効に
+		if (m_bRBInit) {
+			int count = m_rbBuffers.count();
+			for (int i = 0; i < count; i++) {
+				m_rbBuffers.elementAt(i)->uninit();
+			}
+		}
+	}
+
 	bool isLoaded() const { return m_pLFReader != NULL; }
 	LargeFileReader* getReader() { return m_pLFReader; }
 
@@ -50,10 +86,10 @@ public:
 		return m_qCurrentPos;
 	}
 
-	BGBuffer* getCurrentBuffer(int offset = 0)
+	BGBuffer<nBufSize>* getCurrentBuffer(int offset = 0)
 	{
 		if (!isLoaded()) return NULL;
-		BGBuffer* pbgb = m_rbBuffers.elementAt(offset);
+		BGBuffer<nBufSize>* pbgb = m_rbBuffers.elementAt(offset);
 		if (pbgb && pbgb->m_qAddress < 0) {
 			return NULL;
 		}
@@ -69,7 +105,7 @@ public:
 		return m_nBufCount / 2;
 	}
 
-	BGBuffer* getBuffer(filesize_t offset)
+	BGBuffer<nBufSize>* getBuffer(filesize_t offset)
 	{
 		if (!isLoaded()) return NULL;
 		fillBGBuffer(offset);
@@ -77,16 +113,23 @@ public:
 	}
 
 protected:
-	int m_nBufSize;
 	int m_nBufCount;
 	LargeFileReader* m_pLFReader;
 	filesize_t m_qCurrentPos;
-	RingBuffer<BGBuffer> m_rbBuffers;
+	RingBuffer< BGBuffer<nBufSize> > m_rbBuffers;
 	bool m_bRBInit;
 
 	int fillBGBuffer(filesize_t offset);
 
-	virtual BGBuffer* createBGBufferInstance();
+	virtual BGBuffer<nBufSize>* createBGBufferInstance()
+	{
+		return new BGBuffer<nBufSize>();
+	}
+
+	BGB_Manager(const BGB_Manager<nBufSize>&);
+	BGB_Manager<nBufSize>& operator=(const BGB_Manager<nBufSize>&);
 };
+
+#include "bgb_manager.cpp"
 
 #endif

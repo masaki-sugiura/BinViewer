@@ -61,7 +61,7 @@ Renderer::setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo)
 
 
 DCBuffer::DCBuffer(HDC hDC, const DrawInfo* pDrawInfo)
-	: BGBuffer(MAX_DATASIZE_PER_BUFFER),
+	: BGBuffer<MAX_DATASIZE_PER_BUFFER>(),
 	  Renderer(hDC, pDrawInfo, WIDTH_PER_XPITCH, HEIGHT_PER_YPITCH),
 	  m_bHasSelectedRegion(false),
 	  m_nSelectedPos(-1), m_nSelectedSize(0)
@@ -106,7 +106,7 @@ TranslateToString(LPBYTE dst, const BYTE* src, int size)
 int
 DCBuffer::init(LargeFileReader& LFReader, filesize_t offset)
 {
-	BGBuffer::init(LFReader, offset);
+	BGBuffer<MAX_DATASIZE_PER_BUFFER>::init(LFReader, offset);
 	// この時点で m_DataBuf にデータが読み込まれている
 
 	return render();
@@ -117,7 +117,7 @@ DCBuffer::uninit()
 {
 	if (m_bHasSelectedRegion) // 選択を解除
 		invertRegionInBuffer(m_nSelectedPos, m_nSelectedSize);
-	BGBuffer::uninit();
+	BGBuffer<MAX_DATASIZE_PER_BUFFER>::uninit();
 //	render(); // 背景色で塗りつぶし
 }
 
@@ -403,7 +403,7 @@ Header::render()
 
 DC_Manager::DC_Manager(HDC hDC, const DrawInfo* pDrawInfo,
 					   LargeFileReader* pLFReader)
-	: BGB_Manager(MAX_DATASIZE_PER_BUFFER, BUFFER_NUM, pLFReader),
+	: BGB_Manager<MAX_DATASIZE_PER_BUFFER>(BUFFER_NUM, pLFReader),
 	  m_pDrawInfo(pDrawInfo),
 	  m_Header(hDC, pDrawInfo)
 {
@@ -471,7 +471,7 @@ DC_Manager::setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo)
 	}
 }
 
-BGBuffer*
+BGBuffer<MAX_DATASIZE_PER_BUFFER>*
 DC_Manager::createBGBufferInstance()
 {
 	return new DCBuffer(m_Header.m_hDC, m_pDrawInfo);
