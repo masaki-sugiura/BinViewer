@@ -73,14 +73,15 @@ public:
 
 protected:
 	bool m_bShowPropFonts;
-	map<string, int> m_mapFontName;
+	map<string, DWORD> m_mapFontName;
 
 	BOOL initDialog(HWND hDlg);
 	BOOL dialogProcMain(UINT, WPARAM, LPARAM);
 
 	void prepareFontList();
-	void addFont(const LOGFONT& logFont);
+	void addFont(const LOGFONT& logFont, DWORD fontType);
 	void prepareFontSize();
+	void addSize(int size);
 
 	void selectFontPageList(int index);
 
@@ -88,6 +89,10 @@ protected:
 									 NEWTEXTMETRICEX *lpntme,
 									 DWORD FontType,
 									 LPARAM lParam);
+	static int CALLBACK enumSpecificFontProc(ENUMLOGFONTEX* lpelfe,
+											 NEWTEXTMETRICEX* lpntme,
+											 DWORD FontType,
+											 LPARAM lParam);
 };
 
 class CursorConfigPage : public ConfigPage {

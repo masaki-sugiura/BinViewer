@@ -161,8 +161,8 @@ FONT 9, "ＭＳ Ｐゴシック"
 BEGIN
     COMBOBOX        IDC_CONFIG_FONT_NAME,7,18,112,141,CBS_DROPDOWNLIST | 
                     CBS_SORT | WS_VSCROLL | WS_TABSTOP
-    COMBOBOX        IDC_CONFIG_FONT_SIZE,63,33,56,141,CBS_DROPDOWNLIST | 
-                    WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_CONFIG_FONT_SIZE,63,33,56,141,CBS_DROPDOWN | 
+                    CBS_SORT | WS_VSCROLL | WS_TABSTOP
     CONTROL         "プロポーショナルフォントも表示(&P)",
                     IDC_CONFIG_SHOW_PROPFONT,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,7,52,112,10

@@ -242,6 +242,13 @@ ConfigMainDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return TRUE;
 }
 
+static inline void
+get_font_pt_from_pixel(HDC hDC, int pixel, LPSTR buf)
+{
+	float pt_size = (float)pixel * 72 / ::GetDeviceCaps(hDC, LOGPIXELSY);
+	sprintf(buf, "%4.1f", pt_size);
+}
+
 FontConfigPage::FontConfigPage(DrawInfo* pDrawInfo)
 	: ConfigPage(pDrawInfo, IDD_CONFIG_FONT, "フォント")
 {
@@ -264,6 +271,21 @@ FontConfigPage::initDialog(HWND hDlg)
 		if (pos != CB_ERR) {
 			::SendMessage(hwndFontList, CB_SETCURSEL,
 						  pos, 0);
+
+			prepareFontSize();
+
+			TEXTMETRIC tm;
+			::GetTextMetrics(m_pDrawInfo->m_hDC, &tm);
+			char buf[8];
+			get_font_pt_from_pixel(m_pDrawInfo->m_hDC, tm.tmHeight, buf);
+			HWND hwndFontSize = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_SIZE);
+			int pos = ::SendMessage(hwndFontSize, CB_FINDSTRINGEXACT,
+									(WPARAM)-1, (LPARAM)buf);
+			if (pos != CB_ERR) {
+				::SendMessage(hwndFontSize, CB_SETCURSEL, pos, 0);
+			} else {
+				::SetWindowText(hwndFontSize, buf);
+			}
 		}
 	}
 
@@ -312,13 +334,13 @@ FontConfigPage::enumFontProc(ENUMLOGFONTEX *lpelfe,
 
 	if (!_this) return 0;
 
-	_this->addFont(lpelfe->elfLogFont);
+	_this->addFont(lpelfe->elfLogFont, FontType);
 
 	return 1;
 }
 
 void
-FontConfigPage::addFont(const LOGFONT& logFont)
+FontConfigPage::addFont(const LOGFONT& logFont, DWORD fontType)
 {
 	if (logFont.lfFaceName[0] == '@') return;
 
@@ -330,13 +352,12 @@ FontConfigPage::addFont(const LOGFONT& logFont)
 			return;
 	}
 
-	int pos = ::SendMessage(::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_NAME),
-							CB_ADDSTRING,
-							0,
-							(LPARAM)logFont.lfFaceName);
+	int pos = ::SendDlgItemMessage(m_hwndDlg, IDC_CONFIG_FONT_NAME,
+								   CB_ADDSTRING,
+								   0,
+								   (LPARAM)logFont.lfFaceName);
 
-	// ソートされるため、pos の値は意味がなくなる
-	m_mapFontName.insert(make_pair(string(logFont.lfFaceName), pos));
+	m_mapFontName.insert(make_pair(string(logFont.lfFaceName), fontType));
 }
 
 void
@@ -346,10 +367,73 @@ FontConfigPage::prepareFontSize()
 	int sel = ::SendMessage(hwndFontList, CB_GETCURSEL, 0, 0);
 	if (sel == CB_ERR) return;
 
-	char faceName[LF_FACESIZE];
-	::SendMessage(hwndFontList, CB_GETLBTEXT, sel, (LPARAM)faceName);
+	LOGFONT logFont;
+	logFont.lfCharSet = DEFAULT_CHARSET;
+	logFont.lfPitchAndFamily = 0;
 
+	::SendMessage(hwndFontList, CB_GETLBTEXT, sel,
+				  (LPARAM)logFont.lfFaceName);
 
+	::SendDlgItemMessage(m_hwndDlg, IDC_CONFIG_FONT_SIZE,
+						 CB_RESETCONTENT, 0, 0);
+
+	DWORD fontType = m_mapFontName[logFont.lfFaceName];
+	if ((fontType & TRUETYPE_FONTTYPE) != 0 ||
+		(fontType & RASTER_FONTTYPE) == 0) {
+		HWND hwndFontSize = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_SIZE);
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)" 8.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)" 9.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)" 9.5");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"10.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"10.5");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"11.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"12.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"14.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"16.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"18.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"20.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"22.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"24.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"26.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"28.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"36.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"48.0");
+		::SendMessage(hwndFontSize, CB_ADDSTRING, 0, (LPARAM)"72.0");
+	} else {
+		::EnumFontFamiliesEx(m_pDrawInfo->m_hDC,
+							 &logFont,
+							 (FONTENUMPROC)FontConfigPage::enumSpecificFontProc,
+							 (LPARAM)this,
+							 0);
+	}
+}
+
+int CALLBACK
+FontConfigPage::enumSpecificFontProc(ENUMLOGFONTEX* lpelfe,
+									 NEWTEXTMETRICEX* lpntme,
+									 DWORD FontType,
+									 LPARAM lParam)
+{
+	FontConfigPage* _this = (FontConfigPage*)lParam;
+
+	if (!_this) return 0;
+
+	_this->addSize(lpelfe->elfLogFont.lfHeight);
+
+	return 1;
+}
+
+void
+FontConfigPage::addSize(int size)
+{
+	char buf[16];
+	get_font_pt_from_pixel(m_pDrawInfo->m_hDC, size, buf);
+
+	HWND hwndSizeList = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_SIZE);
+	if (::SendMessage(hwndSizeList, CB_FINDSTRINGEXACT,
+					  (WPARAM)-1, (LPARAM)buf) == CB_ERR)
+		::SendDlgItemMessage(m_hwndDlg, IDC_CONFIG_FONT_SIZE,
+							 CB_ADDSTRING, 0, (LPARAM)buf);
 }
 
 BOOL
@@ -360,12 +444,13 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		switch (LOWORD(wParam)) {
 		case IDC_CONFIG_FONT_NAME:
 			if (HIWORD(wParam) == CBN_SELCHANGE) {
+				prepareFontSize();
 			}
 			break;
 		case IDC_CONFIG_SHOW_PROPFONT:
 			if (HIWORD(wParam) == BN_CLICKED) {
 				char faceName[LF_FACESIZE];
-				faceName[0] = '\0';
+//				faceName[0] = '\0';
 				HWND hwndFontList = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_NAME);
 				int sel = ::SendMessage(hwndFontList, CB_GETCURSEL, 0, 0);
 				if (sel != CB_ERR) {
