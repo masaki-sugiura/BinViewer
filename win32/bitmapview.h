@@ -3,54 +3,76 @@
 #ifndef BITMAPVIEW_H_INC
 #define BITMAPVIEW_H_INC
 
-#include "LargeFileReader.h"
-#include "LF_Notify.h"
-#include "scroll.h"
+#include "View.h"
+#include "auto_ptr.h"
 
-#include <exception>
-using std::exception;
-
-class ViewFrame;
-
-class BitmapView : public LF_Acceptor {
+class BV_DrawInfo : public DrawInfo {
 public:
-	BitmapView(HWND hwndOwner, ViewFrame* pViewFrame);
+	BV_DrawInfo();
+};
+
+class BV_DCBuffer : public DCBuffer {
+public:
+	BV_DCBuffer(int nBufSize);
+
+	bool prepareDC(DrawInfo* pDrawInfo);
+	int render();
+	int setCursorByCoordinate(int x, int y);
+
+protected:
+	BV_DrawInfo* m_pBVDrawInfo;
+	
+	void invertRegionInBuffer(int offset, int size);
+	void invertOneLineRegion(int start_column, int end_column, int line);
+};
+
+class BV_DCManager : public DC_Manager {
+public:
+	BV_DCManager();
+
+#ifdef _DEBUG
+	void bitBlt(HDC hDCDst, const RECT& rcDst);
+#endif
+
+protected:
+	BGBuffer* createBGBufferInstance();
+};
+
+class BitmapView : public View {
+public:
+	BitmapView(LF_Notifier& lfNotifier,
+			   HWND hwndParent, const RECT& rctWindow, BV_DrawInfo* pDrawInfo);
 	~BitmapView();
 
-	bool onLoadFile();
-	void onUnloadFile();
+	bool setDrawInfo(DrawInfo* pDrawInfo);
+
+protected:
+	LRESULT viewWndProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam);
+};
+
+class BitmapViewWindow {
+public:
+	BitmapViewWindow(LF_Notifier& lfNotify, HWND hwndOwner);
+	~BitmapViewWindow();
 
 	bool show();
 	bool hide();
 
-	bool setPosition(filesize_t pos);
-
 private:
-	HWND m_hwndOwner, m_hwndView;
-	ViewFrame* m_pViewFrame;
+	LF_Notifier& m_lfNotify;
+	Auto_Ptr<BitmapView> m_pBitmapView;
+	Auto_Ptr<BV_DrawInfo> m_pBVDrawInfo;
+	HWND m_hwndOwner, m_hWnd;
 	UINT m_uWindowWidth;
-	RECT m_rctClient;
-	HDC  m_hdcView;
-	HBITMAP m_hbmView;
-	BITMAPINFO* m_pbmInfo;
-	filesize_t m_qCurrentPos, m_qHeadPos;
-	ScrollManager<filesize_t>* m_pScrollManager;
-	bool m_bLoaded;
 
-	int registerWndClass(HINSTANCE hInst);
+	void onCreate(HWND hWnd);
+	void onResize(HWND hWnd);
 
-	void drawDC(const RECT& rctDraw);
-	void invertPos();
-
-	bool onCreate(HWND hWnd);
-	void onPaint(HWND hWnd);
-	bool onResize(HWND hWnd);
-	void onScroll(WPARAM, LPARAM);
-	void onLButtonDown(WPARAM, LPARAM);
+	static int registerWndClass(HINSTANCE hInstance);
 
 	static LRESULT CALLBACK BitmapViewWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 };
 
-class CreateBitmapViewError : public exception {};
+class CreateBitmapViewError {};
 
 #endif

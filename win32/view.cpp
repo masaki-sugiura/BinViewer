@@ -4,11 +4,13 @@
 
 #define VIEW_CLASSNAME  "BinViewerViewClass32"
 
-View::View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
+View::View(LF_Notifier& lfNotifier,
+		   HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 		   const RECT& rctWindow,
 		   DC_Manager* pDCManager,
 		   DrawInfo* pDrawInfo)
-	: m_pDCManager(pDCManager),
+	: LF_Acceptor(lfNotifier),
+	  m_pDCManager(pDCManager),
 	  m_pDrawInfo(pDrawInfo),
 	  m_qYOffset(0),
 	  m_smHorz(NULL, SB_HORZ), m_smVert(NULL, SB_VERT),
@@ -39,9 +41,9 @@ View::View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 	int nViewWidth  = rctWindow.right - rctWindow.left,
 		nViewHeight = rctWindow.bottom - rctWindow.top;
 
-	m_hwndView = ::CreateWindowEx(WS_EX_CLIENTEDGE,
+	m_hwndView = ::CreateWindowEx(dwExStyle,
 								  VIEW_CLASSNAME, "",
-								  WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL,
+								  dwStyle,
 								  rctWindow.left, rctWindow.top,
 								  nViewWidth, nViewHeight,
 								  hwndParent, (HMENU)wNextID++,
@@ -50,8 +52,12 @@ View::View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 		throw CreateWindowError();
 	}
 
-	m_smHorz.setHWND(m_hwndView);
-	m_smVert.setHWND(m_hwndView);
+	if (dwStyle & WS_HSCROLL) {
+		m_smHorz.setHWND(m_hwndView);
+	}
+	if (dwStyle & WS_VSCROLL) {
+		m_smVert.setHWND(m_hwndView);
+	}
 
 	m_pDrawInfo->setDC(::GetDC(m_hwndView));
 
@@ -66,13 +72,19 @@ View::View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 
 View::~View()
 {
-	::SetWindowLong(m_hwndView, GWL_USERDATA, 0);
+//	::SetWindowLong(m_hwndView, GWL_USERDATA, 0);
+	if (m_hwndView) {
+		::DestroyWindow(m_hwndView);
+	}
 }
 
 bool
 View::onLoadFile()
 {
 	if (!m_pDCManager->onLoadFile(this)) return false;
+	RECT rctView;
+	::GetWindowRect(m_hwndView, &rctView);
+	setFrameRect(rctView, false);
 	m_smHorz.setPosition(0);
 	m_smVert.setPosition(0);
 	setCurrentLine(0, true);
@@ -83,6 +95,9 @@ void
 View::onUnloadFile()
 {
 	m_pDCManager->onUnloadFile();
+	RECT rctView;
+	::GetWindowRect(m_hwndView, &rctView);
+	setFrameRect(rctView, false);
 	setCurrentLine(0, true);
 }
 
@@ -119,8 +134,7 @@ View::setCurrentLine(filesize_t newline, bool bRedraw)
 	m_pDCManager->setViewPositionY(newline * m_pDrawInfo->getPixelsPerLine());
 
 	if (bRedraw) {
-		::InvalidateRect(m_hwndView, NULL, FALSE);
-		::UpdateWindow(m_hwndView);
+		redrawView();
 	}
 }
 
@@ -161,18 +175,22 @@ View::adjustWindowRect(RECT& rctFrame)
 void
 View::setFrameRect(const RECT& rctFrame, bool bRedraw)
 {
-	int nViewWidth  = rctFrame.right - rctFrame.left,
-		nViewHeight = rctFrame.bottom - rctFrame.top;
-
 	::SetWindowPos(m_hwndView, NULL,
 				   rctFrame.left, rctFrame.top,
-				   nViewWidth, nViewHeight,
+				   rctFrame.right - rctFrame.left,
+				   rctFrame.bottom - rctFrame.top,
 				   SWP_NOZORDER);
+
+	RECT rctClient;
+	::GetClientRect(m_hwndView, &rctClient);
+
+	int nViewWidth  = rctClient.right - rctClient.left,
+		nViewHeight = rctClient.bottom - rctClient.top;
 
 	m_pDCManager->setViewSize(nViewWidth, nViewHeight);
 
 	m_smHorz.setInfo(m_pDCManager->width(),
-					 (rctFrame.right - rctFrame.left),
+					 nViewWidth,
 					 m_smHorz.getCurrentPos());
 
 	int nPageLineNum = nViewHeight / m_pDrawInfo->getPixelsPerLine();
@@ -183,9 +201,45 @@ View::setFrameRect(const RECT& rctFrame, bool bRedraw)
 		m_smVert.setInfo(size / m_nBytesPerLine, nPageLineNum, m_smVert.getCurrentPos());
 
 	if (bRedraw) {
-		::InvalidateRect(m_hwndView, NULL, FALSE);
-		::UpdateWindow(m_hwndView);
+		redrawView();
 	}
+}
+
+void
+View::getFrameRect(RECT& rctFrame)
+{
+	::GetWindowRect(m_hwndView, &rctFrame);
+}
+
+void
+View::setViewSize(int width, int height)
+{
+	RECT rctWindow, rctClient;
+	::GetWindowRect(m_hwndView, &rctWindow);
+	::GetClientRect(m_hwndView, &rctClient);
+
+	if (width > 0) {
+		rctWindow.right = rctWindow.left + width
+						+ (rctWindow.right - rctWindow.left)
+						- (rctClient.right - rctClient.left);
+	} else {
+		width = rctClient.right - rctClient.left;
+	}
+	if (height > 0) {
+		rctWindow.bottom = rctWindow.top + height
+						+ (rctWindow.bottom - rctWindow.top)
+						- (rctClient.bottom - rctClient.top);
+	} else {
+		height = rctClient.bottom - rctClient.top;
+	}
+
+	::SetWindowPos(m_hwndView, NULL,
+				   rctWindow.left, rctWindow.top,
+				   rctWindow.right - rctWindow.left,
+				   rctWindow.bottom - rctWindow.top,
+				   SWP_NOZORDER);
+
+	m_pDCManager->setViewSize(width, height);
 }
 
 void
@@ -200,8 +254,7 @@ View::onHScroll(WPARAM wParam, LPARAM lParam)
 {
 	// •\Ž¦—Ìˆæ‚ÌXV
 	m_pDCManager->setViewPositionX(m_smHorz.onScroll(LOWORD(wParam)));
-	::InvalidateRect(m_hwndView, NULL, FALSE);
-	::UpdateWindow(m_hwndView);
+	redrawView();
 }
 
 void
@@ -210,8 +263,8 @@ View::onLButtonDown(WPARAM wParam, LPARAM lParam)
 	if (!m_pDCManager->isLoaded()) return;
 
 	m_pDCManager->setCursorByViewCoordinate(MAKEPOINTS(lParam));
-	::InvalidateRect(m_hwndView, NULL, FALSE);
-	::UpdateWindow(m_hwndView);
+
+	redrawView();
 }
 
 LRESULT CALLBACK
@@ -257,6 +310,10 @@ View::viewWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_DROPFILES:
 		::SendMessage(::GetParent(hWnd), uMsg, wParam, lParam);
+		break;
+
+	case WM_DESTROY:
+		This->m_hwndView = NULL;
 		break;
 
 	default:

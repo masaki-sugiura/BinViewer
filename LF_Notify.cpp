@@ -5,44 +5,29 @@
 
 #include <assert.h>
 
-LF_Acceptor::LF_Acceptor()
-	: m_pLFNotifier(NULL)
+LF_Acceptor::LF_Acceptor(LF_Notifier& lfNotifier)
+	: m_lfNotifier(lfNotifier)
 {
+	GetLock lock(m_lckData);
+
+	if (!m_lfNotifier.registerAcceptor(this)) {
+		throw RegisterAcceptorError();
+	}
+
+	LargeFileReader* pLFReader;
+	tryLockReader(&pLFReader, INFINITE);
+
+	if (pLFReader) {
+		bool bRet = loadFile();
+	}
+
+	releaseReader(pLFReader);
 }
 
 LF_Acceptor::~LF_Acceptor()
 {
 	GetLock lock(m_lckData);
-	if (m_pLFNotifier) {
-		m_pLFNotifier->unregisterAcceptor(this);
-	}
-}
-
-bool
-LF_Acceptor::onRegisted(LF_Notifier* pLFNotifier)
-{
-	assert(!m_pLFNotifier);
-	assert(pLFNotifier);
-
-	GetLock lock(m_lckData);
-
-	m_pLFNotifier = pLFNotifier;
-
-	LargeFileReader* pLFReader;
-	bool bRet = tryLockReader(&pLFReader, INFINITE);
-	if (!bRet) return false;
-	if (!pLFReader) return true;
-
-	bRet = loadFile();
-
-	releaseReader(pLFReader);
-
-	return bRet;
-}
-
-void
-LF_Acceptor::onUnregisted()
-{
+	m_lfNotifier.unregisterAcceptor(this);
 }
 
 bool
@@ -67,11 +52,6 @@ LF_Notifier::LF_Notifier()
 
 LF_Notifier::~LF_Notifier()
 {
-	for (LFAList::iterator itr = m_lstLFAcceptor.begin();
-		 itr != m_lstLFAcceptor.end();
-		 ++itr) {
-		(*itr)->onUnregisted();
-	}
 }
 
 bool
@@ -128,18 +108,13 @@ LF_Notifier::registerAcceptor(LF_Acceptor* pLFAcceptor)
 {
 	assert(pLFAcceptor);
 	m_lstLFAcceptor.push_back(pLFAcceptor);
-	bool bRet = pLFAcceptor->onRegisted(this);
-	if (!bRet) {
-		m_lstLFAcceptor.remove(pLFAcceptor);
-	}
-	return bRet;
+	return true;
 }
 
 void
 LF_Notifier::unregisterAcceptor(LF_Acceptor* pLFAcceptor)
 {
 	assert(pLFAcceptor);
-	pLFAcceptor->onUnregisted();
 	m_lstLFAcceptor.remove(pLFAcceptor);
 }
 

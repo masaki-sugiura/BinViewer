@@ -27,6 +27,10 @@ class HV_DCManager : public DC_Manager {
 public:
 	HV_DCManager();
 
+#ifdef _DEBUG
+	void bitBlt(HDC hDCDst, const RECT& rcDst);
+#endif
+
 protected:
 	BGBuffer* createBGBufferInstance();
 };
@@ -34,7 +38,8 @@ protected:
 
 class HexView : public View {
 public:
-	HexView(HWND hwndParent, const RECT& rctWindow, HV_DrawInfo* pDrawInfo);
+	HexView(LF_Notifier& lfNotifier,
+			HWND hwndParent, const RECT& rctWindow, HV_DrawInfo* pDrawInfo);
 	~HexView();
 
 	bool setDrawInfo(DrawInfo* pDrawInfo);

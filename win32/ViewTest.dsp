@@ -71,7 +71,7 @@ LINK32=link.exe
 # PROP Target_Dir ""
 F90=df.exe
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /Gm /GR /GX /ZI /Od /I "." /I ".." /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /YX /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GR /GX /ZI /Od /I "." /I ".." /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /FR /YX /FD /GZ /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x411 /d "_DEBUG"
@@ -95,6 +95,10 @@ LINK32=link.exe
 # Begin Source File
 
 SOURCE=..\bgb_manager.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\BitmapView.cpp
 # End Source File
 # Begin Source File
 
@@ -150,6 +154,10 @@ SOURCE=..\bgb_manager.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\bitmapview.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\dc_manager.h
 # End Source File
 # Begin Source File
@@ -175,6 +183,10 @@ SOURCE=..\lock.h
 # Begin Source File
 
 SOURCE=..\ringbuf.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\scroll.h
 # End Source File
 # Begin Source File
 

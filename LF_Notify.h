@@ -36,34 +36,28 @@ private:
 
 class LF_Acceptor {
 public:
-	LF_Acceptor();
+	LF_Acceptor(LF_Notifier& lfNotifier);
 	virtual ~LF_Acceptor();
 
 //	LargeFileReader* getReader() const { return m_pLFReader; }
 	bool tryLockReader(LargeFileReader** ppLFReader, DWORD dwWaitTime)
 	{
-		if (!m_pLFNotifier) return false;
-		return m_pLFNotifier->tryLockReader(ppLFReader, dwWaitTime);
+		return m_lfNotifier.tryLockReader(ppLFReader, dwWaitTime);
 	}
 	void releaseReader(LargeFileReader* pLFReader)
 	{
-		if (m_pLFNotifier)
-			m_pLFNotifier->releaseReader(pLFReader);
+		m_lfNotifier.releaseReader(pLFReader);
 	}
 
-protected:
 	virtual bool onLoadFile() = 0;
 	virtual void onUnloadFile() = 0;
 
 private:
 	Lock m_lckData;
-	LF_Notifier* m_pLFNotifier;
+	LF_Notifier& m_lfNotifier;
 
 	bool loadFile();
 	void unloadFile();
-
-	bool onRegisted(LF_Notifier* pLFNotifier);
-	void onUnregisted();
 
 	friend LF_Notifier;
 };
@@ -113,5 +107,7 @@ private:
 	LF_Acceptor* m_pLFAcceptor;
 	LargeFileReader* m_pLFReader;
 };
+
+class RegisterAcceptorError {};
 
 #endif

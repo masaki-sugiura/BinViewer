@@ -9,6 +9,7 @@
 #include <assert.h>
 
 #include "HexView.h"
+#include "BitmapView.h"
 #include "strutils.h"
 
 #define ADDR_WIDTH   100
@@ -137,6 +138,7 @@ protected:
 
 // window properties
 static Auto_Ptr<View> g_pViewFrame(NULL);
+static Auto_Ptr<BitmapViewWindow> g_pBitmapViewWindow(NULL);
 
 static Auto_Ptr<LargeFileReader> g_pLFReader(NULL);
 static LF_Notifier g_lfNotifier;
@@ -280,10 +282,8 @@ OnCreate(HWND hWnd)
 											 CARET_STATIC, WHEEL_AS_ARROW_KEYS);
 	::ReleaseDC(hWnd, hDC);
 
-	g_pViewFrame = new HexView(hWnd, rctClient, pDrawInfo);
+	g_pViewFrame = new HexView(g_lfNotifier, hWnd, rctClient, pDrawInfo);
 	assert(g_pViewFrame.ptr());
-
-	g_lfNotifier.registerAcceptor(g_pViewFrame.ptr());
 
 	AdjustWindowSize(hWnd, rctClient);
 
@@ -313,6 +313,9 @@ OnCreate(HWND hWnd)
 	::SendMessage(g_hwndStatusBar, SB_SETPARTS, 1, (LPARAM)&tsize.cx);
 	::ReleaseDC(g_hwndStatusBar, hDC);
 
+	// BitmapView
+	g_pBitmapViewWindow = new BitmapViewWindow(g_lfNotifier, hWnd);
+
 	g_pLFReader = new LargeFileReader("C:\\temp\\gt4.mpg");
 
 	g_lfNotifier.loadFile(g_pLFReader.ptr());
@@ -323,7 +326,8 @@ OnQuit(HWND)
 {
 	g_lfNotifier.unloadFile();
 	g_pLFReader = NULL;
-	g_lfNotifier.unregisterAcceptor(g_pViewFrame.ptr());
+//	g_lfNotifier.unregisterAcceptor(g_pViewFrame.ptr());
+	g_pBitmapViewWindow = NULL;
 	g_pViewFrame = NULL;
 }
 
@@ -394,6 +398,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	}
 
 	::ShowWindow(g_hwndMain, SW_SHOW);
+	g_pBitmapViewWindow->show();
 
 	MSG msg;
 	while (::GetMessage(&msg, NULL, 0, 0)) {

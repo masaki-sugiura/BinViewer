@@ -36,7 +36,8 @@ struct Metrics {
 
 class View : public LF_Acceptor {
 public:
-	View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
+	View(LF_Notifier& lfNotifier,
+		 HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 		 const RECT& rctWindow,
 		 DC_Manager* pDCManager,
 		 DrawInfo* pDrawInfo);
@@ -46,6 +47,11 @@ public:
 
 	// ウィンドウを指定された短形に変形
 	virtual void setFrameRect(const RECT& rctFrame, bool bRedraw);
+	// ウィンドウ短形を取得
+	virtual void getFrameRect(RECT& rctFrame);
+
+	// クライアント領域を指定サイズに変更
+	virtual void setViewSize(int width, int height);
 
 	virtual bool setDrawInfo(DrawInfo* pDrawInfo) = 0;
 
@@ -57,6 +63,9 @@ public:
 		::InvalidateRect(m_hwndView, NULL, FALSE);
 		::UpdateWindow(m_hwndView);
 	}
+
+	bool onLoadFile();
+	void onUnloadFile();
 
 	// View クラスが投げる例外の基底クラス
 	class ViewException {};
@@ -73,9 +82,6 @@ protected:
 	ScrollManager<int> m_smHorz;
 	ScrollManager<filesize_t> m_smVert;
 	HWND m_hwndView, m_hwndParent;
-
-	bool onLoadFile();
-	void onUnloadFile();
 
 	void bitBlt(const RECT& rcPaint);
 

@@ -231,7 +231,8 @@ HV_DCBuffer::setCursorByCoordinate(int x, int y)
 	}
 
 	// データ領域と文字列領域にカーソルをセットする
-	invertRegionInBuffer(column + line * 16, 1);
+//	invertRegionInBuffer(column + line * 16, 1);
+	setCursor(column + line * 16);
 
 	return column + line * 16;
 }
@@ -314,6 +315,14 @@ HV_DCManager::HV_DCManager()
 {
 }
 
+#ifdef _DEBUG
+void
+HV_DCManager::bitBlt(HDC hDCDst, const RECT& rcDst)
+{
+	DC_Manager::bitBlt(hDCDst, rcDst);
+}
+#endif
+
 BGBuffer*
 HV_DCManager::createBGBufferInstance()
 {
@@ -328,10 +337,11 @@ HV_DCManager::createBGBufferInstance()
 	return pBuf;
 }
 
-HexView::HexView(HWND hwndParent, const RECT& rctWindow, HV_DrawInfo* pDrawInfo)
-	: View(hwndParent,
+HexView::HexView(LF_Notifier& lfNotifier,
+				 HWND hwndParent, const RECT& rctWindow, HV_DrawInfo* pDrawInfo)
+	: View(lfNotifier, hwndParent,
 		   WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL,
-		   WS_EX_CLIENTEDGE,
+		   0,//WS_EX_CLIENTEDGE,
 		   rctWindow,
 		   new HV_DCManager(),
 		   pDrawInfo)

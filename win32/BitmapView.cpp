@@ -1,21 +1,211 @@
 // $Id$
 
 #include "BitmapView.h"
-#include "ViewFrame.h"
-#include "messages.h"
 
 #define BV_WNDCLASSNAME  "BinViewer_BitmapViewClass32"
 
-BitmapView::BitmapView(HWND hwndOwner, ViewFrame* pViewFrame)
-	: m_hwndOwner(hwndOwner),
-	  m_pViewFrame(pViewFrame),
-	  m_qCurrentPos(-1),
-	  m_qHeadPos(-1),
-	  m_pScrollManager(NULL),
-	  m_bLoaded(false)
+BV_DrawInfo::BV_DrawInfo()
 {
-	if (!pViewFrame) throw CreateBitmapViewError();
+	setWidth(128);
+	setHeight(1024);
+	setPixelsPerLine(1);
+	setBkColor(RGB(255, 255, 255));
+}
 
+BV_DCBuffer::BV_DCBuffer(int nBufSize)
+	: DCBuffer(nBufSize),
+	  m_pBVDrawInfo(NULL)
+{
+}
+
+bool
+BV_DCBuffer::prepareDC(DrawInfo* pDrawInfo)
+{
+	BV_DrawInfo* pBVDrawInfo = dynamic_cast<BV_DrawInfo*>(pDrawInfo);
+	if (!pBVDrawInfo) {
+		return false;
+	}
+
+	if (!DCBuffer::prepareDC(pDrawInfo)) {
+		return false;
+	}
+
+	m_pBVDrawInfo = pBVDrawInfo;
+
+	return true;
+}
+
+int
+BV_DCBuffer::render()
+{
+	assert(m_pBVDrawInfo);
+
+	int width = m_pBVDrawInfo->getWidth(), height = m_pBVDrawInfo->getHeight();
+
+	assert(width * height == m_nBufSize);
+
+	int x = 0, y = 0;
+	for (int i = 0; i < m_nDataSize; i++) {
+		BYTE val = 255 - m_pDataBuf[i]; // 0 が白になるように
+		::SetPixel(m_hDC, x, y, RGB(val, val, val));
+		if (++x == width) {
+			x = 0; y++;
+		}
+	}
+
+	COLORREF crBkColor = m_pBVDrawInfo->getBkColor();
+	while (y < height) {
+		::SetPixel(m_hDC, x, y, crBkColor);
+		if (++x == width) {
+			x = 0; y++;
+		}
+	}
+
+	return m_nDataSize;
+}
+
+int
+BV_DCBuffer::setCursorByCoordinate(int x, int y)
+{
+	// バッファのデータは不正
+	if (m_qAddress < 0) {
+		return -1;
+	}
+
+	assert(m_pBVDrawInfo);
+
+	int offset = x + y * m_pBVDrawInfo->getWidth();
+
+//	invertRegionInBuffer(offset, 1);
+	setCursor(offset);
+
+	return offset;
+}
+
+void
+BV_DCBuffer::invertRegionInBuffer(int offset, int size)
+{
+	// バッファのデータは不正
+	if (m_qAddress < 0) {
+		return;
+	}
+
+	int width = m_pBVDrawInfo->getWidth(), height = m_pBVDrawInfo->getHeight();
+
+	int start_line = offset / width, start_column = offset % width,
+		end_line = (offset + size) / width, end_column = (offset + size) % width;
+
+	if (end_column == 0) {
+		assert(end_line > 0);
+		end_line--;
+		end_column = width;
+	}
+
+	if (start_line == end_line) {
+		invertOneLineRegion(start_column, end_column, start_line);
+		return;
+	}
+
+	if (start_column > 0) {
+		invertOneLineRegion(start_column, width, start_line);
+		start_line++;
+	}
+
+	for (int i = start_line; i < end_line; i++) {
+		invertOneLineRegion(0, width, i);
+	}
+
+	invertOneLineRegion(0, end_column, end_line);
+}
+
+void
+BV_DCBuffer::invertOneLineRegion(int start_column, int end_column, int line)
+{
+	assert(m_pBVDrawInfo && start_column < end_column && line >= 0);
+
+	int width = m_pBVDrawInfo->getWidth();
+	for (int i = start_column; i < end_column; i++) {
+		COLORREF cRef = ::GetPixel(m_hDC, i, line);
+		::SetPixel(m_hDC, i, line, cRef ^ RGB(0, 255, 255));
+	}
+}
+
+BV_DCManager::BV_DCManager()
+	: DC_Manager(128 * 1024, 5)
+{
+}
+
+#ifdef _DEBUG
+void
+BV_DCManager::bitBlt(HDC hDCDst, const RECT& rcDst)
+{
+	DC_Manager::bitBlt(hDCDst, rcDst);
+}
+#endif
+
+BGBuffer*
+BV_DCManager::createBGBufferInstance()
+{
+	if (m_pDrawInfo == NULL) {
+		return NULL;
+	}
+	DCBuffer* pBuf = new BV_DCBuffer(m_nBufSize);
+	if (!pBuf->prepareDC(m_pDrawInfo)) {
+		delete pBuf;
+		return NULL;
+	}
+	return pBuf;
+}
+
+BitmapView::BitmapView(LF_Notifier& lfNotifier,
+					   HWND hwndParent, const RECT& rctWindow, BV_DrawInfo* pDrawInfo)
+	: View(lfNotifier, hwndParent,
+		   WS_CHILD | WS_VISIBLE | WS_VSCROLL,
+		   0,//WS_EX_CLIENTEDGE,
+		   rctWindow,
+		   new BV_DCManager(),
+		   pDrawInfo)
+{
+	setViewSize(128, -1);
+}
+
+BitmapView::~BitmapView()
+{
+}
+
+bool
+BitmapView::setDrawInfo(DrawInfo* pDrawInfo)
+{
+	BV_DrawInfo* pBVDrawInfo = dynamic_cast<BV_DrawInfo*>(pDrawInfo);
+	if (!pBVDrawInfo) {
+		return false;
+	}
+
+	if (!m_pDCManager->setDrawInfo(pDrawInfo)) {
+		return false;
+	}
+
+	m_pDrawInfo = pBVDrawInfo;
+
+	redrawView();
+
+	return true;
+}
+
+LRESULT
+BitmapView::viewWndProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	return View::viewWndProcMain(uMsg, wParam, lParam);
+}
+
+BitmapViewWindow::BitmapViewWindow(LF_Notifier& lfNotify, HWND hwndOwner)
+	: m_lfNotify(lfNotify),
+	  m_pBitmapView(NULL),
+	  m_pBVDrawInfo(NULL),
+	  m_hwndOwner(hwndOwner),
+	  m_hWnd(NULL),
+	  m_uWindowWidth(0)
+{
 	HINSTANCE hInstance = (HINSTANCE)::GetWindowLong(hwndOwner, GWL_HINSTANCE);
 
 	// window class の登録
@@ -25,37 +215,83 @@ BitmapView::BitmapView(HWND hwndOwner, ViewFrame* pViewFrame)
 	RECT rctOwner;
 	::GetWindowRect(hwndOwner, &rctOwner);
 
-	m_hwndView = ::CreateWindowEx(WS_EX_PALETTEWINDOW,
-								  BV_WNDCLASSNAME, "BitmapView",
-								  WS_POPUP | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU |
-								   WS_VSCROLL,
-								  rctOwner.right, rctOwner.top,
-								  128, rctOwner.bottom - rctOwner.top,
-								  hwndOwner, NULL, hInstance,
-								  (LPVOID)this);
-	if (!m_hwndView) {
+	m_hWnd = ::CreateWindowEx(WS_EX_PALETTEWINDOW,
+							  BV_WNDCLASSNAME, "BitmapView",
+							  WS_OVERLAPPED | WS_POPUP | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU,
+							  rctOwner.right, rctOwner.top,
+							  128, rctOwner.bottom - rctOwner.top,
+							  hwndOwner, NULL, hInstance,
+							  (LPVOID)this);
+	if (!m_hWnd) {
 		throw CreateBitmapViewError();
 	}
 
-	::SetWindowPos(m_hwndView, HWND_NOTOPMOST, 0, 0, 0, 0,
-				   SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
-//	::BringWindowToTop(m_hwndView);
-
-	m_pScrollManager = new ScrollManager<filesize_t>(m_hwndView, SB_VERT);
-	m_pScrollManager->disable();
+//	::SetWindowPos(m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0,
+//				   SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
 }
 
-BitmapView::~BitmapView()
+BitmapViewWindow::~BitmapViewWindow()
 {
-	delete [] (BYTE*)m_pbmInfo;
-	::DeleteObject(m_hbmView);
-	::DeleteDC(m_hdcView);
-	delete m_pScrollManager;
-	::SendMessage(m_hwndView, WM_CLOSE, 0, 0);
+}
+
+bool
+BitmapViewWindow::show()
+{
+	::ShowWindow(m_hWnd, SW_SHOW);
+	onResize(m_hWnd);
+	return true;
+}
+
+bool
+BitmapViewWindow::hide()
+{
+	::ShowWindow(m_hWnd, SW_HIDE);
+	return true;
+}
+
+void
+BitmapViewWindow::onCreate(HWND hWnd)
+{
+	RECT rctWindow, rctClient;
+	::GetWindowRect(hWnd, &rctWindow);
+	::GetClientRect(hWnd, &rctClient);
+
+	rctWindow.right = rctWindow.left
+					+ (rctWindow.right - rctWindow.left)
+					- (rctClient.right - rctClient.left);
+
+	rctClient.right = 128;
+
+	m_pBVDrawInfo = new BV_DrawInfo();
+	m_pBitmapView = new BitmapView(m_lfNotify, hWnd, rctClient, m_pBVDrawInfo.ptr());
+
+	m_pBitmapView->getFrameRect(rctClient);
+
+	rctWindow.right += rctClient.right - rctClient.left;
+
+	m_uWindowWidth = rctWindow.right - rctWindow.left;
+
+	::SetWindowPos(hWnd, NULL,
+				   rctWindow.left, rctWindow.top,
+				   m_uWindowWidth,
+				   rctWindow.bottom - rctWindow.top,
+				   SWP_NOZORDER);
+
+	m_pBitmapView->setFrameRect(rctClient, true);
+}
+
+void
+BitmapViewWindow::onResize(HWND hWnd)
+{
+	RECT rctNew;
+	::GetClientRect(hWnd, &rctNew);
+	if (m_pBitmapView.ptr()) {
+		m_pBitmapView->setFrameRect(rctNew, true);
+	}
 }
 
 int
-BitmapView::registerWndClass(HINSTANCE hInst)
+BitmapViewWindow::registerWndClass(HINSTANCE hInst)
 {
 	// Window class の登録
 	WNDCLASS wc;
@@ -71,299 +307,38 @@ BitmapView::registerWndClass(HINSTANCE hInst)
 	return ::RegisterClass(&wc);
 }
 
-bool
-BitmapView::onLoadFile()
-{
-	m_bLoaded = true;
-	m_qCurrentPos = 0;
-	m_qHeadPos = 0;
-	filesize_t size;
-	{
-		bool bRet;
-		AutoLockReader alReader(this, INFINITE, &bRet);
-		if (!bRet || !alReader) return false;
-		size = alReader->size();
-	}
-
-	m_pScrollManager->setInfo(size / 128, m_rctClient.bottom, 0);
-	drawDC(m_rctClient);
-	invertPos();
-
-	::InvalidateRect(m_hwndView, NULL, FALSE);
-	::UpdateWindow(m_hwndView);
-
-	return true;
-}
-
-void
-BitmapView::onUnloadFile()
-{
-	m_bLoaded = false;
-	m_pScrollManager->disable();
-	m_qHeadPos = -1;
-	m_qCurrentPos = -1;
-	drawDC(m_rctClient);
-	::InvalidateRect(m_hwndView, NULL, FALSE);
-	::UpdateWindow(m_hwndView);
-}
-
-bool
-BitmapView::show()
-{
-	::ShowWindow(m_hwndView, SW_SHOW);
-	drawDC(m_rctClient);
-	invertPos();
-	::InvalidateRect(m_hwndView, NULL, FALSE);
-	::UpdateWindow(m_hwndView);
-	return true;
-}
-
-bool
-BitmapView::hide()
-{
-	::ShowWindow(m_hwndView, SW_HIDE);
-	return true;
-}
-
-bool
-BitmapView::setPosition(filesize_t pos)
-{
-	if (m_qCurrentPos == -1) return false;
-	invertPos();
-	m_qCurrentPos = pos;
-	if (m_qHeadPos > m_qCurrentPos ||
-		m_qHeadPos + 128 * m_rctClient.bottom <= m_qCurrentPos) {
-		m_qHeadPos = (pos / 128) * 128;
-		drawDC(m_rctClient);
-	}
-	invertPos();
-	::InvalidateRect(m_hwndView, NULL, FALSE);
-	::UpdateWindow(m_hwndView);
-	return true;
-}
-
-void
-BitmapView::drawDC(const RECT& rctPaint)
-{
-	if (m_bLoaded) {
-		if (!::IsWindowVisible(m_hwndView)) return;
-		filesize_t qOffset = m_qHeadPos + rctPaint.top * 128;
-		static BYTE databuf[128 * 2048]; // max size
-		int size = 128 * (rctPaint.bottom - rctPaint.top);
-		if (!size) return;
-		{
-			bool bRet;
-			AutoLockReader alReader(this, INFINITE, &bRet);
-			if (!bRet || !alReader) return;
-			size = alReader->readFrom(qOffset, FILE_BEGIN,
-									  databuf, size);
-		}
-		// render with SetDIBits()
-#if 1
-		int x = 0, y = rctPaint.top;
-		for (int i = 0; i < size; i++) {
-			BYTE val = 255 - databuf[i]; // 0 が白になるように
-			::SetPixel(m_hdcView, x, y, RGB(val, val, val));
-			if (++x == 128) {
-				x = 0; y++;
-			}
-		}
-		while (y < rctPaint.bottom) {
-			::SetPixel(m_hdcView, x, y, RGB(255, 255, 255));
-			if (++x == 128) {
-				x = 0; y++;
-			}
-		}
-#endif
-	} else {
-		::FillRect(m_hdcView, &rctPaint, (HBRUSH)(COLOR_APPWORKSPACE + 1));
-	}
-}
-
-inline void invertPixel(HDC hDC, int x, int y)
-{
-	COLORREF cref = ::GetPixel(hDC, x, y);
-	cref ^= RGB(0, 255, 255);
-	::SetPixel(hDC, x, y, cref);
-}
-
-void
-BitmapView::invertPos()
-{
-	if (!::IsWindowVisible(m_hwndView)) return;
-	int offset = m_qCurrentPos - m_qHeadPos;
-	int x = offset % 128, y = offset / 128;
-	invertPixel(m_hdcView, x - 1, y - 1);
-	invertPixel(m_hdcView, x,     y - 1);
-	invertPixel(m_hdcView, x + 1, y - 1);
-	invertPixel(m_hdcView, x - 1, y);
-	invertPixel(m_hdcView, x + 1, y);
-	invertPixel(m_hdcView, x - 1, y + 1);
-	invertPixel(m_hdcView, x,     y + 1);
-	invertPixel(m_hdcView, x + 1, y + 1);
-}
-
-bool
-BitmapView::onCreate(HWND hWnd)
-{
-	RECT rctWindow, rctClient;
-	::GetWindowRect(hWnd, &rctWindow);
-	::GetClientRect(hWnd, &rctClient);
-	rctWindow.right += 128 - (rctClient.right - rctClient.left);
-	m_uWindowWidth = rctWindow.right - rctWindow.left;
-
-	m_rctClient.left = m_rctClient.top = 0;
-	m_rctClient.right = 128;
-	m_rctClient.bottom = rctClient.bottom;
-
-	::SetWindowPos(hWnd, NULL,
-				   rctWindow.left, rctWindow.top,
-				   m_uWindowWidth,
-				   rctWindow.bottom - rctWindow.top,
-				   SWP_NOZORDER | SWP_NOMOVE);
-
-	HDC hDC = ::GetDC(hWnd);
-	m_hdcView = ::CreateCompatibleDC(hDC);
-	m_hbmView = ::CreateCompatibleBitmap(hDC, 128, 2048);
-	::SelectObject(m_hdcView, m_hbmView);
-
-	m_pbmInfo = (BITMAPINFO*)(new BYTE[sizeof(BITMAPINFOHEADER) + 256 * sizeof(RGBQUAD)]);
-	m_pbmInfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-	m_pbmInfo->bmiHeader.biWidth = 128;
-	m_pbmInfo->bmiHeader.biHeight = -1024;
-	m_pbmInfo->bmiHeader.biPlanes = 1;
-	m_pbmInfo->bmiHeader.biBitCount = 8;
-	m_pbmInfo->bmiHeader.biCompression = BI_RGB;
-	m_pbmInfo->bmiHeader.biSizeImage = 0;
-	m_pbmInfo->bmiHeader.biXPelsPerMeter = 0;
-	m_pbmInfo->bmiHeader.biYPelsPerMeter = 0;
-	m_pbmInfo->bmiHeader.biClrUsed = 0;
-	m_pbmInfo->bmiHeader.biClrImportant = 0;
-
-	for (int i = 0; i < 256; i++) {
-		BYTE clr = 255 - i;
-		*(COLORREF*)&m_pbmInfo->bmiColors[i] = RGB(clr, clr, clr);
-	}
-
-	::ReleaseDC(hWnd, hDC);
-
-	drawDC(m_rctClient);
-
-	return true;
-}
-
-void
-BitmapView::onPaint(HWND hWnd)
-{
-	PAINTSTRUCT ps;
-	::BeginPaint(hWnd, &ps);
-	::BitBlt(ps.hdc,
-			 ps.rcPaint.left, ps.rcPaint.top,
-			 ps.rcPaint.right - ps.rcPaint.left,
-			 ps.rcPaint.bottom - ps.rcPaint.top,
-			 m_hdcView,
-			 ps.rcPaint.left, ps.rcPaint.top,
-			 SRCCOPY);
-	::EndPaint(hWnd, &ps);
-}
-
-bool
-BitmapView::onResize(HWND hWnd)
-{
-	RECT rctNew;
-	::GetClientRect(hWnd, &rctNew);
-	if (rctNew.bottom - rctNew.top > m_rctClient.bottom - m_rctClient.top) {
-		// 描画領域が増えた場合のみ(増えた部分のみ)再描画
-		RECT rctPaint = rctNew;
-		rctPaint.top = m_rctClient.bottom;
-		drawDC(rctPaint);
-	}
-	m_rctClient = rctNew;
-	if (m_bLoaded) {
-		bool bRet;
-		AutoLockReader alReader(this, INFINITE, &bRet);
-		if (!bRet || !alReader) return false;
-		m_pScrollManager->setInfo(alReader->size() / 128,
-								  m_rctClient.bottom,
-								  m_qHeadPos / 128);
-	}
-	return true;
-}
-
-void
-BitmapView::onScroll(WPARAM wParam, LPARAM lParam)
-{
-	if (!m_bLoaded) return;
-	filesize_t qNewPos = m_pScrollManager->onScroll(LOWORD(wParam)) * 128;
-	setPosition(qNewPos);
-}
-
-void
-BitmapView::onLButtonDown(WPARAM wParam, LPARAM lParam)
-{
-	if (!m_bLoaded) return;
-
-	const POINTS& pt = MAKEPOINTS(lParam);
-
-	filesize_t pos = m_qHeadPos + 128 * pt.y + pt.x, size;
-	{
-		bool bRet;
-		AutoLockReader alReader(this, INFINITE, &bRet);
-		if (!bRet || !alReader) return;
-		size = alReader->size();
-	}
-	if (pos > size) return;
-
-	invertPos();
-	m_qCurrentPos = pos;
-	invertPos();
-
-	m_pViewFrame->onJump(pos);
-}
-
 LRESULT CALLBACK
-BitmapView::BitmapViewWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+BitmapViewWindow::BitmapViewWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg) {
 	case WM_CREATE:
 		{
 			CREATESTRUCT* pCs = (CREATESTRUCT*)lParam;
 			::SetWindowLong(hWnd, GWL_USERDATA, (LONG)pCs->lpCreateParams);
-			BitmapView* pBitmapView = (BitmapView*)pCs->lpCreateParams;
-			pBitmapView->onCreate(hWnd);
+			BitmapViewWindow* pBitmapViewWindow = (BitmapViewWindow*)pCs->lpCreateParams;
+			pBitmapViewWindow->onCreate(hWnd);
 			return 0;
 		}
 	case WM_NCCREATE:
 		return TRUE;
 	}
 
-	BitmapView* pBitmapView = (BitmapView*)::GetWindowLong(hWnd, GWL_USERDATA);
-	if (!pBitmapView) {
+	BitmapViewWindow*
+		pBitmapViewWindow = (BitmapViewWindow*)::GetWindowLong(hWnd, GWL_USERDATA);
+	if (!pBitmapViewWindow) {
 		return ::DefWindowProc(hWnd, uMsg, wParam, lParam);
 	}
 
 	switch (uMsg) {
-	case WM_PAINT:
-		pBitmapView->onPaint(hWnd);
-		break;
-
 	case WM_SIZE:
-		pBitmapView->onResize(hWnd);
+		pBitmapViewWindow->onResize(hWnd);
 		break;
 
 	case WM_SIZING:
 		{
 			RECT* pRect = (RECT*)lParam;
-			pRect->right = pRect->left + pBitmapView->m_uWindowWidth;
+			pRect->right = pRect->left + pBitmapViewWindow->m_uWindowWidth;
 		}
-		break;
-
-	case WM_VSCROLL:
-		pBitmapView->onScroll(wParam, lParam);
-		break;
-
-	case WM_LBUTTONDOWN:
-		pBitmapView->onLButtonDown(wParam, lParam);
 		break;
 
 	case WM_CLOSE:

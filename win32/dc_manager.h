@@ -14,6 +14,7 @@ public:
 	int getWidth() const { return m_nWidth; }
 	int getHeight() const { return m_nHeight; }
 	int getPixelsPerLine() const { return m_nPixelsPerLine; }
+	COLORREF getBkColor() const { return m_crBkColor; }
 	HBRUSH getBkBrush() const { return m_hbrBackground; }
 
 	void setDC(HDC hDC) { m_hDC = hDC; }
@@ -27,6 +28,7 @@ public:
 	{
 		::DeleteObject(m_hbrBackground);
 		m_hbrBackground = ::CreateSolidBrush(crBkColor);
+		m_crBkColor = crBkColor;
 	}
 
 protected:
@@ -34,6 +36,7 @@ protected:
 	int m_nWidth;
 	int m_nHeight;
 	int m_nPixelsPerLine;
+	COLORREF m_crBkColor;
 	HBRUSH m_hbrBackground;
 };
 
@@ -131,9 +134,13 @@ public:
 		setViewPosition(nXOffset, qYOffset);
 	}
 
-	void bitBlt(HDC hDCDst, const RECT& rcDst);
-
 	void setCursorByViewCoordinate(const POINTS& pt);
+
+#ifdef _DEBUG
+	virtual void bitBlt(HDC hDCDst, const RECT& rcDst);
+#else
+	void bitBlt(HDC hDCDst, const RECT& rcDst);
+#endif
 
 	virtual void setCursor(filesize_t pos);
 	virtual void select(filesize_t pos, filesize_t size);

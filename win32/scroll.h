@@ -25,12 +25,15 @@ public:
 
 	void disable()
 	{
-		setInfo(1, 2, 0);
+		if (m_hWnd) {
+			setInfo(1, 2, 0);
+		}
 	}
 
 	void setInfo(SIZE_TYPE stMaxPos, SIZE_TYPE stGripWidth, SIZE_TYPE stCurrPos = 0)
 	{
-		assert(m_hWnd);
+//		assert(m_hWnd);
+		if (!m_hWnd) return;
 
 		m_stMaxPos     = stMaxPos;
 		m_stGripWidth  = stGripWidth;
@@ -60,7 +63,8 @@ public:
 
 	void setPosition(SIZE_TYPE pos)
 	{
-		assert(m_hWnd);
+//		assert(m_hWnd);
+		if (!m_hWnd) return;
 
 		m_stCurrentPos = pos;
 
@@ -77,6 +81,8 @@ public:
 
 	SIZE_TYPE onScroll(int cmd)
 	{
+		if (!m_hWnd) return 0;
+
 		SCROLLINFO sinfo;
 		sinfo.cbSize = sizeof(SCROLLINFO);
 		sinfo.fMask = SIF_ALL;
