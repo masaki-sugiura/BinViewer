@@ -66,6 +66,8 @@ private:
 	thread_result_t m_result;
 	THREAD_STATE    m_state;
 	Lock m_lockAttr;
+
+	static DECLARE_THREAD_PROC(threadProcedure);
 };
 
 #endif

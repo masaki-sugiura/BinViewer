@@ -7,13 +7,6 @@
 
 typedef UINT (WINAPI *thread_func_t)(void* arg);
 
-static UINT WINAPI
-ThreadProcedure(void* arg)
-{
-	Thread* pThread = (Thread*)arg;
-	return pThread->thread(pThread->getArg());
-}
-
 Thread::Thread(thread_arg_t arg, thread_attr_t attr)
 	: m_arg(arg), m_attr(attr),
 	  m_result(-1), m_state(TS_READY)
@@ -44,7 +37,7 @@ Thread::run()
 	if (m_state != TS_READY) return false;
 
 	m_attr->m_hThread = (HANDLE)_beginthreadex(NULL, 0,
-									   (thread_func_t)ThreadProcedure,
+									   (thread_func_t)threadProcedure,
 									   (void*)this, 0,
 									   (UINT*)&m_attr->m_dwThreadID);
 
@@ -125,5 +118,12 @@ Thread::getResult()
 	if (m_state != TS_STOPPED) return (thread_result_t)-1;
 
 	return m_result;
+}
+
+UINT WINAPI
+Thread::threadProcedure(void* arg)
+{
+	Thread* This = (Thread*)arg;
+	return This->thread(This->getArg());
 }
 

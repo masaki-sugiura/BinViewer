@@ -24,6 +24,8 @@ struct ThreadAttribute {
 };
 typedef ThreadAttribute* thread_attr_t;
 
+#define DECLARE_THREAD_PROC(func)  thread_result_t WINAPI func(thread_arg_t)
+
 
 #define QWORD(l,h)  (__int64)(((__int64)(l) & 0x00000000FFFFFFFF) | \
 							  ((__int64)(h) << 32))
