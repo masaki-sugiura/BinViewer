@@ -5,17 +5,15 @@
 #include <assert.h>
 
 Renderer::Renderer(HDC hDC,
-				   const TextColorInfo* pTCInfo,
-				   const FontInfo* pFontInfo,
+				   const DrawInfo* pDrawInfo,
 				   int w_per_xpitch, int h_per_ypitch)
 	: m_hDC(::CreateCompatibleDC(hDC)),
-	  m_pTextColorInfo(pTCInfo),
-	  m_pFontInfo(pFontInfo),
+	  m_pDrawInfo(pDrawInfo),
 	  m_hBitmap(NULL),
 	  m_nWidth_per_XPitch(w_per_xpitch),
 	  m_nHeight_per_YPitch(h_per_ypitch)
 {
-	assert(hDC && pTCInfo && pFontInfo);
+	assert(hDC && pDrawInfo);
 	prepareDC(hDC);
 }
 
@@ -28,49 +26,43 @@ Renderer::~Renderer()
 void
 Renderer::prepareDC(HDC hDC)
 {
-	int width  = m_pFontInfo->getXPitch() * m_nWidth_per_XPitch,
-		height = m_pFontInfo->getYPitch() * m_nHeight_per_YPitch;
+	const FontInfo& FontInfo = m_pDrawInfo->m_FontInfo;
+
+	int width  = FontInfo.getXPitch() * m_nWidth_per_XPitch,
+		height = FontInfo.getYPitch() * m_nHeight_per_YPitch;
 
 	if (m_hBitmap != NULL) ::DeleteObject(m_hBitmap);
 	m_hBitmap = ::CreateCompatibleBitmap(hDC, width, height);
 
 	::SelectObject(m_hDC, (HGDIOBJ)m_hBitmap);
-	::SelectObject(m_hDC, (HGDIOBJ)m_pFontInfo->getFont());
-	::SetTextColor(m_hDC, m_pTextColorInfo->getFgColor());
-	::SetBkColor(m_hDC, m_pTextColorInfo->getBkColor());
+	::SelectObject(m_hDC, (HGDIOBJ)FontInfo.getFont());
+//	::SetTextColor(m_hDC, m_pTextColorInfo->getFgColor());
+//	::SetBkColor(m_hDC, m_pTextColorInfo->getBkColor());
 
 	m_rctDC.left = m_rctDC.top = 0;
 	m_rctDC.right  = width;
 	m_rctDC.bottom = height;
 
-	int nXPitch = m_pFontInfo->getXPitch();
+	int nXPitch = FontInfo.getXPitch();
 	for (int i = 0; i < sizeof(m_anXPitch) / sizeof(m_anXPitch[0]); i++) {
 		m_anXPitch[i] = nXPitch;
 	}
 }
 
 void
-Renderer::setDrawInfo(HDC hDC,
-					  const TextColorInfo* pTCInfo,
-					  const FontInfo* pFontInfo)
+Renderer::setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo)
 {
-	assert(pTCInfo || pFontInfo);
+	assert(pDrawInfo);
 
-	if (pFontInfo) {
-		m_pFontInfo = pFontInfo;
-		prepareDC(hDC);
-	}
-	if (pTCInfo) m_pTextColorInfo = pTCInfo;
+	prepareDC(hDC);
 
 	render();
 }
 
 
-DCBuffer::DCBuffer(HDC hDC,
-				   const TextColorInfo* pTCInfo,
-				   const FontInfo* pFontInfo)
+DCBuffer::DCBuffer(HDC hDC, const DrawInfo* pDrawInfo)
 	: BGBuffer(),
-	  Renderer(hDC, pTCInfo, pFontInfo, WIDTH_PER_XPITCH, HEIGHT_PER_YPITCH)
+	  Renderer(hDC, pDrawInfo, WIDTH_PER_XPITCH, HEIGHT_PER_YPITCH)
 {
 }
 
@@ -86,7 +78,8 @@ TranslateToString(LPBYTE dst, const BYTE* src, int size)
 				i++;
 				dst[i] = src[i];
 			}
-		} else if (!IsCharReadable((TCHAR)src[i]) || (src[i] & 0x80)) {
+		} else if (!IsCharReadable((TCHAR)src[i]) ||
+				   src[i] < 0x20 || (src[i] & 0x80)) {
 			dst[i] = '.';
 		} else {
 			dst[i] = src[i];
@@ -110,18 +103,42 @@ DCBuffer::uninit()
 	render(); // 背景色で塗りつぶし
 }
 
+void
+DCBuffer::bitBlt(HDC hDC, int x, int y, int cx, int cy,
+				 int sx, int sy) const
+{
+	::BitBlt(hDC, x, y, cx, cy, m_hDC, sx, sy, SRCCOPY);
+	if (sx + cx > m_rctDC.right) {
+		RECT rct;
+		rct.left   = x + (m_rctDC.right - sx);
+		rct.top    = y;
+		rct.right  = x + cx;
+		rct.bottom = y + cy;
+		::FillRect(hDC, &rct, m_pDrawInfo->m_tciString.getBkBrush());
+	}
+}
+
 int
 DCBuffer::render()
 {
-	assert(m_pTextColorInfo && m_pFontInfo);
+	assert(m_pDrawInfo);
 
-	::FillRect(m_hDC, &m_rctDC, m_pTextColorInfo->getBkBrush());
+	int nXPitch = m_pDrawInfo->m_FontInfo.getXPitch(),
+		nYPitch = m_pDrawInfo->m_FontInfo.getYPitch();
+
+	RECT rct = m_rctDC;
+	rct.right = nXPitch * 18;
+	::FillRect(m_hDC, &rct, m_pDrawInfo->m_tciAddress.getBkBrush());
+	rct.left  = rct.right;
+	rct.right = nXPitch * (18 + 3 * 16 + 2 + 1);
+	::FillRect(m_hDC, &rct, m_pDrawInfo->m_tciData.getBkBrush());
+	rct.left  = rct.right;
+	rct.right = m_rctDC.right;
+	::FillRect(m_hDC, &rct, m_pDrawInfo->m_tciString.getBkBrush());
 
 	// バッファのデータは不正
 	if (m_qAddress < 0) return 0;
 
-	int nXPitch = m_pFontInfo->getXPitch(),
-		nYPitch = m_pFontInfo->getYPitch();
 	int linenum = m_nDataSize >> 4;
 	int xoffset, yoffset;
 
@@ -133,8 +150,10 @@ DCBuffer::render()
 		filesize_t qCurAddress = m_qAddress + idx_top;
 //		wsprintf(linebuf, "%08X%08X", (int)(qCurAddress >> 32), (int)qCurAddress);
 		QuadToStr((UINT)qCurAddress, (UINT)(qCurAddress >> 32), linebuf);
+		m_pDrawInfo->m_tciAddress.setColorToDC(m_hDC);
 		::ExtTextOut(m_hDC, nXPitch, yoffset, 0, NULL, linebuf, 16, m_anXPitch);
-		xoffset = nXPitch * 18;
+		m_pDrawInfo->m_tciData.setColorToDC(m_hDC);
+		xoffset = nXPitch * 19;
 		linebuf[2] = 0;
 		int j = 0;
 		while (j < 8) {
@@ -155,6 +174,7 @@ DCBuffer::render()
 		}
 		xoffset += nXPitch;
 		TranslateToString((BYTE*)strbuf, m_DataBuf + idx_top, 16);
+		m_pDrawInfo->m_tciString.setColorToDC(m_hDC);
 		::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL, strbuf, 16, m_anXPitch);
 #else
 		TranslateToString((BYTE*)strbuf, m_DataBuf + idx_top, 16);
@@ -190,8 +210,10 @@ DCBuffer::render()
 		filesize_t qCurAddress = m_qAddress + (linenum << 4);
 //		wsprintf(linebuf, "%08X%08X", (int)(qCurAddress >> 32), (int)qCurAddress);
 		QuadToStr((UINT)qCurAddress, (UINT)(qCurAddress >> 32), linebuf);
+		m_pDrawInfo->m_tciAddress.setColorToDC(m_hDC);
 		::ExtTextOut(m_hDC, nXPitch, yoffset, 0, NULL, linebuf, 16, m_anXPitch);
-		xoffset = nXPitch * 18;
+		m_pDrawInfo->m_tciData.setColorToDC(m_hDC);
+		xoffset = nXPitch * 19;
 		linebuf[2] = 0;
 		int idx_top = (linenum << 4), j = 0;
 		while (j < 8) {
@@ -221,6 +243,7 @@ DCBuffer::render()
 		}
 		xoffset += nXPitch;
 		TranslateToString((BYTE*)strbuf, m_DataBuf + idx_top, m_nDataSize & 0x0F);
+		m_pDrawInfo->m_tciString.setColorToDC(m_hDC);
 		::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL,
 					 strbuf, m_nDataSize & 0x0F, m_anXPitch);
 //		linenum++;
@@ -235,22 +258,22 @@ DCBuffer::invertOneLineRegion(int column, int lineno, int n_char)
 	assert(column < 16 && column + n_char <= 16);
 
 	RECT rect;
-	int nXPitch = m_pFontInfo->getXPitch(),
-		nYPitch = m_pFontInfo->getYPitch();
+	int nXPitch = m_pDrawInfo->m_FontInfo.getXPitch(),
+		nYPitch = m_pDrawInfo->m_FontInfo.getYPitch();
 
 	rect.top = lineno * nYPitch;
 	rect.bottom = rect.top + nYPitch - 1;
 
 	// 文字列表現部
-	rect.left  = (1 + 16 + 1 + 16 * 3 + 2 + 1 + column) * nXPitch;
+	rect.left  = (1 + 16 + 2 + 16 * 3 + 2 + 1 + column) * nXPitch;
 	rect.right = rect.left + n_char * nXPitch;
 
 	::InvertRect(m_hDC, &rect);
 
 	// データ本体
 	int column_end = column + n_char;
-	rect.left  = (1 + 16 + 1 + column * 3 + (column >= 8 ? 2 : 0)) * nXPitch;
-	rect.right = (1 + 16 + 1 + column_end * 3 + (column_end > 8 ? 2 : 0) - 1)
+	rect.left  = (1 + 16 + 2 + column * 3 + (column >= 8 ? 2 : 0)) * nXPitch;
+	rect.right = (1 + 16 + 2 + column_end * 3 + (column_end > 8 ? 2 : 0) - 1)
 				  * nXPitch;
 
 	::InvertRect(m_hDC, &rect);
@@ -293,28 +316,50 @@ DCBuffer::invertRegion(filesize_t pos, int size)
 	}
 }
 
-Header::Header(HDC hDC,
-			   const TextColorInfo* pTCInfo,
-			   const FontInfo* pFontInfo)
-	: Renderer(hDC, pTCInfo, pFontInfo, WIDTH_PER_XPITCH, 1)
+Header::Header(HDC hDC, const DrawInfo* pDrawInfo)
+	: Renderer(hDC, pDrawInfo, WIDTH_PER_XPITCH, 1)
 {
+	m_pDrawInfo->m_tciHeader.setColorToDC(m_hDC);
 	render();
+}
+
+void
+Header::setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo)
+{
+	m_pDrawInfo = pDrawInfo;
+	pDrawInfo->m_tciHeader.setColorToDC(m_hDC);
+	Renderer::setDrawInfo(hDC, pDrawInfo);
+}
+
+void
+Header::bitBlt(HDC hDC, int x, int y, int cx, int cy,
+			   int sx, int sy) const
+{
+	::BitBlt(hDC, x, y, cx, cy, m_hDC, sx, sy, SRCCOPY);
+	if (sx + cx > m_rctDC.right) {
+		RECT rct;
+		rct.left   = x + (m_rctDC.right - sx);
+		rct.top    = y;
+		rct.right  = x + cx;
+		rct.bottom = y + cy;
+		::FillRect(hDC, &rct, m_pDrawInfo->m_tciHeader.getBkBrush());
+	}
 }
 
 int
 Header::render()
 {
-	assert(m_pTextColorInfo && m_pFontInfo);
+	assert(m_pDrawInfo);
 
-	::FillRect(m_hDC, &m_rctDC, m_pTextColorInfo->getBkBrush());
+	::FillRect(m_hDC, &m_rctDC, m_pDrawInfo->m_tciHeader.getBkBrush());
 
-	int nXPitch = m_pFontInfo->getXPitch(),
-		nYPitch = m_pFontInfo->getYPitch();
+	int nXPitch = m_pDrawInfo->m_FontInfo.getXPitch(),
+		nYPitch = m_pDrawInfo->m_FontInfo.getYPitch();
 
 	::ExtTextOut(m_hDC, nXPitch, 0, 0, NULL,
 				 "0000000000000000", 16, m_anXPitch);
 
-	int i = 0, xoffset = nXPitch * 18;
+	int i = 0, xoffset = nXPitch * 19;
 	char buf[3];
 	buf[2];
 	while (i < 8) {
@@ -343,7 +388,7 @@ DC_Manager::DC_Manager(HDC hDC, const DrawInfo* pDrawInfo,
 					   LargeFileReader* pLFReader)
 	: BGB_Manager(pLFReader),
 	  m_pDrawInfo(pDrawInfo),
-	  m_Header(hDC, &pDrawInfo->m_tciHeader, &pDrawInfo->m_FontInfo)
+	  m_Header(hDC, pDrawInfo)
 {
 //	assert(m_hDC && m_pDrawInfo);
 }
@@ -354,11 +399,11 @@ DC_Manager::getXPositionByCoordinate(int x)
 	int nXPitch = m_pDrawInfo->m_FontInfo.getXPitch();
 
 	int x_offset = 0;
-	if (x >= nXPitch * 18 && x < nXPitch * (18 + 3 * 8 - 1)) {
+	if (x >= nXPitch * 19 && x < nXPitch * (19 + 3 * 8 - 1)) {
 		// left half
 		int i;
 		for (i = 0; i < 8; i++) {
-			int xx = nXPitch * (18 + i * 3);
+			int xx = nXPitch * (19 + i * 3);
 			if (x < xx) {
 				// not in a region of number
 				return -1;
@@ -367,12 +412,12 @@ DC_Manager::getXPositionByCoordinate(int x)
 				return i;
 			}
 		}
-	} else if (x >= nXPitch * (18 + 3 * 8 + 2) &&
-			   x < nXPitch * (18 + 3 * 16 + 2 - 1)) {
+	} else if (x >= nXPitch * (19 + 3 * 8 + 2) &&
+			   x < nXPitch * (19 + 3 * 16 + 2 - 1)) {
 		// right half
 		int i;
 		for (i = 0; i < 8; i++) {
-			int xx = nXPitch * (18 + 3 * 8 + 2 + i * 3);
+			int xx = nXPitch * (19 + 3 * 8 + 2 + i * 3);
 			if (x < xx) {
 				// not in a region of number
 				return -1;
@@ -393,14 +438,14 @@ DC_Manager::setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo)
 
 	m_pDrawInfo = pDrawInfo;
 
-	m_Header.setDrawInfo(hDC, &pDrawInfo->m_tciHeader, &pDrawInfo->m_FontInfo);
+	m_Header.setDrawInfo(hDC, pDrawInfo);
 
 	// リングバッファの要素についても変更を伝播
 	if (m_bRBInit) {
 		int count = m_rbBuffers.count();
 		for (int i = 0; i < count; i++) {
 			DCBuffer* ptr = static_cast<DCBuffer*>(m_rbBuffers.elementAt(i));
-			ptr->setDrawInfo(hDC, &pDrawInfo->m_tciData, &pDrawInfo->m_FontInfo);
+			ptr->setDrawInfo(hDC, pDrawInfo);
 		}
 	}
 }
@@ -408,7 +453,6 @@ DC_Manager::setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo)
 BGBuffer*
 DC_Manager::createBGBufferInstance()
 {
-	return new DCBuffer(m_Header.m_hDC,
-						&m_pDrawInfo->m_tciData, &m_pDrawInfo->m_FontInfo);
+	return new DCBuffer(m_Header.m_hDC, m_pDrawInfo);
 }
 

@@ -21,9 +21,11 @@
 #define W_WIDTH  (ADDR_WIDTH + BYTE_WIDTH * 16 + 20 + DATA_WIDTH + 20)
 #define W_HEIGHT 720
 
-#define COLOR_WHITE  RGB(255, 255, 255)
-#define COLOR_BLACK  RGB(0, 0, 0)
-#define COLOR_YELLOW RGB(255, 255, 0)
+#define COLOR_BLACK      RGB(0, 0, 0)
+#define COLOR_GRAY       RGB(128, 128, 128)
+#define COLOR_LIGHTGRAY  RGB(192, 192, 192)
+#define COLOR_WHITE      RGB(255, 255, 255)
+#define COLOR_YELLOW     RGB(255, 255, 0)
 
 #define STATUSBAR_HEIGHT  20
 
@@ -41,8 +43,12 @@ static string g_strAppName;
 // window properties
 static Auto_Ptr<DrawInfo> g_pDrawInfo(NULL);
 #define DEFAULT_FONT_SIZE  12
-#define DEFAULT_FG_COLOR   COLOR_WHITE
-#define DEFAULT_BK_COLOR   COLOR_BLACK
+#define DEFAULT_FG_COLOR_ADDRESS COLOR_WHITE
+#define DEFAULT_BK_COLOR_ADDRESS COLOR_GRAY
+#define DEFAULT_FG_COLOR_DATA    COLOR_BLACK
+#define DEFAULT_BK_COLOR_DATA    COLOR_WHITE
+#define DEFAULT_FG_COLOR_STRING  COLOR_GRAY
+#define DEFAULT_BK_COLOR_STRING  COLOR_LIGHTGRAY
 #define DEFAULT_FG_COLOR_HEADER  COLOR_BLACK
 #define DEFAULT_BK_COLOR_HEADER  COLOR_YELLOW
 
@@ -280,7 +286,9 @@ OnCreate(HWND hWnd)
 
 	// create default DrawInfo
 	g_pDrawInfo = new DrawInfo(NULL, DEFAULT_FONT_SIZE,
-							   DEFAULT_FG_COLOR, DEFAULT_BK_COLOR,
+							   DEFAULT_FG_COLOR_ADDRESS, DEFAULT_BK_COLOR_ADDRESS,
+							   DEFAULT_FG_COLOR_DATA, DEFAULT_BK_COLOR_DATA,
+							   DEFAULT_FG_COLOR_STRING, DEFAULT_BK_COLOR_STRING,
 							   DEFAULT_FG_COLOR_HEADER, DEFAULT_BK_COLOR_HEADER);
 
 	g_pViewFrame = new ViewFrame(hWnd, rctClient, g_pDrawInfo.ptr(), NULL);
@@ -308,11 +316,10 @@ OnCreate(HWND hWnd)
 	HDC hDC = ::GetDC(g_hwndStatusBar);
 	char status[80];
 	lstrcpy(status, STATUS_POS_HEADER);
-	lstrcat(status, "MMMMMMMMMMMMMMMM");
+	lstrcat(status, "0000000000000000");
 	SIZE tsize;
 	::GetTextExtentPoint32(hDC, status, lstrlen(status), &tsize);
-	int psize = tsize.cx /* * 255 / (rctClient.right - rctClient.left) */;
-	::SendMessage(g_hwndStatusBar, SB_SETPARTS, 1, (LPARAM)&psize);
+	::SendMessage(g_hwndStatusBar, SB_SETPARTS, 1, (LPARAM)&tsize.cx);
 	::ReleaseDC(g_hwndStatusBar, hDC);
 
 	if (g_strImageFile.length() == 0) {

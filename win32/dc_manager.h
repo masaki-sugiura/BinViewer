@@ -6,7 +6,7 @@
 #include "bgb_manager.h"
 #include "drawinfo.h"
 
-#define WIDTH_PER_XPITCH  (1 + 16 + 1 + 8 * 3 + 2 + 8 * 3 + 1 + 16 + 1)
+#define WIDTH_PER_XPITCH  (1 + 16 + 2 + 8 * 3 + 2 + 8 * 3 + 1 + 16 + 1)
 #define HEIGHT_PER_YPITCH (MAX_DATASIZE_PER_BUFFER / 16)
 
 class DC_Manager;
@@ -14,11 +14,11 @@ class DC_Manager;
 class Renderer {
 public:
 	Renderer(HDC hDC,
-			 const TextColorInfo* pTCInfo,
-			 const FontInfo* pFontInfo,
+			 const DrawInfo* pDrawInfo,
 			 int w_per_xpitch, int h_per_ypitch);
 	virtual ~Renderer();
 
+#if 0
 	virtual const TextColorInfo* getTextColorInfo() const
 	{
 		return m_pTextColorInfo;
@@ -27,17 +27,22 @@ public:
 	{
 		return m_pFontInfo;
 	}
-	virtual void setDrawInfo(HDC hDC,
-							 const TextColorInfo* pTCInfo,
-							 const FontInfo* pFontInfo);
+#endif
+	virtual const DrawInfo* getDrawInfo() const
+	{
+		return m_pDrawInfo;
+	}
+	virtual void setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo);
+
+	virtual void bitBlt(HDC hDC, int x, int y, int cx, int cy,
+						int sx, int sy) const = 0;
 
 	HDC m_hDC;
 	HBITMAP m_hBitmap;
 	RECT m_rctDC;
 
 protected:
-	const TextColorInfo* m_pTextColorInfo;
-	const FontInfo* m_pFontInfo;
+	const DrawInfo* m_pDrawInfo;
 	const int m_nWidth_per_XPitch, m_nHeight_per_YPitch;
 	int m_anXPitch[16];
 
@@ -46,14 +51,15 @@ protected:
 };
 
 struct DCBuffer : public BGBuffer, public Renderer {
-	DCBuffer(HDC hDC,
-			 const TextColorInfo* pTCInfo,
-			 const FontInfo* pFontInfo);
+	DCBuffer(HDC hDC, const DrawInfo* pDrawInfo);
 
 	int init(LargeFileReader& LFReader, filesize_t offset);
 	void uninit();
 
 	void invertRegion(filesize_t pos, int size);
+
+	void bitBlt(HDC hDC, int x, int y, int cx, int cy,
+				int sx, int sy) const;
 
 protected:
 	int render();
@@ -62,9 +68,12 @@ protected:
 };
 
 struct Header : public Renderer {
-	Header(HDC hDC,
-		   const TextColorInfo* pTCInfo,
-		   const FontInfo* pFontInfo);
+	Header(HDC hDC, const DrawInfo* pDrawInfo);
+
+	void setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo);
+
+	void bitBlt(HDC hDC, int x, int y, int cx, int cy,
+				int sx, int sy) const;
 
 protected:
 	int render();
@@ -91,7 +100,7 @@ public:
 
 	void setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo);
 
-	HDC getHeaderDC() { return m_Header.m_hDC; }
+	Header& getHeader() { return m_Header; }
 
 protected:
 	const DrawInfo* m_pDrawInfo;

@@ -20,6 +20,12 @@ public:
 	COLORREF getBkColor() const { return m_crBkColor; }
 	HBRUSH   getBkBrush() const { return m_hbrBackground; }
 
+	void setColorToDC(HDC hDC) const
+	{
+		::SetTextColor(hDC, m_crFgColor);
+		::SetBkColor(hDC, m_crBkColor);
+	}
+
 private:
 	HBRUSH m_hbrBackground;
 	COLORREF m_crFgColor, m_crBkColor;
@@ -59,13 +65,15 @@ private:
 class DrawInfo {
 public:
 	DrawInfo(HDC hDC, int fontsize,
-			 COLORREF crFgColor, COLORREF crBkColor,
+			 COLORREF crFgColorAddr, COLORREF crBkColorAddr,
+			 COLORREF crFgColorData, COLORREF crBkColorData,
+			 COLORREF crFgColorStr, COLORREF crBkColorStr,
 			 COLORREF crFgColorHeader, COLORREF crBkColorHeader);
 
 	HDC m_hDC;
 	int m_nFontSize;
 	FontInfo m_FontInfo;
-	TextColorInfo m_tciData, m_tciHeader;
+	TextColorInfo m_tciAddress, m_tciData, m_tciString, m_tciHeader;
 
 private:
 	DrawInfo(const DrawInfo&);

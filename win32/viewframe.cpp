@@ -202,44 +202,36 @@ ViewFrame::bitBlt(const RECT& rcPaint)
 		assert(m_pCurBuf);
 
 		if (rcPaint.bottom - m_nLineHeight <= height) {
-			::BitBlt(m_hDC,
-					 rcPaint.left, rcPaint.top,
-					 rcPaint.right - rcPaint.left,
-					 rcPaint.bottom - rcPaint.top,
-					 m_pCurBuf->m_hDC,
-					 rcPaint.left + m_nXOffset,
-					 m_nTopOffset + rcPaint.top - m_nLineHeight,
-					 SRCCOPY);
+			m_pCurBuf->bitBlt(m_hDC,
+							  rcPaint.left, rcPaint.top,
+							  rcPaint.right - rcPaint.left,
+							  rcPaint.bottom - rcPaint.top,
+							  rcPaint.left + m_nXOffset,
+							  m_nTopOffset + rcPaint.top - m_nLineHeight);
 		} else if (rcPaint.top - m_nLineHeight >= height) {
 			if (m_pNextBuf) {
-				::BitBlt(m_hDC,
-						 rcPaint.left, rcPaint.top,
-						 rcPaint.right - rcPaint.left,
-						 rcPaint.bottom - rcPaint.top,
-						 m_pNextBuf->m_hDC,
-						 rcPaint.left + m_nXOffset,
-						 rcPaint.top - height - m_nLineHeight,
-						 SRCCOPY);
+				m_pNextBuf->bitBlt(m_hDC,
+								   rcPaint.left, rcPaint.top,
+								   rcPaint.right - rcPaint.left,
+								   rcPaint.bottom - rcPaint.top,
+								   rcPaint.left + m_nXOffset,
+								   rcPaint.top - height - m_nLineHeight);
 			} else {
 				::FillRect(m_hDC, &rcPaint, m_pDrawInfo->m_tciData.getBkBrush());
 			}
 		} else {
-			::BitBlt(m_hDC,
-					 rcPaint.left, rcPaint.top,
-					 rcPaint.right - rcPaint.left,
-					 height - rcPaint.top + m_nLineHeight,
-					 m_pCurBuf->m_hDC,
-					 rcPaint.left + m_nXOffset,
-					 rcPaint.top + m_nTopOffset - m_nLineHeight,
-					 SRCCOPY);
+			m_pCurBuf->bitBlt(m_hDC,
+							  rcPaint.left, rcPaint.top,
+							  rcPaint.right - rcPaint.left,
+							  height - rcPaint.top + m_nLineHeight,
+							  rcPaint.left + m_nXOffset,
+							  rcPaint.top + m_nTopOffset - m_nLineHeight);
 			if (m_pNextBuf) {
-				::BitBlt(m_hDC,
-						 rcPaint.left, height + m_nLineHeight,
-						 rcPaint.right - rcPaint.left,
-						 rcPaint.bottom - height,
-						 m_pNextBuf->m_hDC,
-						 rcPaint.left + m_nXOffset, 0,
-						 SRCCOPY);
+				m_pNextBuf->bitBlt(m_hDC,
+								   rcPaint.left, height + m_nLineHeight,
+								   rcPaint.right - rcPaint.left,
+								   rcPaint.bottom - height,
+								   rcPaint.left + m_nXOffset, 0);
 			} else {
 				RECT rctTemp = rcPaint;
 				rctTemp.top    = height + m_nLineHeight;
@@ -247,33 +239,42 @@ ViewFrame::bitBlt(const RECT& rcPaint)
 				::FillRect(m_hDC, &rctTemp, m_pDrawInfo->m_tciData.getBkBrush());
 			}
 		}
+#if 0
 		if (rcPaint.right > width) {
 			RECT rctTemp = rcPaint;
 			rctTemp.left  = max(rcPaint.left, width);
 			::FillRect(m_hDC, &rctTemp,
 					   m_pDrawInfo->m_tciData.getBkBrush());
 		}
+#endif
 	} else if (m_pCurBuf) {
-		::BitBlt(m_hDC,
-				 rcPaint.left, rcPaint.top,
-				 rcPaint.right - rcPaint.left,
-				 rcPaint.bottom - rcPaint.top,
-				 m_pCurBuf->m_hDC,
-				 rcPaint.left + m_nXOffset,
-				 m_nTopOffset + rcPaint.top - m_nLineHeight,
-				 SRCCOPY);
+		m_pCurBuf->bitBlt(m_hDC,
+						  rcPaint.left, rcPaint.top,
+						  rcPaint.right - rcPaint.left,
+						  rcPaint.bottom - rcPaint.top,
+						  rcPaint.left + m_nXOffset,
+						  m_nTopOffset + rcPaint.top - m_nLineHeight);
+#if 0
 		if (rcPaint.right > width) {
 			RECT rctTemp = rcPaint;
 			rctTemp.left  = max(rcPaint.left, width);
 			::FillRect(m_hDC, &rctTemp,
 					   m_pDrawInfo->m_tciData.getBkBrush());
 		}
+#endif
 	} else {
 		::FillRect(m_hDC, &rcPaint, (HBRUSH)(COLOR_APPWORKSPACE + 1));
 	}
 
 	// bitblt header
 	if (rcPaint.top < m_nLineHeight) {
+		Header& hdr = m_pDC_Manager->getHeader();
+		hdr.bitBlt(m_hDC,
+				   rcPaint.left, rcPaint.top,
+				   rcPaint.right - rcPaint.left,
+				   min(m_nLineHeight, rcPaint.bottom - rcPaint.top),
+				   rcPaint.left + m_nXOffset, rcPaint.top);
+#if 0
 		if (rcPaint.left < width)
 			::BitBlt(m_hDC, rcPaint.left, rcPaint.top,
 					 min(rcPaint.right, width) - rcPaint.left,
@@ -287,6 +288,7 @@ ViewFrame::bitBlt(const RECT& rcPaint)
 			rctTemp.bottom = min(m_nLineHeight, rcPaint.bottom - rcPaint.top);
 			::FillRect(m_hDC, &rctTemp, m_pDrawInfo->m_tciHeader.getBkBrush());
 		}
+#endif
 	}
 }
 

@@ -78,12 +78,16 @@ FontInfo::setFont(HDC hDC, int fontsize)
 }
 
 DrawInfo::DrawInfo(HDC hDC, int fontsize,
-				   COLORREF crFgColor, COLORREF crBkColor,
+				   COLORREF crFgColorAddr, COLORREF crBkColorAddr,
+				   COLORREF crFgColorData, COLORREF crBkColorData,
+				   COLORREF crFgColorStr, COLORREF crBkColorStr,
 				   COLORREF crFgColorHeader, COLORREF crBkColorHeader)
 	: m_hDC(hDC),
 	  m_nFontSize(fontsize),
 	  m_FontInfo(hDC, fontsize),
-	  m_tciData(crFgColor, crBkColor),
+	  m_tciAddress(crFgColorAddr, crBkColorAddr),
+	  m_tciData(crFgColorData, crBkColorData),
+	  m_tciString(crFgColorStr, crBkColorStr),
 	  m_tciHeader(crFgColorHeader, crBkColorHeader)
 {
 }
