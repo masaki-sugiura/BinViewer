@@ -63,8 +63,21 @@ Renderer::setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo)
 DCBuffer::DCBuffer(HDC hDC, const DrawInfo* pDrawInfo)
 	: BGBuffer(),
 	  Renderer(hDC, pDrawInfo, WIDTH_PER_XPITCH, HEIGHT_PER_YPITCH),
-	  m_bHasSelectedRegion(false)
+	  m_bHasSelectedRegion(false),
+	  m_nSelectedPos(-1), m_nSelectedSize(0)
 {
+	int nXPitch = m_pDrawInfo->m_FontInfo.getXPitch(),
+		nYPitch = m_pDrawInfo->m_FontInfo.getYPitch();
+
+	RECT rct = m_rctDC;
+	rct.right = nXPitch * 18;
+	::FillRect(m_hDC, &rct, m_pDrawInfo->m_tciAddress.getBkBrush());
+	rct.left  = rct.right;
+	rct.right = nXPitch * (18 + 3 * 16 + 2 + 1);
+	::FillRect(m_hDC, &rct, m_pDrawInfo->m_tciData.getBkBrush());
+	rct.left  = rct.right;
+	rct.right = m_rctDC.right;
+	::FillRect(m_hDC, &rct, m_pDrawInfo->m_tciString.getBkBrush());
 }
 
 static void
@@ -100,8 +113,10 @@ DCBuffer::init(LargeFileReader& LFReader, filesize_t offset)
 void
 DCBuffer::uninit()
 {
+	if (m_bHasSelectedRegion) // ëIëÇâèú
+		invertRegionInBuffer(m_nSelectedPos, m_nSelectedSize);
 	BGBuffer::uninit();
-	render(); // îwåiêFÇ≈ìhÇËÇ¬Ç‘Çµ
+//	render(); // îwåiêFÇ≈ìhÇËÇ¬Ç‘Çµ
 }
 
 void
@@ -129,6 +144,7 @@ DCBuffer::render()
 	int nXPitch = m_pDrawInfo->m_FontInfo.getXPitch(),
 		nYPitch = m_pDrawInfo->m_FontInfo.getYPitch();
 
+#if 0
 	RECT rct = m_rctDC;
 	rct.right = nXPitch * 18;
 	::FillRect(m_hDC, &rct, m_pDrawInfo->m_tciAddress.getBkBrush());
@@ -138,6 +154,7 @@ DCBuffer::render()
 	rct.left  = rct.right;
 	rct.right = m_rctDC.right;
 	::FillRect(m_hDC, &rct, m_pDrawInfo->m_tciString.getBkBrush());
+#endif
 
 	// ÉoÉbÉtÉ@ÇÃÉfÅ[É^ÇÕïsê≥
 	if (m_qAddress < 0) return 0;
@@ -151,13 +168,13 @@ DCBuffer::render()
 	UINT addr = (UINT)m_qAddress;
 	for (i = 0; i < linenum; i++) {
 		DoubleToStr(addr, linebuf + 8);
-		::ExtTextOut(m_hDC, nXPitch, i * nYPitch, 0, NULL,
+		::ExtTextOut(m_hDC, nXPitch, i * nYPitch, ETO_OPAQUE, NULL,
 					 linebuf, 16, m_anXPitch);
 		addr += 16;
 	}
 	if (m_nDataSize & 15) {
 		DoubleToStr(addr, linebuf + 8);
-		::ExtTextOut(m_hDC, nXPitch, linenum * nYPitch, 0, NULL,
+		::ExtTextOut(m_hDC, nXPitch, linenum * nYPitch, ETO_OPAQUE, NULL,
 					 linebuf, 16, m_anXPitch);
 	}
 
@@ -172,17 +189,18 @@ DCBuffer::render()
 			BYTE data = m_DataBuf[idx_top + j++];
 			linebuf[0] = hex[(data >> 4) & 0x0F];
 			linebuf[1] = hex[(data >> 0) & 0x0F];
-			::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL,
+			::ExtTextOut(m_hDC, xoffset, yoffset, ETO_OPAQUE, NULL,
 						 linebuf, 2, m_anXPitch);
 			xoffset += nXPitch * 3;
 		}
-		::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL, "-", 1, m_anXPitch);
+		::ExtTextOut(m_hDC, xoffset, yoffset, ETO_OPAQUE, NULL,
+					 "-", 1, m_anXPitch);
 		xoffset += nXPitch * 2;
 		while (j < 16) {
 			BYTE data = m_DataBuf[idx_top + j++];
 			linebuf[0] = hex[(data >> 4) & 0x0F];
 			linebuf[1] = hex[(data >> 0) & 0x0F];
-			::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL,
+			::ExtTextOut(m_hDC, xoffset, yoffset, ETO_OPAQUE, NULL,
 						 linebuf, 2, m_anXPitch);
 			xoffset += nXPitch * 3;
 		}
@@ -196,18 +214,19 @@ DCBuffer::render()
 			BYTE data = m_DataBuf[idx_top + j];
 			linebuf[0] = hex[(data >> 4) & 0x0F];
 			linebuf[1] = hex[(data >> 0) & 0x0F];
-			::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL,
+			::ExtTextOut(m_hDC, xoffset, yoffset, ETO_OPAQUE, NULL,
 						 linebuf, 2, m_anXPitch);
 			xoffset += nXPitch * 3;
 			if (idx_top + ++j >= m_nDataSize) goto _data_end;
 		}
-		::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL, "-", 1, m_anXPitch);
+		::ExtTextOut(m_hDC, xoffset, yoffset, ETO_OPAQUE, NULL,
+					 "-", 1, m_anXPitch);
 		xoffset += nXPitch * 2;
 		while (j < 16) {
 			BYTE data = m_DataBuf[idx_top + j];
 			linebuf[0] = hex[(data >> 4) & 0x0F];
 			linebuf[1] = hex[(data >> 0) & 0x0F];
-			::ExtTextOut(m_hDC, xoffset, yoffset, 0, NULL,
+			::ExtTextOut(m_hDC, xoffset, yoffset, ETO_OPAQUE, NULL,
 						 linebuf, 2, m_anXPitch);
 			xoffset += nXPitch * 3;
 			if (idx_top + ++j >= m_nDataSize) goto _data_end;
@@ -221,13 +240,13 @@ _data_end:
 	m_pDrawInfo->m_tciString.setColorToDC(m_hDC);
 	for (i = 0; i < linenum; i++) {
 		TranslateToString((BYTE*)strbuf, m_DataBuf + (i << 4), 16);
-		::ExtTextOut(m_hDC, xoffset, i * nYPitch, 0, NULL,
+		::ExtTextOut(m_hDC, xoffset, i * nYPitch, ETO_OPAQUE, NULL,
 					 strbuf, 16, m_anXPitch);
 	}
 	if (m_nDataSize & 0x0F) {
 		TranslateToString((BYTE*)strbuf, m_DataBuf + (linenum << 4),
 						  m_nDataSize & 0x0F);
-		::ExtTextOut(m_hDC, xoffset, linenum * nYPitch, 0, NULL,
+		::ExtTextOut(m_hDC, xoffset, linenum * nYPitch, ETO_OPAQUE, NULL,
 					 strbuf, m_nDataSize & 0x0F, m_anXPitch);
 	}
 
@@ -262,20 +281,10 @@ DCBuffer::invertOneLineRegion(int column, int lineno, int n_char)
 }
 
 void
-DCBuffer::invertRegion(filesize_t pos, int size, bool bSelected)
+DCBuffer::invertRegionInBuffer(int offset, int size)
 {
-//	if (m_bHasSelectedRegion == bSelected) return;
-
-	if (m_qAddress >= pos + size ||
-		m_qAddress + MAX_DATASIZE_PER_BUFFER <= pos)
-		return;
-
-	m_bHasSelectedRegion = bSelected;
-
-	int offset = (int)(pos - m_qAddress);
-	if (offset < 0) offset = 0;
-	if (offset + size > MAX_DATASIZE_PER_BUFFER)
-		size = MAX_DATASIZE_PER_BUFFER - offset;
+	m_nSelectedPos  = offset;
+	m_nSelectedSize = size;
 
 	int b_x = offset & 15, b_y = offset >> 4;
 	
@@ -300,6 +309,26 @@ DCBuffer::invertRegion(filesize_t pos, int size, bool bSelected)
 			invertOneLineRegion(0, e_y, e_x);
 		}
 	}
+}
+
+void
+DCBuffer::invertRegion(filesize_t pos, int size, bool bSelected)
+{
+//	if (m_bHasSelectedRegion == bSelected) return;
+
+	if (m_qAddress >= pos + size ||
+		m_qAddress + MAX_DATASIZE_PER_BUFFER <= pos)
+		return;
+
+	m_bHasSelectedRegion = bSelected;
+
+	int offset = (int)(pos - m_qAddress);
+
+	if (offset < 0) offset = 0;
+	if (offset + size > MAX_DATASIZE_PER_BUFFER)
+		size = MAX_DATASIZE_PER_BUFFER - offset;
+
+	invertRegionInBuffer(offset, size);
 }
 
 Header::Header(HDC hDC, const DrawInfo* pDrawInfo)

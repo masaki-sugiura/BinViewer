@@ -65,10 +65,12 @@ struct DCBuffer : public BGBuffer, public Renderer {
 
 protected:
 	bool m_bHasSelectedRegion;
+	int  m_nSelectedPos, m_nSelectedSize;
 
 	int render();
 
 	void invertOneLineRegion(int column, int lineno, int n_char);
+	void invertRegionInBuffer(int offset, int size);
 };
 
 struct Header : public Renderer {
