@@ -26,7 +26,7 @@ TextColorInfo::setColor(COLORREF crFgColor, COLORREF crBkColor)
 FontInfo::FontInfo(HDC hDC, int fontsize)
 	: m_hFont(NULL)
 {
-	setFont(hDC, fontsize);
+	if (hDC) setFont(hDC, fontsize);
 }
 
 FontInfo::~FontInfo()
@@ -49,12 +49,13 @@ FontInfo::setFont(HDC hDC, int fontsize)
 	lfont.lfItalic = FALSE;
 	lfont.lfUnderline = FALSE;
 	lfont.lfStrikeOut = FALSE;
-	lfont.lfCharSet = SHIFTJIS_CHARSET;
+	lfont.lfCharSet = DEFAULT_CHARSET;
 	lfont.lfOutPrecision = OUT_DEFAULT_PRECIS;
 	lfont.lfClipPrecision = CLIP_DEFAULT_PRECIS;
 	lfont.lfQuality = DEFAULT_QUALITY;
-	lfont.lfPitchAndFamily = FIXED_PITCH | FF_MODERN;
-	lfont.lfFaceName[0] = '\0';
+	lfont.lfPitchAndFamily = FIXED_PITCH | FF_DONTCARE;
+//	lfont.lfFaceName[0] = '\0';
+	lstrcpy(lfont.lfFaceName, "FixedSys");
 
 	m_hFont = ::CreateFontIndirect(&lfont);
 	if (!m_hFont) throw InvalidFontError();
@@ -67,10 +68,11 @@ FontInfo::setFont(HDC hDC, int fontsize)
 		::SelectObject(hDC, orgFont);
 		throw InvalidFontError();
 	}
-	::SelectObject(hDC, orgFont);
+//	::SelectObject(hDC, orgFont);
 
 	// ï∂éöä‘äuÇÃê›íË
-	m_nXPitch = tsize.cx + 1;
+//	m_nXPitch = tsize.cx + 1;
+	m_nXPitch = tsize.cx;
 	// çsä‘äuÇÃê›íË
 	m_nYPitch = tsize.cy + 1;
 }
@@ -78,7 +80,9 @@ FontInfo::setFont(HDC hDC, int fontsize)
 DrawInfo::DrawInfo(HDC hDC, int fontsize,
 				   COLORREF crFgColor, COLORREF crBkColor,
 				   COLORREF crFgColorHeader, COLORREF crBkColorHeader)
-	: m_FontInfo(hDC, fontsize),
+	: m_hDC(hDC),
+	  m_nFontSize(fontsize),
+	  m_FontInfo(hDC, fontsize),
 	  m_tciData(crFgColor, crBkColor),
 	  m_tciHeader(crFgColorHeader, crBkColorHeader)
 {

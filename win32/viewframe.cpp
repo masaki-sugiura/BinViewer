@@ -14,7 +14,7 @@ WORD ViewFrame::m_wNextID;
 HINSTANCE ViewFrame::m_hInstance;
 
 ViewFrame::ViewFrame(HWND hwndParent, const RECT& rct,
-					 const DrawInfo* pDrawInfo,
+					 DrawInfo* pDrawInfo,
 					 LargeFileReader* pLFReader)
 	: m_pDC_Manager(NULL), m_pDrawInfo(pDrawInfo)
 {
@@ -50,6 +50,9 @@ ViewFrame::ViewFrame(HWND hwndParent, const RECT& rct,
 	}
 
 	m_hDC = ::GetDC(m_hwndView);
+
+	m_pDrawInfo->m_hDC = m_hDC;
+	m_pDrawInfo->m_FontInfo.setFont(m_hDC, m_pDrawInfo->m_nFontSize);
 
 	initParams();
 

@@ -20,7 +20,7 @@ is_overlapped(int y_offset_line_num, int page_line_num)
 class ViewFrame {
 public:
 	ViewFrame(HWND hWnd, const RECT& rct,
-			  const DrawInfo* pDrawInfo,
+			  DrawInfo* pDrawInfo,
 			  LargeFileReader* pLFReader = NULL);
 	~ViewFrame();
 
@@ -100,13 +100,13 @@ public:
 		return m_nPrevSelectedSize;
 	}
 
-	void setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo)
+	void setDrawInfo(DrawInfo* pDrawInfo)
 	{
 		assert(pDrawInfo);
 		m_pDrawInfo = pDrawInfo;
 		m_nLineHeight = m_pDrawInfo->m_FontInfo.getYPitch();
 		m_nCharWidth  = m_pDrawInfo->m_FontInfo.getXPitch();
-		m_pDC_Manager->setDrawInfo(hDC, pDrawInfo);
+		m_pDC_Manager->setDrawInfo(m_hDC, pDrawInfo);
 		recalcPageInfo();
 	}
 
@@ -142,7 +142,7 @@ public:
 
 private:
 	Auto_Ptr<DC_Manager> m_pDC_Manager;
-	const DrawInfo* m_pDrawInfo;
+	DrawInfo* m_pDrawInfo;
 	int m_nLineHeight;
 	int m_nCharWidth;
 	int m_nPageLineNum;

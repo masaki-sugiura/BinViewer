@@ -1,22 +1,17 @@
 // $Id$
 
+#pragma warning(disable : 4786)
+
 #include "configdlg.h"
 #include "resource.h"
 #include <commctrl.h>
 #include <assert.h>
 
-ConfigDialog::ConfigDialog(HWND hwndParent, DrawInfo* pDrawInfo)
+ConfigDialog::ConfigDialog(DrawInfo* pDrawInfo)
+	: m_hwndParent(NULL), m_hwndDlg(NULL),
+	  m_pDrawInfo(pDrawInfo)
 {
 	if (!pDrawInfo) {
-		throw CreateDialogError();
-	}
-
-	m_hwndParent = hwndParent;
-	m_hwndDlg = NULL;
-	m_pDrawInfo = pDrawInfo;
-
-	m_hInstance = (HINSTANCE)::GetWindowLong(hwndParent, GWL_HINSTANCE);
-	if (!m_hInstance) {
 		throw CreateDialogError();
 	}
 }
@@ -61,21 +56,25 @@ ConfigDialog::initDialog(HWND hDlg)
 	return TRUE;
 }
 
-ConfigPage::ConfigPage(HWND hwndParent, DrawInfo* pDrawInfo,
-					   int nPageTemplateID)
-	: ConfigDialog(hwndParent, pDrawInfo)
+ConfigPage::ConfigPage(DrawInfo* pDrawInfo,
+					   int nPageTemplateID, const char* pszTabText)
+	: ConfigDialog(pDrawInfo),
+	  m_nPageTemplateID(nPageTemplateID),
+	  m_strTabText(pszTabText)
 {
-	m_nPageTemplateID = nPageTemplateID;
 }
 
 bool
-ConfigPage::create(const RECT& rctPage)
+ConfigPage::create(HWND hwndParent, const RECT& rctPage)
 {
-	assert(m_hInstance);
+	if (m_hwndDlg) return true;
 
-	m_hwndDlg = ::CreateDialogParam(m_hInstance,
+	m_hwndParent = hwndParent;
+
+	m_hwndDlg = ::CreateDialogParam((HINSTANCE)::GetWindowLong(hwndParent,
+															   GWL_HINSTANCE),
 									MAKEINTRESOURCE(m_nPageTemplateID),
-									m_hwndParent,
+									hwndParent,
 									(DLGPROC)ConfigDialog::configDialogProc,
 									(LPARAM)this);
 	if (!m_hwndDlg) return false;
@@ -94,21 +93,27 @@ ConfigPage::destroyDialog()
 //	::MessageBox(NULL, "ConfigPage::destroyDialog()", NULL, MB_OK);
 }
 
-ConfigMainDlg::ConfigMainDlg(HWND hwndParent, DrawInfo* pDrawInfo)
-	: ConfigDialog(hwndParent, pDrawInfo)
+ConfigMainDlg::ConfigMainDlg(DrawInfo* pDrawInfo)
+	: ConfigDialog(pDrawInfo)
 {
-	::ZeroMemory(m_pConfigPages, sizeof(m_pConfigPages));
+	m_pConfigPages[0] = new FontConfigPage(pDrawInfo);
+	m_pConfigPages[1] = new CursorConfigPage(pDrawInfo);
+}
 
-	m_pszTabText[0] = "フォント";
-	m_pszTabText[1] = "カーソル";
+ConfigMainDlg::~ConfigMainDlg()
+{
+	for (int i = 0; i < CONFIG_DIALOG_PAGE_NUM; i++)
+		delete m_pConfigPages[i];
 }
 
 bool
-ConfigMainDlg::doModal()
+ConfigMainDlg::doModal(HWND hwndParent)
 {
-	return !::DialogBoxParam(m_hInstance,
+	m_hwndParent = hwndParent;
+	return !::DialogBoxParam((HINSTANCE)::GetWindowLong(hwndParent,
+														GWL_HINSTANCE),
 							 MAKEINTRESOURCE(IDD_CONFIG_MAIN),
-							 m_hwndParent,
+							 hwndParent,
 							 (DLGPROC)ConfigDialog::configDialogProc,
 							 (LPARAM)this);
 }
@@ -125,13 +130,15 @@ ConfigMainDlg::applyChanges()
 BOOL
 ConfigMainDlg::initDialog(HWND hDlg)
 {
+	if (!ConfigDialog::initDialog(hDlg)) return FALSE;
+
 	HWND hwndTab = ::GetDlgItem(hDlg, IDC_CONFIG_TAB);
 	if (!hwndTab) return FALSE;
 
 	TCITEM tcItem;
 	tcItem.mask = TCIF_TEXT | TCIF_PARAM;
 	for (int i = 0; i < CONFIG_DIALOG_PAGE_NUM; i++) {
-		tcItem.pszText = (LPSTR)m_pszTabText[i];
+		tcItem.pszText = (LPSTR)m_pConfigPages[i]->getTabText();
 		tcItem.lParam  = i;
 		if (TabCtrl_InsertItem(hwndTab, i, &tcItem) != i) {
 			return FALSE;
@@ -169,22 +176,7 @@ ConfigMainDlg::createPage(int i)
 {
 	assert(i >= 0 && i < CONFIG_DIALOG_PAGE_NUM);
 
-	if (m_pConfigPages[i]) return true;
-
-	ConfigPage* pCP = NULL;
-	switch (i) {
-	case 0:
-		pCP = new FontConfigPage(m_hwndDlg, m_pDrawInfo);
-		break;
-	case 1:
-		pCP = new CursorConfigPage(m_hwndDlg, m_pDrawInfo);
-		break;
-	default:
-		break;
-	}
-	m_pConfigPages[i] = pCP;
-
-	return pCP != NULL && pCP->create(m_rctPage);
+	return m_pConfigPages[i]->create(m_hwndDlg, m_rctPage);
 }
 
 BOOL
@@ -225,11 +217,9 @@ ConfigMainDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				iItem = TabCtrl_GetCurSel(hwndTab);
 				TabCtrl_GetItem(hwndTab, iItem, &tcItem);
 				assert((UINT)tcItem.lParam < CONFIG_DIALOG_PAGE_NUM);
-				if (!m_pConfigPages[tcItem.lParam]) {
-					if (!createPage(tcItem.lParam)) {
-						::MessageBox(m_hwndDlg, "", NULL, MB_OK);
-						break;
-					}
+				if (!createPage(tcItem.lParam)) {
+					::MessageBox(m_hwndDlg, "", NULL, MB_OK);
+					break;
 				}
 				assert(m_pConfigPages[tcItem.lParam]);
 				m_pConfigPages[tcItem.lParam]->show(TRUE);
@@ -252,14 +242,31 @@ ConfigMainDlg::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return TRUE;
 }
 
-FontConfigPage::FontConfigPage(HWND hwndParent, DrawInfo* pDrawInfo)
-	: ConfigPage(hwndParent, pDrawInfo, IDD_CONFIG_FONT)
+FontConfigPage::FontConfigPage(DrawInfo* pDrawInfo)
+	: ConfigPage(pDrawInfo, IDD_CONFIG_FONT, "フォント")
 {
 }
 
 BOOL
 FontConfigPage::initDialog(HWND hDlg)
 {
+	if (!ConfigPage::initDialog(hDlg)) return FALSE;
+
+	prepareFontList();
+
+	char faceName[LF_FACESIZE];
+	faceName[0] = '\0';
+	if (::GetTextFace(m_pDrawInfo->m_hDC, LF_FACESIZE, faceName)) {
+		HWND hwndFontList = ::GetDlgItem(hDlg, IDC_CONFIG_FONT_NAME);
+		int pos = ::SendMessage(hwndFontList,
+								CB_FINDSTRINGEXACT,
+								-1, (LPARAM)faceName);
+		if (pos != CB_ERR) {
+			::SendMessage(hwndFontList, CB_SETCURSEL,
+						  pos, 0);
+		}
+	}
+
 	HWND hwndList = ::GetDlgItem(hDlg, IDC_PART_LIST);
 
 	::SendMessage(hwndList, LB_INSERTSTRING, 0, (LPARAM)"ヘッダ");
@@ -267,7 +274,82 @@ FontConfigPage::initDialog(HWND hDlg)
 	::SendMessage(hwndList, LB_INSERTSTRING, 2, (LPARAM)"データ");
 	::SendMessage(hwndList, LB_INSERTSTRING, 3, (LPARAM)"文字表示");
 
-	return true;
+	return TRUE;
+}
+
+void
+FontConfigPage::prepareFontList()
+{
+	m_bShowPropFonts
+		= ::SendMessage(::GetDlgItem(m_hwndDlg, IDC_CONFIG_SHOW_PROPFONT),
+						BM_GETCHECK,
+						0, 0) == BST_CHECKED;
+
+	::SendMessage(::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_NAME),
+				  CB_RESETCONTENT,
+				  0, 0);
+
+	m_mapFontName.clear();
+
+	LOGFONT logFont;
+	logFont.lfCharSet = DEFAULT_CHARSET;
+	logFont.lfFaceName[0] = '\0';
+	logFont.lfPitchAndFamily = 0;
+	::EnumFontFamiliesEx(m_pDrawInfo->m_hDC,
+						 &logFont,
+						 (FONTENUMPROC)FontConfigPage::enumFontProc,
+						 (LPARAM)this,
+						 0);
+}
+
+int CALLBACK
+FontConfigPage::enumFontProc(ENUMLOGFONTEX *lpelfe,
+							 NEWTEXTMETRICEX *lpntme,
+							 DWORD FontType,
+							 LPARAM lParam)
+{
+	FontConfigPage* _this = (FontConfigPage*)lParam;
+
+	if (!_this) return 0;
+
+	_this->addFont(lpelfe->elfLogFont);
+
+	return 1;
+}
+
+void
+FontConfigPage::addFont(const LOGFONT& logFont)
+{
+	if (logFont.lfFaceName[0] == '@') return;
+
+	if (m_mapFontName.find(logFont.lfFaceName) != m_mapFontName.end())
+		return;
+
+	if (!m_bShowPropFonts) {
+		if ((logFont.lfPitchAndFamily & 0x03) == VARIABLE_PITCH)
+			return;
+	}
+
+	int pos = ::SendMessage(::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_NAME),
+							CB_ADDSTRING,
+							0,
+							(LPARAM)logFont.lfFaceName);
+
+	// ソートされるため、pos の値は意味がなくなる
+	m_mapFontName.insert(make_pair(string(logFont.lfFaceName), pos));
+}
+
+void
+FontConfigPage::prepareFontSize()
+{
+	HWND hwndFontList = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_NAME);
+	int sel = ::SendMessage(hwndFontList, CB_GETCURSEL, 0, 0);
+	if (sel == CB_ERR) return;
+
+	char faceName[LF_FACESIZE];
+	::SendMessage(hwndFontList, CB_GETLBTEXT, sel, (LPARAM)faceName);
+
+
 }
 
 BOOL
@@ -276,6 +358,32 @@ FontConfigPage::dialogProcMain(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	switch (uMsg) {
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
+		case IDC_CONFIG_FONT_NAME:
+			if (HIWORD(wParam) == CBN_SELCHANGE) {
+			}
+			break;
+		case IDC_CONFIG_SHOW_PROPFONT:
+			if (HIWORD(wParam) == BN_CLICKED) {
+				char faceName[LF_FACESIZE];
+				faceName[0] = '\0';
+				HWND hwndFontList = ::GetDlgItem(m_hwndDlg, IDC_CONFIG_FONT_NAME);
+				int sel = ::SendMessage(hwndFontList, CB_GETCURSEL, 0, 0);
+				if (sel != CB_ERR) {
+					::SendMessage(hwndFontList, CB_GETLBTEXT,
+								  sel, (LPARAM)faceName);
+				}
+				prepareFontList();
+				if (sel != CB_ERR) {
+					int pos = ::SendMessage(hwndFontList,
+											CB_FINDSTRINGEXACT,
+											-1, (LPARAM)faceName);
+					if (pos != CB_ERR) {
+						::SendMessage(hwndFontList, CB_SETCURSEL,
+									  pos, 0);
+					}
+				}
+			}
+			break;
 		case IDC_PART_LIST:
 			break;
 		case IDC_CONFIG_FONT_BOLD:
@@ -313,15 +421,17 @@ FontConfigPage::selectFontPageList(int index)
 	
 }
 
-CursorConfigPage::CursorConfigPage(HWND hwndParent, DrawInfo* pDrawInfo)
-	: ConfigPage(hwndParent, pDrawInfo, IDD_CONFIG_CURSOR)
+CursorConfigPage::CursorConfigPage(DrawInfo* pDrawInfo)
+	: ConfigPage(pDrawInfo, IDD_CONFIG_CURSOR, "カーソル")
 {
 }
 
 BOOL
 CursorConfigPage::initDialog(HWND hDlg)
 {
-	return true;
+	if (!ConfigPage::initDialog(hDlg)) return FALSE;
+
+	return TRUE;
 }
 
 BOOL

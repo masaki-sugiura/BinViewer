@@ -62,6 +62,8 @@ public:
 			 COLORREF crFgColor, COLORREF crBkColor,
 			 COLORREF crFgColorHeader, COLORREF crBkColorHeader);
 
+	HDC m_hDC;
+	int m_nFontSize;
 	FontInfo m_FontInfo;
 	TextColorInfo m_tciData, m_tciHeader;
 

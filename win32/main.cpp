@@ -1,5 +1,7 @@
 // $Id$
 
+#pragma warning(disable : 4786)
+
 #define _WIN32_WINNT  0x500  // to support mouse wheel
 
 #include <windows.h>
@@ -271,11 +273,9 @@ OnCreate(HWND hWnd)
 	rctClient.bottom -= STATUSBAR_HEIGHT;
 
 	// create default DrawInfo
-	HDC hDC = ::GetDC(hWnd);
-	g_pDrawInfo = new DrawInfo(hDC, DEFAULT_FONT_SIZE,
+	g_pDrawInfo = new DrawInfo(NULL, DEFAULT_FONT_SIZE,
 							   DEFAULT_FG_COLOR, DEFAULT_BK_COLOR,
 							   DEFAULT_FG_COLOR_HEADER, DEFAULT_BK_COLOR_HEADER);
-	::ReleaseDC(hWnd, hDC);
 
 	g_pViewFrame = new ViewFrame(hWnd, rctClient, g_pDrawInfo.ptr(), NULL);
 	assert(g_pViewFrame.ptr());
@@ -384,7 +384,7 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case IDM_CONFIG:
-			ConfigMainDlg(hWnd, g_pDrawInfo.ptr()).doModal();
+			ConfigMainDlg(g_pDrawInfo.ptr()).doModal(hWnd);
 			break;
 
 		case IDM_SEARCH:
