@@ -16,6 +16,18 @@ is_overlapped(int y_offset_line_num, int page_line_num)
 	return (y_offset_line_num + page_line_num >= MAX_DATASIZE_PER_BUFFER / 16);
 }
 
+struct Header : public Renderer {
+	Header(HDC hDC, const DrawInfo* pDrawInfo);
+
+	void setDrawInfo(HDC hDC, const DrawInfo* pDrawInfo);
+
+	void bitBlt(HDC hDC, int x, int y, int cx, int cy,
+				int sx, int sy) const;
+
+protected:
+	int render();
+};
+
 class ViewFrame : public LF_Acceptor {
 public:
 	ViewFrame(HWND hWnd, const RECT& rct, DrawInfo* pDrawInfo);

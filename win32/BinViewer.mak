@@ -72,6 +72,8 @@ CLEAN :
 	-@erase "$(INTDIR)\thread.sbr"
 	-@erase "$(INTDIR)\vc60.idb"
 	-@erase "$(INTDIR)\vc60.pdb"
+	-@erase "$(INTDIR)\view.obj"
+	-@erase "$(INTDIR)\view.sbr"
 	-@erase "$(INTDIR)\viewframe.obj"
 	-@erase "$(INTDIR)\viewframe.sbr"
 	-@erase "$(OUTDIR)\BinViewer.bsc"
@@ -101,7 +103,8 @@ BSC32_SBRS= \
 	"$(INTDIR)\searchdlg.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
-	"$(INTDIR)\viewframe.sbr"
+	"$(INTDIR)\viewframe.sbr" \
+	"$(INTDIR)\view.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -126,7 +129,8 @@ LINK32_OBJS= \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res"
+	"$(INTDIR)\mainwnd.res" \
+	"$(INTDIR)\view.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -176,6 +180,8 @@ CLEAN :
 	-@erase "$(INTDIR)\thread.sbr"
 	-@erase "$(INTDIR)\vc60.idb"
 	-@erase "$(INTDIR)\vc60.pdb"
+	-@erase "$(INTDIR)\view.obj"
+	-@erase "$(INTDIR)\view.sbr"
 	-@erase "$(INTDIR)\viewframe.obj"
 	-@erase "$(INTDIR)\viewframe.sbr"
 	-@erase "$(OUTDIR)\BinViewer.bsc"
@@ -207,7 +213,8 @@ BSC32_SBRS= \
 	"$(INTDIR)\searchdlg.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
-	"$(INTDIR)\viewframe.sbr"
+	"$(INTDIR)\viewframe.sbr" \
+	"$(INTDIR)\view.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -232,7 +239,8 @@ LINK32_OBJS= \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res"
+	"$(INTDIR)\mainwnd.res" \
+	"$(INTDIR)\view.obj"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -352,6 +360,11 @@ SOURCE=.\strutils.cpp
 SOURCE=.\thread.cpp
 
 "$(INTDIR)\thread.obj"	"$(INTDIR)\thread.sbr" : $(SOURCE) "$(INTDIR)"
+
+
+SOURCE=.\view.cpp
+
+"$(INTDIR)\view.obj"	"$(INTDIR)\view.sbr" : $(SOURCE) "$(INTDIR)"
 
 
 SOURCE=.\viewframe.cpp

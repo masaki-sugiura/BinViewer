@@ -11,25 +11,37 @@
 	・カーソル位置の管理
 	・マウスイベントのハンドリング
 	・キー操作のハンドリング
+
+						+-----------------------+
+						|						|
+	+-----------+		|	+-----------+		|
+	|			|		|	|			|		|
+	|			|		|	|			|		|
+	+-----------+		|	+-----------+		|
+						|						|
+						+-----------------------+
+
  */
 
-//#include "dc_manager.h"
 #include "auto_ptr.h"
 #include "scroll.h"
+#include "dc_manager.h"
 
-class DC_Manager;
+class BGB_Manager;
 
 struct Metrics {
 	DWORD width;
 	DWORD height;
 };
 
-class View {
+class View : public LF_Acceptor {
 public:
 	View(HWND hwndParent, DWORD dwStyle, DWORD dwExStyle,
 		 const RECT& rctWindow,
-		 int nBytesPerLine,
-		 int nPixelsPerLine);
+		 DC_Manager* pDCManager,
+		 int nWidth, int nHeight,
+		 int nPixelsPerLine,
+		 COLORREF crBkColor);
 	virtual ~View();
 
 	// View クラスが投げる例外の基底クラス
@@ -39,19 +51,23 @@ public:
 	class CreateWindowError : public ViewException {};
 
 protected:
-	Auto_Ptr<DC_Manager> m_pDC_Manager;
-	int m_nBytesPerLine;
+	DC_Manager* m_pDCManager;
 	int m_nPixelsPerLine;
 	int m_nXOffset;
 	filesize_t m_qYOffset;
-	Metrics m_mtView;
 	ScrollManager<int> m_smHorz;
 	ScrollManager<filesize_t> m_smVert;
 	bool m_bMapScrollBarLinearly;
 	HWND m_hwndView, m_hwndParent;
 	HDC m_hdcView;
+	HBRUSH m_hbrBackground;
+	bool m_bOverlapped;
+
+	bool onLoadFile();
+	void onUnloadFile();
 
 	void bitBlt(const RECT& rcPaint);
+
 	void onHScroll(WPARAM wParam, LPARAM lParam);
 	void onVScroll(WPARAM wParam, LPARAM lParam);
 

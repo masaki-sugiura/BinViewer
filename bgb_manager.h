@@ -5,7 +5,6 @@
 
 #include "ringbuf.h"
 #include "LF_Notify.h"
-#include "LargeFileReader.h"
 #include "thread.h"
 #include "auto_ptr.h"
 
@@ -38,11 +37,11 @@ private:
 
 class BGB_Manager {
 public:
-	BGB_Manager(int bufsize, int bufcount, LF_Acceptor* pLFAcceptor)
+	BGB_Manager(int bufsize, int bufcount)
 		: m_nBufSize(bufsize),
 		  m_nBufCount(bufcount),
 		  m_qCurrentPos(-1),
-		  m_pLFAcceptor(pLFAcceptor),
+		  m_pLFAcceptor(NULL),
 		  m_bRBInit(false)
 	{
 		assert(m_nBufCount > 2);
@@ -50,12 +49,14 @@ public:
 	}
 	virtual ~BGB_Manager() {}
 
-	virtual bool onLoadFile()
+	bool onLoadFile(LF_Acceptor* pLFAcceptor)
 	{
 		m_qCurrentPos = -1; // Å‰‚ÌŒÄ‚Ño‚µ‚Å fillBGBuffer() ‚Å init() ‚ðŒÄ‚Ô‚Ì‚É•K—v
+		m_pLFAcceptor = pLFAcceptor;
 		return isLoaded();
 	}
-	virtual void onUnloadFile()
+
+	void onUnloadFile()
 	{
 		m_qCurrentPos = -1;
 
@@ -70,6 +71,7 @@ public:
 
 	bool isLoaded() const
 	{
+		if (!m_pLFAcceptor) return false;
 		LargeFileReader* pLFReader;
 		bool bRet = m_pLFAcceptor->tryLockReader(&pLFReader, INFINITE);
 		if (!bRet) return false;
@@ -136,10 +138,7 @@ protected:
 
 	int fillBGBuffer(filesize_t offset);
 
-	virtual BGBuffer* createBGBufferInstance()
-	{
-		return new BGBuffer(m_nBufSize);
-	}
+	virtual BGBuffer* createBGBufferInstance() = 0;
 
 	BGB_Manager(const BGB_Manager&);
 	BGB_Manager& operator=(const BGB_Manager&);

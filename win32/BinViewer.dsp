@@ -154,6 +154,10 @@ SOURCE=.\thread.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\view.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\viewframe.cpp
 # End Source File
 # End Group
@@ -239,6 +243,10 @@ SOURCE=..\thread.h
 # Begin Source File
 
 SOURCE=.\types.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\View.h
 # End Source File
 # Begin Source File
 
