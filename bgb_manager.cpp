@@ -113,7 +113,10 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 		m_bRBInit = true;
 	}
 
-	if (!isLoaded()) return -1;
+//	if (!isLoaded()) return -1;
+	LargeFileReader* pLFReader;
+	bool bRet = m_pLFAcceptor->tryLockReader(&pLFReader, INFINITE);
+	if (!bRet) return -1;
 
 	// offset を nBufSize でアライメント
 //	offset = (offset / nBufSize) * nBufSize;
@@ -137,7 +140,7 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 		end = start + m_nBufCount * m_nBufSize;
 		while (start < end) {
 			if (start >= 0) { // 終端を越えて描画するためファイル終端を判定してはいけない！！
-				m_rbBuffers.elementAt(i)->init(*m_pLFReader, start);
+				m_rbBuffers.elementAt(i)->init(*pLFReader, start);
 			}
 			i++;
 			start += m_nBufSize;
@@ -159,13 +162,15 @@ BGB_Manager::fillBGBuffer(filesize_t offset)
 		}
 		while (start < end) {
 			if (start >= 0) {
-				m_rbBuffers.elementAt(i)->init(*m_pLFReader, start);
+				m_rbBuffers.elementAt(i)->init(*pLFReader, start);
 			}
 			i++;
 			start += m_nBufSize;
 		}
 		m_rbBuffers.setTop(new_top / m_nBufSize);
 	}
+
+	m_pLFAcceptor->releaseReader(pLFReader);
 
 	// カレントポジションの変更
 	m_qCurrentPos = offset;

@@ -106,7 +106,8 @@ struct FindCallbackArg {
 
 //! ”ñ“¯ŠúŒŸõƒXƒŒƒbƒh‚É“n‚·ˆø”
 struct FindThreadProcArg {
-	LargeFileReader* m_pLFReader;
+//	LargeFileReader* m_pLFReader;
+	class LF_Acceptor* m_pLFAcceptor;
 	FindCallbackArg* m_pCallbackArg;
 };
 

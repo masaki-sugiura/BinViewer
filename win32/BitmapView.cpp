@@ -77,13 +77,21 @@ BitmapView::onLoadFile()
 	m_bLoaded = true;
 	m_qCurrentPos = 0;
 	m_qHeadPos = 0;
-	m_pScrollManager->setInfo(getReader()->size() / 128,
-							  m_rctClient.bottom,
-							  0);
+	filesize_t size;
+	{
+		bool bRet;
+		AutoLockReader alReader(this, INFINITE, &bRet);
+		if (!bRet || !alReader) return false;
+		size = alReader->size();
+	}
+
+	m_pScrollManager->setInfo(size / 128, m_rctClient.bottom, 0);
 	drawDC(m_rctClient);
 	invertPos();
+
 	::InvalidateRect(m_hwndView, NULL, FALSE);
 	::UpdateWindow(m_hwndView);
+
 	return true;
 }
 
@@ -143,8 +151,13 @@ BitmapView::drawDC(const RECT& rctPaint)
 		static BYTE databuf[128 * 2048]; // max size
 		int size = 128 * (rctPaint.bottom - rctPaint.top);
 		if (!size) return;
-		size = getReader()->readFrom(qOffset, FILE_BEGIN,
-									 databuf, size);
+		{
+			bool bRet;
+			AutoLockReader alReader(this, INFINITE, &bRet);
+			if (!bRet || !alReader) return;
+			size = alReader->readFrom(qOffset, FILE_BEGIN,
+									  databuf, size);
+		}
 		// render with SetDIBits()
 #if 1
 		int x = 0, y = rctPaint.top;
@@ -267,7 +280,10 @@ BitmapView::onResize(HWND hWnd)
 	}
 	m_rctClient = rctNew;
 	if (m_bLoaded) {
-		m_pScrollManager->setInfo(getReader()->size() / 128,
+		bool bRet;
+		AutoLockReader alReader(this, INFINITE, &bRet);
+		if (!bRet || !alReader) return false;
+		m_pScrollManager->setInfo(alReader->size() / 128,
 								  m_rctClient.bottom,
 								  m_qHeadPos / 128);
 	}
@@ -289,8 +305,14 @@ BitmapView::onLButtonDown(WPARAM wParam, LPARAM lParam)
 
 	const POINTS& pt = MAKEPOINTS(lParam);
 
-	filesize_t pos = m_qHeadPos + 128 * pt.y + pt.x;
-	if (pos > getReader()->size()) return;
+	filesize_t pos = m_qHeadPos + 128 * pt.y + pt.x, size;
+	{
+		bool bRet;
+		AutoLockReader alReader(this, INFINITE, &bRet);
+		if (!bRet || !alReader) return;
+		size = alReader->size();
+	}
+	if (pos > size) return;
 
 	invertPos();
 	m_qCurrentPos = pos;

@@ -63,7 +63,7 @@ ViewFrame::ViewFrame(HWND hwndParent, const RECT& rct,
 
 	initParams();
 
-	m_pDC_Manager = new DC_Manager(m_hDC, m_pDrawInfo);
+	m_pDC_Manager = new DC_Manager(m_hDC, m_pDrawInfo, this);
 
 	m_nLineHeight = m_pDrawInfo->m_FontInfo.getYPitch();
 	m_nCharWidth  = m_pDrawInfo->m_FontInfo.getXPitch();

@@ -24,7 +24,7 @@ public:
 	bool onLoadFile()
 	{
 		initParams();
-		if (!m_pDC_Manager->onLoadFile(getReader())) return false;
+		if (!m_pDC_Manager->onLoadFile()) return false;
 		recalcPageInfo();
 		setCurrentLine(0, false);
 		setPosition(0);

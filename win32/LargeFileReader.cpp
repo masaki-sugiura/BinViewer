@@ -1,6 +1,7 @@
 // $Id$
 
 #include "LargeFileReader.h"
+#include "LF_Notify.h"
 #include "lock.h"
 
 // ファイルポインタの移動
@@ -110,14 +111,24 @@ thread_result_t
 FindThread::thread(thread_arg_t arg)
 {
 	FindThreadProcArg* pThreadArg = (FindThreadProcArg*)arg;
-	LargeFileReader* pLFReader = pThreadArg->m_pLFReader;
+//	LargeFileReader* pLFReader = pThreadArg->m_pLFReader;
+	LF_Acceptor* pLFAcceptor = pThreadArg->m_pLFAcceptor;
 	FindCallbackArg* pCallbackArg = pThreadArg->m_pCallbackArg;
+
 	filesize_t pos = pCallbackArg->m_qStartAddress;
 	const BYTE* data = pCallbackArg->m_pData;
 	int size = pCallbackArg->m_nBufSize;
 	const int blocksize = 1024;
 
 	int bufsize = blocksize * ((blocksize + size - 1) / blocksize);
+
+	bool bRet;
+	AutoLockReader alReaderOrg(pLFAcceptor, INFINITE, &bRet);
+	if (!bRet) {
+		if (pCallbackArg)
+			(*pCallbackArg->m_pfnCallback)(pCallbackArg);
+		return -1;
+	}
 
 	BYTE* buf = new BYTE[bufsize];
 
@@ -128,9 +139,16 @@ FindThread::thread(thread_arg_t arg)
 
 	if (pCallbackArg->m_nDirection == FIND_FORWARD) {
 		while (!isTerminated()) {
+			AutoLockReader alReader(pLFAcceptor, INFINITE, &bRet);
+			if (!bRet || alReader != alReaderOrg) {
+				if (pCallbackArg)
+					(*pCallbackArg->m_pfnCallback)(pCallbackArg);
+				goto _exit_thread;
+			}
+
 			// マッチするのに十分なサイズがあるか？
-			if ((readsize = pLFReader->readFrom(pos, FILE_BEGIN,
-												buf + offset, readsize)) <= 0 ||
+			if ((readsize = alReader->readFrom(pos, FILE_BEGIN,
+											   buf + offset, readsize)) <= 0 ||
 				readsize + offset < size) {
 				ret = -1;
 				goto _exit_thread;
@@ -173,9 +191,16 @@ FindThread::thread(thread_arg_t arg)
 				pos = 0;
 			}
 
+			AutoLockReader alReader(pLFAcceptor, INFINITE, &bRet);
+			if (!bRet || alReader != alReaderOrg) {
+				if (pCallbackArg)
+					(*pCallbackArg->m_pfnCallback)(pCallbackArg);
+				goto _exit_thread;
+			}
+
 			// マッチするのに十分なサイズがあるか？
-			if ((readsize = pLFReader->readFrom(pos, FILE_BEGIN,
-												buf + offset, readsize)) <= 0 ||
+			if ((readsize = alReader->readFrom(pos, FILE_BEGIN,
+											   buf + offset, readsize)) <= 0 ||
 				readsize < size) {
 				ret = -1;
 				goto _exit_thread;

@@ -6,8 +6,7 @@
 #include <assert.h>
 
 LF_Acceptor::LF_Acceptor()
-	: m_pLFNotifier(NULL),
-	  m_pLFReader(NULL)
+	: m_pLFNotifier(NULL)
 {
 }
 
@@ -29,25 +28,27 @@ LF_Acceptor::onRegisted(LF_Notifier* pLFNotifier)
 
 	m_pLFNotifier = pLFNotifier;
 
-	LargeFileReader* pLFReader = pLFNotifier->getReader();
+	LargeFileReader* pLFReader;
+	bool bRet = tryLockReader(&pLFReader, INFINITE);
+	if (!bRet) return false;
 	if (!pLFReader) return true;
 
-	return loadFile(pLFReader);
+	bRet = loadFile();
+
+	releaseReader(pLFReader);
+
+	return bRet;
 }
 
 void
 LF_Acceptor::onUnregisted()
 {
-	GetLock lock(m_lckData);
-	if (m_pLFReader) unloadFile();
-	m_pLFNotifier = NULL;
 }
 
 bool
-LF_Acceptor::loadFile(LargeFileReader* pLFReader)
+LF_Acceptor::loadFile()
 {
 	GetLock lock(m_lckData);
-	m_pLFReader = pLFReader;
 	return onLoadFile();
 }
 
@@ -56,7 +57,6 @@ LF_Acceptor::unloadFile()
 {
 	GetLock lock(m_lckData);
 	onUnloadFile();
-	m_pLFReader = NULL;
 }
 
 LF_Notifier::LF_Notifier()
@@ -75,14 +75,33 @@ LF_Notifier::~LF_Notifier()
 }
 
 bool
+LF_Notifier::tryLockReader(LargeFileReader** ppLFReader, DWORD dwWaitTime)
+{
+	if (!ppLFReader) return false;
+	m_lckReader.lock();
+	*ppLFReader = m_pLFReader;
+	return true;
+}
+
+void
+LF_Notifier::releaseReader(LargeFileReader* pLFReader)
+{
+	if (pLFReader == m_pLFReader) {
+		m_lckReader.release();
+	}
+}
+
+bool
 LF_Notifier::loadFile(LargeFileReader* pLFReader)
 {
+	GetLock lock(m_lckReader);
+
 	m_pLFReader = pLFReader;
 
 	for (LFAList::iterator itr = m_lstLFAcceptor.begin();
 		 itr != m_lstLFAcceptor.end();
 		 ++itr) {
-		if (!(*itr)->loadFile(pLFReader)) {
+		if (!(*itr)->loadFile()) {
 			return false;
 		}
 	}
@@ -93,6 +112,8 @@ LF_Notifier::loadFile(LargeFileReader* pLFReader)
 void
 LF_Notifier::unloadFile()
 {
+	GetLock lock(m_lckReader);
+
 	for (LFAList::iterator itr = m_lstLFAcceptor.begin();
 		 itr != m_lstLFAcceptor.end();
 		 ++itr) {

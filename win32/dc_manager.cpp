@@ -401,8 +401,8 @@ Header::render()
 	return 0; // dummy
 }
 
-DC_Manager::DC_Manager(HDC hDC, const DrawInfo* pDrawInfo)
-	: BGB_Manager(MAX_DATASIZE_PER_BUFFER, BUFFER_NUM),
+DC_Manager::DC_Manager(HDC hDC, const DrawInfo* pDrawInfo, LF_Acceptor* pLFAcceptor)
+	: BGB_Manager(MAX_DATASIZE_PER_BUFFER, BUFFER_NUM, pLFAcceptor),
 	  m_pDrawInfo(pDrawInfo),
 	  m_Header(hDC, pDrawInfo)
 {

@@ -38,11 +38,11 @@ private:
 
 class BGB_Manager {
 public:
-	BGB_Manager(int bufsize, int bufcount)
+	BGB_Manager(int bufsize, int bufcount, LF_Acceptor* pLFAcceptor)
 		: m_nBufSize(bufsize),
 		  m_nBufCount(bufcount),
 		  m_qCurrentPos(-1),
-		  m_pLFReader(NULL),
+		  m_pLFAcceptor(pLFAcceptor),
 		  m_bRBInit(false)
 	{
 		assert(m_nBufCount > 2);
@@ -50,9 +50,8 @@ public:
 	}
 	virtual ~BGB_Manager() {}
 
-	virtual bool onLoadFile(LargeFileReader* pLFReader)
+	virtual bool onLoadFile()
 	{
-		m_pLFReader = pLFReader;
 		m_qCurrentPos = -1; // Å‰‚ÌŒÄ‚Ño‚µ‚Å fillBGBuffer() ‚Å init() ‚ðŒÄ‚Ô‚Ì‚É•K—v
 		return isLoaded();
 	}
@@ -67,15 +66,26 @@ public:
 				m_rbBuffers.elementAt(i)->uninit();
 			}
 		}
-		m_pLFReader = NULL;
 	}
 
-	bool isLoaded() const { return m_pLFReader != NULL; }
+	bool isLoaded() const
+	{
+		LargeFileReader* pLFReader;
+		bool bRet = m_pLFAcceptor->tryLockReader(&pLFReader, INFINITE);
+		if (!bRet) return false;
+		m_pLFAcceptor->releaseReader(pLFReader);
+		return pLFReader != NULL;
+	}
 
 	filesize_t getFileSize() const
 	{
-		if (!isLoaded()) return -1;
-		return m_pLFReader->size();
+		LargeFileReader* pLFReader;
+		bool bRet = m_pLFAcceptor->tryLockReader(&pLFReader, INFINITE);
+		if (!bRet) return -1;
+		filesize_t size = -1;
+		if (pLFReader) size = pLFReader->size();
+		m_pLFAcceptor->releaseReader(pLFReader);
+		return size;
 	}
 
 	filesize_t getCurrentPosition() const
@@ -120,7 +130,7 @@ public:
 protected:
 	int m_nBufSize, m_nBufCount;
 	filesize_t m_qCurrentPos;
-	LargeFileReader* m_pLFReader;
+	LF_Acceptor* m_pLFAcceptor;
 	RingBuffer<BGBuffer> m_rbBuffers;
 	bool m_bRBInit;
 

@@ -91,7 +91,7 @@ protected:
 
 class DC_Manager : public BGB_Manager {
 public:
-	DC_Manager(HDC hDC, const DrawInfo* pDrawInfo);
+	DC_Manager(HDC hDC, const DrawInfo* pDrawInfo, LF_Acceptor* pLFAcceptor);
 
 	// ‰¼‘zŠÖ”‚Å‚Í‚È‚­ABGB_Manager::getCurrentBuffer() ‚ğ‰B‚·
 	DCBuffer* getCurrentBuffer(int offset = 0)

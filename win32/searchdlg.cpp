@@ -605,7 +605,7 @@ SearchMainDlg::findCallback(FindCallbackArg* pArg)
 	GetLock lock(m_lockFindCallbackData);
 
 	FindThreadProcArg* pThreadArg = new FindThreadProcArg;
-	pThreadArg->m_pLFReader = m_ViewFrame.getReader();
+	pThreadArg->m_pLFAcceptor = &m_ViewFrame;
 	pThreadArg->m_pCallbackArg = pArg;
 
 	m_pThread = new FindThread(pThreadArg, new ThreadAttribute);

@@ -87,6 +87,7 @@ RSC_PROJ=/l 0x411 /fo"$(INTDIR)\mainwnd.res" /d "NDEBUG"
 BSC32=bscmake.exe
 BSC32_FLAGS=/nologo /o"$(OUTDIR)\BinViewer.bsc" 
 BSC32_SBRS= \
+	"$(INTDIR)\bgb_manager.sbr" \
 	"$(INTDIR)\BitmapView.sbr" \
 	"$(INTDIR)\configdlg.sbr" \
 	"$(INTDIR)\dc_manager.sbr" \
@@ -94,14 +95,13 @@ BSC32_SBRS= \
 	"$(INTDIR)\drawinfo.sbr" \
 	"$(INTDIR)\jumpdlg.sbr" \
 	"$(INTDIR)\LargeFileReader.sbr" \
+	"$(INTDIR)\LF_Notify.sbr" \
 	"$(INTDIR)\lock.sbr" \
 	"$(INTDIR)\main.sbr" \
 	"$(INTDIR)\searchdlg.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
-	"$(INTDIR)\viewframe.sbr" \
-	"$(INTDIR)\LF_Notify.sbr" \
-	"$(INTDIR)\bgb_manager.sbr"
+	"$(INTDIR)\viewframe.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -111,6 +111,7 @@ BSC32_SBRS= \
 LINK32=link.exe
 LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /profile /debug /machine:I386 /out:"$(OUTDIR)\BinViewer.exe" 
 LINK32_OBJS= \
+	"$(INTDIR)\bgb_manager.obj" \
 	"$(INTDIR)\BitmapView.obj" \
 	"$(INTDIR)\configdlg.obj" \
 	"$(INTDIR)\dc_manager.obj" \
@@ -118,15 +119,14 @@ LINK32_OBJS= \
 	"$(INTDIR)\drawinfo.obj" \
 	"$(INTDIR)\jumpdlg.obj" \
 	"$(INTDIR)\LargeFileReader.obj" \
+	"$(INTDIR)\LF_Notify.obj" \
 	"$(INTDIR)\lock.obj" \
 	"$(INTDIR)\main.obj" \
 	"$(INTDIR)\searchdlg.obj" \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res" \
-	"$(INTDIR)\LF_Notify.obj" \
-	"$(INTDIR)\bgb_manager.obj"
+	"$(INTDIR)\mainwnd.res"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -193,6 +193,7 @@ RSC_PROJ=/l 0x411 /fo"$(INTDIR)\mainwnd.res" /d "_DEBUG"
 BSC32=bscmake.exe
 BSC32_FLAGS=/nologo /o"$(OUTDIR)\BinViewer.bsc" 
 BSC32_SBRS= \
+	"$(INTDIR)\bgb_manager.sbr" \
 	"$(INTDIR)\BitmapView.sbr" \
 	"$(INTDIR)\configdlg.sbr" \
 	"$(INTDIR)\dc_manager.sbr" \
@@ -200,14 +201,13 @@ BSC32_SBRS= \
 	"$(INTDIR)\drawinfo.sbr" \
 	"$(INTDIR)\jumpdlg.sbr" \
 	"$(INTDIR)\LargeFileReader.sbr" \
+	"$(INTDIR)\LF_Notify.sbr" \
 	"$(INTDIR)\lock.sbr" \
 	"$(INTDIR)\main.sbr" \
 	"$(INTDIR)\searchdlg.sbr" \
 	"$(INTDIR)\strutils.sbr" \
 	"$(INTDIR)\thread.sbr" \
-	"$(INTDIR)\viewframe.sbr" \
-	"$(INTDIR)\LF_Notify.sbr" \
-	"$(INTDIR)\bgb_manager.sbr"
+	"$(INTDIR)\viewframe.sbr"
 
 "$(OUTDIR)\BinViewer.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -217,6 +217,7 @@ BSC32_SBRS= \
 LINK32=link.exe
 LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib comctl32.lib /nologo /subsystem:windows /incremental:yes /pdb:"$(OUTDIR)\BinViewer.pdb" /debug /machine:I386 /out:"$(OUTDIR)\BinViewer.exe" /pdbtype:sept 
 LINK32_OBJS= \
+	"$(INTDIR)\bgb_manager.obj" \
 	"$(INTDIR)\BitmapView.obj" \
 	"$(INTDIR)\configdlg.obj" \
 	"$(INTDIR)\dc_manager.obj" \
@@ -224,15 +225,14 @@ LINK32_OBJS= \
 	"$(INTDIR)\drawinfo.obj" \
 	"$(INTDIR)\jumpdlg.obj" \
 	"$(INTDIR)\LargeFileReader.obj" \
+	"$(INTDIR)\LF_Notify.obj" \
 	"$(INTDIR)\lock.obj" \
 	"$(INTDIR)\main.obj" \
 	"$(INTDIR)\searchdlg.obj" \
 	"$(INTDIR)\strutils.obj" \
 	"$(INTDIR)\thread.obj" \
 	"$(INTDIR)\viewframe.obj" \
-	"$(INTDIR)\mainwnd.res" \
-	"$(INTDIR)\LF_Notify.obj" \
-	"$(INTDIR)\bgb_manager.obj"
+	"$(INTDIR)\mainwnd.res"
 
 "$(OUTDIR)\BinViewer.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
