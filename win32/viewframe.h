@@ -6,9 +6,18 @@
 #include "dc_manager.h"
 #include <assert.h>
 
+#define WM_USER_FIND_FINISH  (WM_USER + 1000)
+#define WM_USER_SETPOSITION  (WM_USER + 1001)
+
+static inline bool
+is_overlapped(int y_offset_line_num, int page_line_num)
+{
+	return (y_offset_line_num + page_line_num >= MAX_DATASIZE_PER_BUFFER / 16);
+}
+
 class ViewFrame {
 public:
-	ViewFrame(HWND hWnd, RECT& rct,
+	ViewFrame(HWND hWnd, const RECT& rct,
 			  const DrawInfo* pDrawInfo,
 			  LargeFileReader* pLFReader = NULL);
 	~ViewFrame();
@@ -18,7 +27,7 @@ public:
 		initParams();
 		if (!m_pDC_Manager->loadFile(pLFReader)) return false;
 		calcMaxLine();
-		initScrollInfo();
+		modifyVScrollInfo();
 		::InvalidateRect(m_hwndView, NULL, FALSE);
 		::UpdateWindow(m_hwndView);
 		return true;
@@ -28,7 +37,7 @@ public:
 	{
 		m_pDC_Manager->unloadFile();
 		initParams();
-		initScrollInfo();
+		modifyVScrollInfo();
 		::InvalidateRect(m_hwndView, NULL, FALSE);
 		::UpdateWindow(m_hwndView);
 	}
@@ -95,9 +104,8 @@ public:
 		m_pDrawInfo = pDrawInfo;
 		m_nLineHeight = m_pDrawInfo->m_FontInfo.getYPitch();
 		m_nCharWidth  = m_pDrawInfo->m_FontInfo.getXPitch();
-		m_nPageLineNum = (m_rctClient.bottom - m_rctClient.top + m_nLineHeight - 1)
-						  / m_nLineHeight - 1 /* ヘッダの分は除く */;
 		m_pDC_Manager->setDrawInfo(hDC, pDrawInfo);
+		recalcPageInfo();
 	}
 
 	int getCharWidth() const
@@ -115,7 +123,7 @@ public:
 	}
 
 	void setFrameRect(const RECT& rctClient);
-	const RECT& getFrameRect() const { return m_rctClient; }
+	const RECT& getFrameRect() const { return m_rctFrame; }
 	void adjustWindowRect(RECT& rctFrame);
 
 	void updateWithoutHeader();
@@ -136,7 +144,7 @@ private:
 	int m_nLineHeight;
 	int m_nCharWidth;
 	int m_nPageLineNum;
-	RECT m_rctClient;
+	RECT m_rctFrame, m_rctClient;
 	bool m_bOverlapped;
 	filesize_t m_qCurrentLine;
 	filesize_t m_qMaxLine;
@@ -160,13 +168,23 @@ private:
 		m_pCurBuf = m_pNextBuf = NULL;
 	}
 
+	void recalcPageInfo()
+	{
+		m_nPageLineNum = (m_rctClient.bottom - m_rctClient.top + m_nLineHeight - 1)
+						  / m_nLineHeight - 1 /* ヘッダの分は除く */;
+		// ウィンドウを広げた結果次のバッファとオーバーラップした場合に必要
+		m_bOverlapped = is_overlapped(m_nTopOffset / m_nLineHeight, m_nPageLineNum);
+		modifyVScrollInfo();
+		modifyHScrollInfo(m_rctClient.right - m_rctClient.left);
+	}
+
 	void calcMaxLine()
 	{
 		m_qMaxLine = (m_pDC_Manager->getFileSize() >> 4);
 		if (m_qMaxLine <= 0) m_qMaxLine = 1;
 	}
 
-	void initScrollInfo();
+	void modifyVScrollInfo();
 	void modifyHScrollInfo(int width);
 	void bitBlt(const RECT& rcPaint);
 

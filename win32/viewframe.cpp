@@ -13,7 +13,7 @@ bool ViewFrame::m_bRegisterClass;
 WORD ViewFrame::m_wNextID;
 HINSTANCE ViewFrame::m_hInstance;
 
-ViewFrame::ViewFrame(HWND hwndParent, RECT& rct,
+ViewFrame::ViewFrame(HWND hwndParent, const RECT& rct,
 					 const DrawInfo* pDrawInfo,
 					 LargeFileReader* pLFReader)
 	: m_pDC_Manager(NULL), m_pDrawInfo(pDrawInfo)
@@ -58,7 +58,6 @@ ViewFrame::ViewFrame(HWND hwndParent, RECT& rct,
 	m_nLineHeight = m_pDrawInfo->m_FontInfo.getYPitch();
 	m_nCharWidth  = m_pDrawInfo->m_FontInfo.getXPitch();
 
-	adjustWindowRect(rct);
 	setFrameRect(rct);
 }
 
@@ -66,16 +65,10 @@ ViewFrame::~ViewFrame()
 {
 }
 
-static inline bool
-is_overlapped(int y_offset_line_num, int page_line_num)
-{
-	return (y_offset_line_num + page_line_num >= MAX_DATASIZE_PER_BUFFER / 16);
-}
-
 void
 ViewFrame::setFrameRect(const RECT& rctFrame)
 {
-	m_rctClient = rctFrame;
+	m_rctFrame = rctFrame;
 
 	::SetWindowPos(m_hwndView, NULL,
 				   rctFrame.left, rctFrame.top,
@@ -83,17 +76,9 @@ ViewFrame::setFrameRect(const RECT& rctFrame)
 				   rctFrame.bottom - rctFrame.top,
 				   SWP_NOZORDER);
 
-	RECT rctClient;
-	::GetClientRect(m_hwndView, &rctClient);
+	::GetClientRect(m_hwndView, &m_rctClient);
 
-	m_nPageLineNum = (rctClient.bottom - rctClient.top + m_nLineHeight - 1)
-					  / m_nLineHeight - 1 /* ヘッダの分は除く */;
-
-	initScrollInfo();
-	modifyHScrollInfo(rctClient.right - rctClient.left);
-
-	// ウィンドウを広げた結果次のバッファとオーバーラップした場合に必要
-	m_bOverlapped = is_overlapped(m_nTopOffset / m_nLineHeight, m_nPageLineNum);
+	recalcPageInfo();
 }
 
 void
@@ -106,12 +91,9 @@ ViewFrame::adjustWindowRect(RECT& rctFrame)
 	rctFrame.left = rctFrame.top = 0;
 	rctFrame.right = rctWindow.right - rctWindow.left - rctClient.right
 					 + WIDTH_PER_XPITCH * m_nCharWidth;
-	int cur_height = rctFrame.bottom
-					- (rctWindow.bottom - rctWindow.top - rctClient.bottom);
-	cur_height = ((cur_height + m_nLineHeight - 1) / m_nLineHeight)
-				 * m_nLineHeight;
-	rctFrame.bottom = rctWindow.bottom - rctWindow.top - rctClient.bottom
-					+ cur_height;
+	rctFrame.bottom = ((rctFrame.bottom + m_nLineHeight - 1) / m_nLineHeight)
+					   * m_nLineHeight
+					+ (rctWindow.bottom - rctWindow.top - rctClient.bottom);
 }
 
 void
@@ -151,22 +133,29 @@ ViewFrame::setPosition(filesize_t pos)
 
 	m_qCurrentPos = pos;
 
-	int top_offset_by_size = m_nTopOffset / m_nLineHeight * 16;
+	int top_offset_by_size = m_nTopOffset / m_nLineHeight * 16,
+		page_line_num_by_size
+		 = ((m_rctClient.bottom - m_rctClient.top) / m_nLineHeight - 1) * 16;
 	if (!m_pCurBuf ||
 		pos < m_pCurBuf->m_qAddress + top_offset_by_size ||
-		pos >= m_pCurBuf->m_qAddress + top_offset_by_size + m_nPageLineNum * 16) {
+		pos >= m_pCurBuf->m_qAddress + top_offset_by_size
+				+ page_line_num_by_size) {
 		// 最初の描画またはカーソルが表示領域をはみ出る
 		filesize_t newline = pos / 16;
 		int line_diff = pos / 16 - m_qCurrentLine;
-		if (line_diff >= m_nPageLineNum) {
+		if (line_diff >= page_line_num_by_size / 16) {
 			// 下にジャンプ/スクロール
-			newline = newline - m_nPageLineNum + 1;
+			newline -= page_line_num_by_size / 16 - 1;
 		}
 		setCurrentLine(newline);
 	}
+	modifyVScrollInfo();
 
 	unselect();
 	select(pos, 1);
+
+	::SendMessage(::GetParent(m_hwndView), WM_USER_SETPOSITION,
+				  (WPARAM)(m_qCurrentPos >> 32), (LPARAM)m_qCurrentPos);
 }
 
 void
@@ -280,14 +269,20 @@ ViewFrame::bitBlt(const RECT& rcPaint)
 	}
 
 	// bitblt header
-	if (rcPaint.top < m_nLineHeight &&
-		rcPaint.left < width) {
-		::BitBlt(m_hDC, rcPaint.left, rcPaint.top,
-				 min(rcPaint.right, width) - rcPaint.left,
-				 min(m_nLineHeight, rcPaint.bottom - rcPaint.top),
-				 m_pDC_Manager->getHeaderDC(),
-				 rcPaint.left + m_nXOffset, rcPaint.top,
-				 SRCCOPY);
+	if (rcPaint.top < m_nLineHeight) {
+		if (rcPaint.left < width)
+			::BitBlt(m_hDC, rcPaint.left, rcPaint.top,
+					 min(rcPaint.right, width) - rcPaint.left,
+					 min(m_nLineHeight, rcPaint.bottom - rcPaint.top),
+					 m_pDC_Manager->getHeaderDC(),
+					 rcPaint.left + m_nXOffset, rcPaint.top,
+					 SRCCOPY);
+		if (rcPaint.right > width) {
+			RECT rctTemp = rcPaint;
+			rctTemp.left = width;
+			rctTemp.bottom = min(m_nLineHeight, rcPaint.bottom - rcPaint.top);
+			::FillRect(m_hDC, &rctTemp, m_pDrawInfo->m_tciHeader.getBkBrush());
+		}
 	}
 }
 
@@ -377,7 +372,7 @@ ViewFrame::ViewFrameWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 }
 
 void
-ViewFrame::initScrollInfo()
+ViewFrame::modifyVScrollInfo()
 {
 	SCROLLINFO sinfo;
 	sinfo.cbSize = sizeof(sinfo);
@@ -429,6 +424,7 @@ ViewFrame::modifyHScrollInfo(int width)
 	} else {
 		sinfo.nMax  = WIDTH_PER_XPITCH - 1;
 		sinfo.nPage = width;
+		sinfo.nPos  = m_nXOffset / m_nCharWidth;
 	}
 
 	::SetScrollInfo(m_hwndView, SB_HORZ, &sinfo, TRUE);
@@ -561,11 +557,9 @@ ViewFrame::onHScroll(WPARAM wParam, LPARAM lParam)
 	::GetScrollInfo(m_hwndView, SB_HORZ, &sinfo);
 	if (sinfo.nMax <= sinfo.nPage) return;
 
-	RECT rctClient;
-	::GetClientRect(m_hwndView, &rctClient);
 	int nXOffset = m_nXOffset,
 		nMaxXOffset = m_nCharWidth * WIDTH_PER_XPITCH
-					  - (rctClient.right - rctClient.left);
+					  - (m_rctClient.right - m_rctClient.left);
 
 	switch (LOWORD(wParam)) {
 	case SB_LINEDOWN:
@@ -639,19 +633,7 @@ ViewFrame::onMouseWheel(WPARAM wParam, LPARAM lParam)
 {
 	if (!isLoaded()) return;
 
-	int delta = (short)HIWORD(wParam);
-
-	if (delta > 0) {
-		delta /= WHEEL_DELTA;
-		for (int i = 0; i < delta; i++) {
-			onVScroll(SB_LINEUP, 0);
-		}
-	} else {
-		delta = - delta / WHEEL_DELTA;
-		for (int i = 0; i < delta; i++) {
-			onVScroll(SB_LINEDOWN, 0);
-		}
-	}
+	onVerticalMove(- (short)HIWORD(wParam) / WHEEL_DELTA);
 }
 
 void

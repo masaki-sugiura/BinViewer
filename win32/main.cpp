@@ -21,8 +21,6 @@
 #define COLOR_BLACK  RGB(0, 0, 0)
 #define COLOR_YELLOW RGB(255, 255, 0)
 
-#define WM_USER_FIND_FINISH  (WM_USER + 1000)
-
 #define STATUSBAR_HEIGHT  20
 
 #define IDC_STATUSBAR  10
@@ -361,17 +359,22 @@ GetImageFileName(LPSTR buf, int bufsize)
 static void
 AdjustWindowSize(HWND hWnd, const RECT& rctFrame)
 {
-	RECT rctWnd, rctClient;
+	RECT rctWnd, rctClient = rctFrame;
 	::GetWindowRect(hWnd, &rctWnd);
-	::GetClientRect(hWnd, &rctClient);
+	int x_diff = rctWnd.right - rctWnd.left - (rctFrame.right - rctFrame.left),
+		y_diff = rctWnd.bottom - rctWnd.top - (rctFrame.bottom - rctFrame.top);
 
-	rctWnd.right  += rctFrame.right  - rctClient.right;
-	rctWnd.bottom += rctFrame.bottom - rctClient.bottom;
+	g_pViewFrame->adjustWindowRect(rctClient);
+
+	rctWnd.right  = rctWnd.left + rctClient.right  - rctClient.left + x_diff;
+	rctWnd.bottom = rctWnd.top + rctClient.bottom - rctClient.top + y_diff;
 	::SetWindowPos(hWnd, NULL,
 				   rctWnd.left, rctWnd.top,
 				   rctWnd.right - rctWnd.left,
 				   rctWnd.bottom - rctWnd.top,
 				   SWP_NOZORDER);
+
+	g_pViewFrame->setFrameRect(rctClient);
 }
 
 static void
@@ -424,6 +427,8 @@ LoadFile(const string& filename)
 	return bRet;
 }
 
+static void OnSetPosition(HWND, WPARAM, LPARAM);
+
 static void
 UnloadFile()
 {
@@ -434,6 +439,15 @@ UnloadFile()
 	::SetWindowText(g_hwndMain, "BinViewer");
 
 	EnableEditMenu(g_hwndMain, FALSE);
+	OnSetPosition(g_hwndMain, 0, 0);
+}
+
+static void
+OnSetPosition(HWND hWnd, WPARAM wParam, LPARAM lParam)
+{
+	char msgbuf[80];
+	wsprintf(msgbuf, "カーソルの現在位置： 0x%08X%08X", wParam, lParam);
+	::SetWindowText(g_hwndStatusBar, msgbuf);
 }
 
 static void
@@ -495,7 +509,7 @@ OnCreate(HWND hWnd)
 	AdjustWindowSize(hWnd, rctClient);
 
 	g_hwndStatusBar = ::CreateWindow(STATUSCLASSNAME,
-									 "this is a status bar",
+									 "",
 									 WS_CHILD | WS_VISIBLE |
 									  SBARS_SIZEGRIP,
 									 rctClient.left,
@@ -513,6 +527,7 @@ OnCreate(HWND hWnd)
 
 	if (g_strImageFile.length() == 0) {
 		EnableEditMenu(hWnd, FALSE);
+		OnSetPosition(hWnd, 0, 0);
 		return;
 	}
 
@@ -654,6 +669,10 @@ MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			g_pViewFrame->onHorizontalMove(-1);
 			break;
 		}
+		break;
+
+	case WM_USER_SETPOSITION:
+		OnSetPosition(hWnd, wParam, lParam);
 		break;
 
 	case WM_SIZING:
