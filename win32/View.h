@@ -3,6 +3,16 @@
 #ifndef VIEW_H_INC
 #define VIEW_H_INC
 
+/*
+	DC_Manager を利用するウィンドウを表す抽象基底クラス
+
+	・画面の描画（バックグラウンドバッファからのビットマップ転送）
+	・描画領域のサイズ管理
+	・カーソル位置の管理
+	・マウスイベントのハンドリング
+	・キー操作のハンドリング
+ */
+
 //#include "dc_manager.h"
 #include "auto_ptr.h"
 #include "scroll.h"
